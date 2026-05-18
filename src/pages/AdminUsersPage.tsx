@@ -1,12 +1,13 @@
-import { FormEvent, useEffect, useState } from 'react'
+import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Search } from 'lucide-react'
-import { getUsers, updateUserRole, updateUserStatus } from '../api/users.api'
+import { getUsers, updateUserRole, updateUserStatus, type UserQuery } from '../api/users.api'
 import type { CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 import { useAuth } from '../features/auth/useAuth'
 
 const roles: UserRole[] = ['ADMIN', 'MODERATOR', 'USER']
 const statuses: UserStatus[] = ['ACTIVE', 'LOCKED', 'INACTIVE']
+const DEFAULT_QUERY: UserQuery = { page: 1, pageSize: 10 }
 
 export function AdminUsersPage() {
   const { user: currentUser } = useAuth()
@@ -16,44 +17,63 @@ export function AdminUsersPage() {
   const [data, setData] = useState<UserListResponse | null>(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
 
-  async function loadUsers() {
+  const loadUsers = useCallback(async (query: UserQuery = DEFAULT_QUERY) => {
     setError('')
     setIsLoading(true)
 
     try {
-      const response = await getUsers({ page: 1, pageSize: 10, keyword, role, status })
+      const response = await getUsers(query)
       setData(response)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not load users')
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
     void loadUsers()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [loadUsers])
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault()
-    await loadUsers()
+    await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
   }
 
   async function handleStatusChange(targetUser: CurrentUser, nextStatus: UserStatus) {
+    setError('')
+
     if (targetUser.id === currentUser?.id && nextStatus === 'LOCKED') {
       setError('Admins should not lock their own account.')
       return
     }
 
-    await updateUserStatus(targetUser.id, nextStatus)
-    await loadUsers()
+    setUpdatingUserId(targetUser.id)
+
+    try {
+      await updateUserStatus(targetUser.id, nextStatus)
+      await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update user status')
+    } finally {
+      setUpdatingUserId(null)
+    }
   }
 
   async function handleRoleChange(targetUser: CurrentUser, nextRole: UserRole) {
-    await updateUserRole(targetUser.id, nextRole)
-    await loadUsers()
+    setError('')
+    setUpdatingUserId(targetUser.id)
+
+    try {
+      await updateUserRole(targetUser.id, nextRole)
+      await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update user role')
+    } finally {
+      setUpdatingUserId(null)
+    }
   }
 
   return (
@@ -86,8 +106,8 @@ export function AdminUsersPage() {
             </option>
           ))}
         </select>
-        <button className="secondary-button" type="submit">
-          Search
+        <button className="secondary-button" type="submit" disabled={isLoading}>
+          {isLoading ? 'Searching...' : 'Search'}
         </button>
       </form>
 
@@ -115,7 +135,11 @@ export function AdminUsersPage() {
                       <span>{item.email}</span>
                     </td>
                     <td>
-                      <select value={item.role} onChange={(event) => void handleRoleChange(item, event.target.value as UserRole)}>
+                      <select
+                        value={item.role}
+                        disabled={isLoading || updatingUserId === item.id}
+                        onChange={(event) => void handleRoleChange(item, event.target.value as UserRole)}
+                      >
                         {roles.map((roleItem) => (
                           <option key={roleItem} value={roleItem}>
                             {roleItem}
@@ -124,7 +148,11 @@ export function AdminUsersPage() {
                       </select>
                     </td>
                     <td>
-                      <select value={item.status} onChange={(event) => void handleStatusChange(item, event.target.value as UserStatus)}>
+                      <select
+                        value={item.status}
+                        disabled={isLoading || updatingUserId === item.id}
+                        onChange={(event) => void handleStatusChange(item, event.target.value as UserStatus)}
+                      >
                         {statuses.map((statusItem) => (
                           <option key={statusItem} value={statusItem}>
                             {statusItem}

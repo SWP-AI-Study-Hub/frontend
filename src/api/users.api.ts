@@ -1,7 +1,9 @@
 import { apiRequest } from '../lib/http'
 import type { CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 
-type UserQuery = {
+const ADMIN_USERS_PATH = '/admin/users'
+
+export type UserQuery = {
   page?: number
   pageSize?: number
   keyword?: string
@@ -23,23 +25,23 @@ function toQueryString(query: UserQuery) {
 }
 
 export function getUsers(query: UserQuery = {}) {
-  return apiRequest<UserListResponse>(`/users${toQueryString(query)}`)
+  return apiRequest<UserListResponse>(`${ADMIN_USERS_PATH}${toQueryString(query)}`)
 }
 
 export function getUserById(id: string) {
-  return apiRequest<CurrentUser>(`/users/${id}`)
+  return apiRequest<CurrentUser>(`${ADMIN_USERS_PATH}/${id}`)
 }
 
 export function updateUserStatus(id: string, status: UserStatus) {
-  return apiRequest<CurrentUser>(`/users/${id}/status`, {
-    method: 'PATCH',
+  return apiRequest<CurrentUser>(`${ADMIN_USERS_PATH}/${id}/status`, {
+    method: 'PUT',
     body: { status },
   })
 }
 
 export function updateUserRole(id: string, role: UserRole) {
-  return apiRequest<CurrentUser>(`/users/${id}/role`, {
-    method: 'PATCH',
+  return apiRequest<CurrentUser>(`${ADMIN_USERS_PATH}/${id}/role`, {
+    method: 'PUT',
     body: { role },
   })
 }
