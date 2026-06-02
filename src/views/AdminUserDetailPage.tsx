@@ -1,16 +1,19 @@
+"use client"
+
 import { useEffect, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import Link from 'next/link'
 import { getUserById } from '../api/users.api'
 import type { CurrentUser } from '../types/auth'
 
-export function AdminUserDetailPage() {
-  const { id } = useParams()
+type AdminUserDetailPageProps = {
+  id: string
+}
+
+export function AdminUserDetailPage({ id }: AdminUserDetailPageProps) {
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!id) return
-
     getUserById(id)
       .then(setUser)
       .catch((err) => setError(err instanceof Error ? err.message : 'Could not load user'))
@@ -23,7 +26,7 @@ export function AdminUserDetailPage() {
           <h2>User Detail</h2>
           <p>Detailed information for this account.</p>
         </div>
-        <Link className="secondary-button" to="/admin/users">
+        <Link className="secondary-button" href="/admin/users">
           Back
         </Link>
       </div>

@@ -1,7 +1,6 @@
 import { BookOpen } from 'lucide-react'
-import { Outlet } from 'react-router-dom'
 
-export function AuthLayout() {
+export function AuthLayout({ children }: { children: React.ReactNode }) {
   return (
     <main className="auth-shell">
       <section className="auth-brand">
@@ -11,7 +10,7 @@ export function AuthLayout() {
         <h1>AI Study Hub</h1>
         <p>Manage study documents, users, and access permissions in one place.</p>
       </section>
-      <Outlet />
+      {children}
     </main>
   )
 }

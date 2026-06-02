@@ -1,3 +1,6 @@
+@import "tailwindcss";
+
+@layer base {
 :root {
   color: #172033;
   background: #f5f7fb;
@@ -66,7 +69,9 @@ td span {
   display: block;
   font-size: 0.9rem;
 }
+}
 
+@layer components {
 .auth-shell {
   align-items: center;
   display: grid;
@@ -343,4 +348,5 @@ td span {
   .sidebar {
     position: static;
   }
+}
 }

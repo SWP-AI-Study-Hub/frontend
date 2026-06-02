@@ -1,5 +1,7 @@
+"use client"
+
 import { FormEvent, useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { Mail } from 'lucide-react'
 import { forgotPassword } from '../api/auth.api'
 
@@ -37,7 +39,7 @@ export function ForgotPasswordPage() {
         </button>
       </form>
       <div className="form-links">
-        <Link to="/login">Back to login</Link>
+        <Link href="/login">Back to login</Link>
       </div>
     </section>
   )

@@ -1,12 +1,15 @@
+"use client"
+
 import { FormEvent, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { LogIn } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 
 export function LoginPage() {
   const { login } = useAuth()
-  const navigate = useNavigate()
-  const location = useLocation()
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -19,8 +22,8 @@ export function LoginPage() {
 
     try {
       const user = await login({ email, password })
-      const from = location.state?.from?.pathname
-      navigate(from ?? (user.role === 'ADMIN' ? '/admin/users' : '/profile'), { replace: true })
+      const from = searchParams?.get('from')
+      router.replace(from ?? (user.role === 'ADMIN' ? '/admin/users' : '/profile'))
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -47,8 +50,8 @@ export function LoginPage() {
         </button>
       </form>
       <div className="form-links">
-        <Link to="/forgot-password">Forgot password</Link>
-        <Link to="/register">Create account</Link>
+        <Link href="/forgot-password">Forgot password</Link>
+        <Link href="/register">Create account</Link>
       </div>
     </section>
   )

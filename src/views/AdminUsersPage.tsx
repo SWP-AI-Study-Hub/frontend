@@ -1,5 +1,7 @@
+"use client"
+
 import { FormEvent, useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import Link from 'next/link'
 import { Search } from 'lucide-react'
 import { getUsers, updateUserRole, updateUserStatus } from '../api/users.api'
 import type { CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
@@ -134,7 +136,7 @@ export function AdminUsersPage() {
                     </td>
                     <td>{item.lastLogin ?? 'No data yet'}</td>
                     <td>
-                      <Link to={`/admin/users/${item.id}`}>Details</Link>
+                      <Link href={`/admin/users/${item.id}`}>Details</Link>
                     </td>
                   </tr>
                 ))}

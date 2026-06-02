@@ -1,3 +1,5 @@
+"use client"
+
 import { useAuth } from '../features/auth/useAuth'
 
 export function ProfilePage() {

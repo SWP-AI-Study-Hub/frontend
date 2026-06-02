@@ -1,11 +1,14 @@
+"use client"
+
 import { FormEvent, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { UserPlus } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 
 export function RegisterPage() {
   const { register } = useAuth()
-  const navigate = useNavigate()
+  const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,7 +22,7 @@ export function RegisterPage() {
 
     try {
       const user = await register({ fullName, email, password })
-      navigate(user.role === 'ADMIN' ? '/admin/users' : '/profile', { replace: true })
+      router.replace(user.role === 'ADMIN' ? '/admin/users' : '/profile')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {
@@ -50,7 +53,7 @@ export function RegisterPage() {
         </button>
       </form>
       <div className="form-links">
-        <Link to="/login">Already have an account</Link>
+        <Link href="/login">Already have an account</Link>
       </div>
     </section>
   )
