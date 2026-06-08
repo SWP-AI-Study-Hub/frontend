@@ -2,13 +2,13 @@
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Search } from 'lucide-react'
+import { ClipboardCheck, FileWarning, Search, ShieldCheck, UserCheck, UsersRound, UserX } from 'lucide-react'
 import { getUsers, updateUserRole, updateUserStatus, type UserQuery } from '../api/users.api'
 import type { CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 import { useAuth } from '../features/auth/useAuth'
 
-const roles: UserRole[] = ['ADMIN', 'MODERATOR', 'USER']
-const statuses: UserStatus[] = ['ACTIVE', 'LOCKED', 'INACTIVE']
+const roles: UserRole[] = ['ADMIN', 'USER']
+const statuses: UserStatus[] = ['ACTIVE', 'BLOCKED', 'INACTIVE']
 const DEFAULT_QUERY: UserQuery = { page: 1, pageSize: 10 }
 
 export function AdminUsersView() {
@@ -20,6 +20,10 @@ export function AdminUsersView() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null)
+  const users = data?.items ?? []
+  const activeUsers = users.filter((item) => item.status === 'ACTIVE').length
+  const blockedUsers = users.filter((item) => item.status === 'BLOCKED').length
+  const adminUsers = users.filter((item) => item.role === 'ADMIN').length
 
   const loadUsers = useCallback(async (query: UserQuery = DEFAULT_QUERY) => {
     setError('')
@@ -47,8 +51,8 @@ export function AdminUsersView() {
   async function handleStatusChange(targetUser: CurrentUser, nextStatus: UserStatus) {
     setError('')
 
-    if (targetUser.id === currentUser?.id && nextStatus === 'LOCKED') {
-      setError('Admins should not lock their own account.')
+    if (targetUser.id === currentUser?.id && nextStatus === 'BLOCKED') {
+      setError('Admins should not block their own account.')
       return
     }
 
@@ -82,10 +86,52 @@ export function AdminUsersView() {
     <main className="page">
       <div className="page-header">
         <div>
+          <p className="eyebrow">Admin UI</p>
           <h2>User Management</h2>
-          <p>Manage user roles and account status.</p>
+          <p>Manage roles, account status, moderation handoff, and audit-aware admin operations.</p>
         </div>
       </div>
+
+      <section className="admin-stats">
+        <article className="stat-card">
+          <UsersRound size={20} />
+          <span>Total users</span>
+          <strong>{data?.total ?? users.length}</strong>
+        </article>
+        <article className="stat-card">
+          <UserCheck size={20} />
+          <span>Active</span>
+          <strong>{activeUsers}</strong>
+        </article>
+        <article className="stat-card">
+          <ShieldCheck size={20} />
+          <span>Admins</span>
+          <strong>{adminUsers}</strong>
+        </article>
+        <article className="stat-card">
+          <UserX size={20} />
+          <span>Blocked</span>
+          <strong>{blockedUsers}</strong>
+        </article>
+      </section>
+
+      <section className="admin-workflow">
+        <article>
+          <ShieldCheck size={18} />
+          <strong>Access control</strong>
+          <span>Every admin request is checked against the authenticated role.</span>
+        </article>
+        <article>
+          <FileWarning size={18} />
+          <strong>Reports & moderation</strong>
+          <span>Admin reviews reported public documents and user activity.</span>
+        </article>
+        <article>
+          <ClipboardCheck size={18} />
+          <strong>Audit logs</strong>
+          <span>Important auth, upload, payment, and moderation actions are logged.</span>
+        </article>
+      </section>
 
       <form className="toolbar" onSubmit={handleSearch}>
         <label className="search-box">
@@ -162,9 +208,15 @@ export function AdminUsersView() {
                         ))}
                       </select>
                     </td>
-                    <td>{item.lastLogin ?? 'No data yet'}</td>
                     <td>
-                      <Link href={`/admin/users/${item.id}`}>Details</Link>
+                      <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>
+                        {item.lastLogin ?? 'No data yet'}
+                      </span>
+                    </td>
+                    <td>
+                      <Link className="detail-link" href={`/admin/users/${item.id}`}>
+                        Details
+                      </Link>
                     </td>
                   </tr>
                 ))}

@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { UserPlus } from 'lucide-react'
+import { Database, UserPlus } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 
 export function RegisterView() {
@@ -32,7 +32,9 @@ export function RegisterView() {
 
   return (
     <section className="auth-card">
+      <p className="eyebrow">Profile & Role</p>
       <h2>Create account</h2>
+      <p className="auth-copy">New users receive a database profile, default role, plan, quota, and audit trail entry after authentication.</p>
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
           Full name
@@ -54,6 +56,12 @@ export function RegisterView() {
       </form>
       <div className="form-links">
         <Link href="/login">Already have an account</Link>
+      </div>
+      <div className="auth-meta">
+        <span>
+          <Database size={16} />
+          Creates user profile when missing
+        </span>
       </div>
     </section>
   )

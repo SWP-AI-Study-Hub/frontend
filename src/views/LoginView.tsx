@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { LogIn } from 'lucide-react'
+import { KeyRound, LogIn, ShieldCheck } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 
 export function LoginView() {
@@ -34,6 +34,7 @@ export function LoginView() {
   return (
     <section className="auth-card">
       <h2>Log in</h2>
+      <p className="auth-copy">Sign in to load your profile, role, plan, quota, and protected study workspace.</p>
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
           Email
@@ -52,6 +53,16 @@ export function LoginView() {
       <div className="form-links">
         <Link href="/forgot-password">Forgot password</Link>
         <Link href="/register">Create account</Link>
+      </div>
+      <div className="auth-meta">
+        <span>
+          <KeyRound size={16} />
+          Backend verifies session
+        </span>
+        <span>
+          <ShieldCheck size={16} />
+          Role-based access guard
+        </span>
       </div>
     </section>
   )

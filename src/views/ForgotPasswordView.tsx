@@ -29,7 +29,9 @@ export function ForgotPasswordView() {
 
   return (
     <section className="auth-card">
+      <p className="eyebrow">Account Recovery</p>
       <h2>Forgot password</h2>
+      <p className="auth-copy">Send a reset request through the authentication service and keep user access secure.</p>
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
           Email

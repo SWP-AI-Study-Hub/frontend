@@ -36,4 +36,6 @@ npm run start
 - Protected profile page
 - Admin user list and user detail pages
 - Role-based route guard
-- API client configured for HTTP-only cookie auth
+- API client aligned with Firebase-authenticated backend sessions
+- User roles aligned with logical ERD: ADMIN and USER
+- User statuses aligned with logical ERD: ACTIVE, BLOCKED, INACTIVE
