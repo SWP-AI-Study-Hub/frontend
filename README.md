@@ -1,10 +1,10 @@
 # AI Study Hub Frontend
 
-React + TypeScript frontend for the AI Study Hub MVP.
+Next.js + TypeScript frontend for the AI Study Hub MVP.
 
 ## Requirements
 
-- Node.js 24.x or a current LTS version
+- Node.js 20.19+ or a current LTS version
 - npm
 
 ## Setup
@@ -27,7 +27,7 @@ http://localhost:8080/api
 npm run dev
 npm run lint
 npm run build
-npm run preview
+npm run start
 ```
 
 ## Current Scope

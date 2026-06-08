@@ -1,33 +1,38 @@
+'use client'
+
+import type { ReactNode } from 'react'
 import { BookOpen, LogOut, UserRound } from 'lucide-react'
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '../features/auth/useAuth'
 
-export function AppLayout() {
+export function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
-  const navigate = useNavigate()
+  const pathname = usePathname() ?? '/'
+  const router = useRouter()
 
   async function handleLogout() {
     await logout()
-    navigate('/login')
+    router.push('/login')
   }
 
   return (
     <div className="app-shell">
       <aside className="sidebar">
-        <Link to="/" className="sidebar-brand">
+        <Link href="/" className="sidebar-brand">
           <BookOpen size={24} />
           <span>AI Study Hub</span>
         </Link>
         <nav className="side-nav">
-          <NavLink to="/profile">
+          <Link href="/profile" className={pathname === '/profile' ? 'active' : undefined}>
             <UserRound size={18} />
             Profile
-          </NavLink>
+          </Link>
           {user?.role === 'ADMIN' ? (
-            <NavLink to="/admin/users">
+            <Link href="/admin/users" className={pathname.startsWith('/admin/users') ? 'active' : undefined}>
               <UserRound size={18} />
               Users
-            </NavLink>
+            </Link>
           ) : null}
         </nav>
       </aside>
@@ -42,7 +47,7 @@ export function AppLayout() {
             <LogOut size={18} />
           </button>
         </header>
-        <Outlet />
+        {children}
       </div>
     </div>
   )

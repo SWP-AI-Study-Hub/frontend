@@ -1,9 +1,12 @@
+'use client'
+
+import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import * as authApi from '../../api/auth.api'
 import type { CurrentUser, LoginPayload, RegisterPayload } from '../../types/auth'
 import { AuthContext } from './auth-context'
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
