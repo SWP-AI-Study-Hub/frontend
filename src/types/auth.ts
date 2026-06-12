@@ -24,6 +24,10 @@ export type LoginPayload = {
   password: string
 }
 
+export type GoogleLoginPayload = {
+  idToken: string
+}
+
 export type RegisterPayload = {
   fullName: string
   email: string
