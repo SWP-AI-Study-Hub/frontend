@@ -1,9 +1,14 @@
+'use client'
+
+import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { signInWithPopup, signOut } from 'firebase/auth'
 import * as authApi from '../../api/auth.api'
+import { firebaseAuth, googleAuthProvider } from '../../lib/firebase'
 import type { CurrentUser, LoginPayload, RegisterPayload } from '../../types/auth'
 import { AuthContext } from './auth-context'
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [isLoading, setIsLoading] = useState(true)
 
@@ -52,8 +57,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     [refreshUser],
   )
 
+  const handleGoogleLogin = useCallback(async () => {
+    const credential = await signInWithPopup(firebaseAuth, googleAuthProvider)
+    const idToken = await credential.user.getIdToken()
+
+    await authApi.loginWithGoogle({ idToken })
+    const currentUser = await refreshUser()
+
+    if (!currentUser) {
+      await signOut(firebaseAuth)
+      throw new Error('Cannot load current user after Google login')
+    }
+
+    return currentUser
+  }, [refreshUser])
+
   const handleLogout = useCallback(async () => {
     await authApi.logout()
+    await signOut(firebaseAuth)
     setUser(null)
   }, [])
 
@@ -62,11 +83,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       isLoading,
       login: handleLogin,
+      loginWithGoogle: handleGoogleLogin,
       register: handleRegister,
       logout: handleLogout,
       refreshUser,
     }),
-    [handleLogin, handleLogout, handleRegister, isLoading, refreshUser, user],
+    [handleGoogleLogin, handleLogin, handleLogout, handleRegister, isLoading, refreshUser, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

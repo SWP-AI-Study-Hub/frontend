@@ -1,9 +1,14 @@
-export type UserRole = 'ADMIN' | 'MODERATOR' | 'USER'
+export type UserRole = 'ADMIN' | 'USER'
 
-export type UserStatus = 'ACTIVE' | 'LOCKED' | 'INACTIVE'
+export type UserStatus = 'ACTIVE' | 'BLOCKED' | 'INACTIVE'
+
+export type AuthProvider = 'GOOGLE' | 'EMAIL_PASSWORD'
 
 export type CurrentUser = {
   id: string
+  roleId?: number
+  firebaseUid?: string
+  authProvider?: AuthProvider
   fullName: string
   email: string
   avatarUrl: string | null
@@ -17,6 +22,10 @@ export type CurrentUser = {
 export type LoginPayload = {
   email: string
   password: string
+}
+
+export type GoogleLoginPayload = {
+  idToken: string
 }
 
 export type RegisterPayload = {

@@ -1,5 +1,5 @@
 import { apiRequest } from '../lib/http'
-import type { CurrentUser, LoginPayload, RegisterPayload } from '../types/auth'
+import type { CurrentUser, GoogleLoginPayload, LoginPayload, RegisterPayload } from '../types/auth'
 
 export function register(payload: RegisterPayload) {
   return apiRequest<CurrentUser>('/auth/register', {
@@ -10,6 +10,13 @@ export function register(payload: RegisterPayload) {
 
 export function login(payload: LoginPayload) {
   return apiRequest<void>('/auth/login', {
+    method: 'POST',
+    body: payload,
+  })
+}
+
+export function loginWithGoogle(payload: GoogleLoginPayload) {
+  return apiRequest<void>('/auth/google', {
     method: 'POST',
     body: payload,
   })

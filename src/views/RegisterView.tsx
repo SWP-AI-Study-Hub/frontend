@@ -1,11 +1,14 @@
+'use client'
+
 import { FormEvent, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { UserPlus } from 'lucide-react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { Database, UserPlus } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 
-export function RegisterPage() {
+export function RegisterView() {
   const { register } = useAuth()
-  const navigate = useNavigate()
+  const router = useRouter()
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,7 +22,7 @@ export function RegisterPage() {
 
     try {
       const user = await register({ fullName, email, password })
-      navigate(user.role === 'ADMIN' ? '/admin/users' : '/profile', { replace: true })
+      router.replace(user.role === 'ADMIN' ? '/admin/users' : '/profile')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed')
     } finally {
@@ -29,7 +32,9 @@ export function RegisterPage() {
 
   return (
     <section className="auth-card">
+      <p className="eyebrow">Profile & Role</p>
       <h2>Create account</h2>
+      <p className="auth-copy">New users receive a database profile, default role, plan, quota, and audit trail entry after authentication.</p>
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
           Full name
@@ -50,7 +55,13 @@ export function RegisterPage() {
         </button>
       </form>
       <div className="form-links">
-        <Link to="/login">Already have an account</Link>
+        <Link href="/login">Already have an account</Link>
+      </div>
+      <div className="auth-meta">
+        <span>
+          <Database size={16} />
+          Creates user profile when missing
+        </span>
       </div>
     </section>
   )
