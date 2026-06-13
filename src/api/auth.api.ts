@@ -16,7 +16,7 @@ export function login(payload: LoginPayload) {
 }
 
 export function loginWithGoogle(payload: GoogleLoginPayload) {
-  return apiRequest<void>('/auth/google', {
+  return apiRequest<CurrentUser>('/auth/firebase-login', {
     method: 'POST',
     body: payload,
   })

@@ -60,9 +60,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleGoogleLogin = useCallback(async () => {
     const credential = await signInWithPopup(firebaseAuth, googleAuthProvider)
     const idToken = await credential.user.getIdToken()
+    const currentUser = await authApi.loginWithGoogle({ idToken })
 
-    await authApi.loginWithGoogle({ idToken })
-    const currentUser = await refreshUser()
+    setUser(currentUser)
+    setIsLoading(false)
 
     if (!currentUser) {
       await signOut(firebaseAuth)
@@ -70,7 +71,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     return currentUser
-  }, [refreshUser])
+  }, [])
 
   const handleLogout = useCallback(async () => {
     await authApi.logout()
