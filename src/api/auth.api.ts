@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth'
+import { FirebaseError } from 'firebase/app'
 import { apiRequest } from '../lib/http'
 import { firebaseAuth } from '../lib/firebase'
 import type { CurrentUser, GoogleLoginPayload, LoginPayload, RegisterPayload } from '../types/auth'
@@ -18,10 +19,14 @@ export async function register(payload: RegisterPayload) {
 }
 
 export async function login(payload: LoginPayload) {
-  const credential = await signInWithEmailAndPassword(firebaseAuth, payload.email, payload.password)
-  const idToken = await credential.user.getIdToken()
+  try {
+    const credential = await signInWithEmailAndPassword(firebaseAuth, payload.email, payload.password)
+    const idToken = await credential.user.getIdToken()
 
-  return loginWithGoogle({ idToken })
+    return loginWithGoogle({ idToken })
+  } catch (error) {
+    throw normalizeAuthError(error)
+  }
 }
 
 export function loginWithGoogle(payload: GoogleLoginPayload) {
@@ -42,7 +47,9 @@ export function getCurrentUser() {
 }
 
 export function forgotPassword(email: string) {
-  return sendPasswordResetEmail(firebaseAuth, email)
+  return sendPasswordResetEmail(firebaseAuth, email, {
+    url: `${window.location.origin}/login`,
+  })
 }
 
 export function resetPassword(token: string, password: string) {
@@ -50,4 +57,15 @@ export function resetPassword(token: string, password: string) {
     method: 'POST',
     body: { token, password },
   })
+}
+
+function normalizeAuthError(error: unknown): Error {
+  if (
+    error instanceof FirebaseError &&
+    ['auth/invalid-credential', 'auth/wrong-password', 'auth/user-not-found'].includes(error.code)
+  ) {
+    return new Error('Thông tin tài khoản không hợp lệ')
+  }
+
+  return error instanceof Error ? error : new Error('Authentication failed')
 }

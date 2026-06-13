@@ -32,9 +32,9 @@ export function RegisterView() {
 
   return (
     <section className="auth-card">
-      <p className="eyebrow">Profile & Role</p>
-      <h2>Create account</h2>
-      <p className="auth-copy">New users receive a database profile, default role, plan, quota, and audit trail entry after authentication.</p>
+      <p className="eyebrow">Start your workspace</p>
+      <h2>Create your DocuMind account</h2>
+      <p className="auth-copy">Set up a secure profile for document search, AI answers, and source-aware study sessions.</p>
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
           Full name
@@ -60,7 +60,7 @@ export function RegisterView() {
       <div className="auth-meta">
         <span>
           <Database size={16} />
-          Creates user profile when missing
+          Creates your learning profile
         </span>
       </div>
     </section>
