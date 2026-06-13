@@ -1,18 +1,27 @@
+import {
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth'
 import { apiRequest } from '../lib/http'
+import { firebaseAuth } from '../lib/firebase'
 import type { CurrentUser, GoogleLoginPayload, LoginPayload, RegisterPayload } from '../types/auth'
 
-export function register(payload: RegisterPayload) {
-  return apiRequest<CurrentUser>('/auth/register', {
-    method: 'POST',
-    body: payload,
-  })
+export async function register(payload: RegisterPayload) {
+  const credential = await createUserWithEmailAndPassword(firebaseAuth, payload.email, payload.password)
+
+  await updateProfile(credential.user, { displayName: payload.fullName })
+  const idToken = await credential.user.getIdToken(true)
+
+  return loginWithGoogle({ idToken })
 }
 
-export function login(payload: LoginPayload) {
-  return apiRequest<void>('/auth/login', {
-    method: 'POST',
-    body: payload,
-  })
+export async function login(payload: LoginPayload) {
+  const credential = await signInWithEmailAndPassword(firebaseAuth, payload.email, payload.password)
+  const idToken = await credential.user.getIdToken()
+
+  return loginWithGoogle({ idToken })
 }
 
 export function loginWithGoogle(payload: GoogleLoginPayload) {
@@ -33,10 +42,7 @@ export function getCurrentUser() {
 }
 
 export function forgotPassword(email: string) {
-  return apiRequest<void>('/auth/forgot-password', {
-    method: 'POST',
-    body: { email },
-  })
+  return sendPasswordResetEmail(firebaseAuth, email)
 }
 
 export function resetPassword(token: string, password: string) {
