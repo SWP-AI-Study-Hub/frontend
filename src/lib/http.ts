@@ -7,6 +7,19 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, unknown> | null
 }
 
+type ApiEnvelope<T> = {
+  success: boolean
+  data?: T
+  error?: {
+    code?: string
+    message?: string
+    details?: unknown
+  }
+  timestamp?: string
+  path?: string
+  requestId?: string | null
+}
+
 export class ApiError extends Error {
   status: number
 
@@ -53,10 +66,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   const contentType = response.headers.get('content-type')
-  const data = contentType?.includes('application/json') ? await response.json() : null
+  const data = (contentType?.includes('application/json') ? await response.json() : null) as ApiEnvelope<T> | T | null
 
   if (!response.ok) {
-    const message = data?.message ?? data?.error ?? 'Request failed'
+    const message =
+      data && typeof data === 'object' && 'error' in data
+        ? data.error?.message ?? 'Request failed'
+        : 'Request failed'
 
     if (response.status === 401 || response.status === 403) {
       clearStoredAuthToken()
@@ -64,6 +80,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     }
 
     throw new ApiError(message, response.status)
+  }
+
+  if (data && typeof data === 'object' && 'success' in data && data.success) {
+    return data.data as T
   }
 
   return data as T

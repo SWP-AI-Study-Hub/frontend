@@ -105,7 +105,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const handleLogout = useCallback(async () => {
-    await authApi.logout()
     clearStoredAuthToken()
     await signOut(getFirebaseAuth())
     setUser(null)

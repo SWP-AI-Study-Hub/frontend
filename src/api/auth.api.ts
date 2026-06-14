@@ -10,6 +10,15 @@ import { apiRequest } from '../lib/http'
 import { getFirebaseAuth } from '../lib/firebase'
 import type { CurrentUser, GoogleLoginPayload, LoginPayload, RegisterPayload } from '../types/auth'
 
+type AuthLoginResponse = {
+  user: CurrentUser
+  role: CurrentUser['role']
+  permissions: string[]
+  isNewUser: boolean
+}
+
+type AuthMeResponse = Omit<AuthLoginResponse, 'isNewUser'>
+
 export async function register(payload: RegisterPayload) {
   const firebaseAuth = getFirebaseAuth()
   const credential = await createUserWithEmailAndPassword(firebaseAuth, payload.email, payload.password)
@@ -33,20 +42,16 @@ export async function login(payload: LoginPayload) {
 }
 
 export function loginWithFirebaseToken(payload: GoogleLoginPayload) {
-  return apiRequest<CurrentUser>('/auth/firebase-login', {
+  return apiRequest<AuthLoginResponse>('/auth/firebase-login', {
     method: 'POST',
-    body: payload,
-  })
-}
-
-export function logout() {
-  return apiRequest<void>('/auth/logout', {
-    method: 'POST',
-  })
+    headers: {
+      Authorization: `Bearer ${payload.idToken}`,
+    },
+  }).then((response) => response.user)
 }
 
 export function getCurrentUser() {
-  return apiRequest<CurrentUser>('/auth/me')
+  return apiRequest<AuthMeResponse>('/auth/me').then((response) => response.user)
 }
 
 export function forgotPassword(email: string) {
