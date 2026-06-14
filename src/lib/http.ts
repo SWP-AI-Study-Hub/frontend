@@ -1,4 +1,5 @@
 import { firebaseAuth } from './firebase'
+import { clearStoredAuthToken, getStoredAuthToken, notifyUnauthorized, setStoredAuthToken } from './auth-token'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api'
 
@@ -22,7 +23,16 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   if (!headers.has('Authorization') && firebaseAuth.currentUser) {
     const idToken = await firebaseAuth.currentUser.getIdToken()
+    setStoredAuthToken(idToken)
     headers.set('Authorization', `Bearer ${idToken}`)
+  }
+
+  if (!headers.has('Authorization')) {
+    const storedToken = getStoredAuthToken()
+
+    if (storedToken) {
+      headers.set('Authorization', `Bearer ${storedToken}`)
+    }
   }
 
   if (body && !(body instanceof FormData) && typeof body !== 'string') {
@@ -46,6 +56,12 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
   if (!response.ok) {
     const message = data?.message ?? data?.error ?? 'Request failed'
+
+    if (response.status === 401 || response.status === 403) {
+      clearStoredAuthToken()
+      notifyUnauthorized()
+    }
+
     throw new ApiError(message, response.status)
   }
 
