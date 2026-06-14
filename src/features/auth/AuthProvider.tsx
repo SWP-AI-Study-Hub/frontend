@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { onIdTokenChanged, signInWithPopup, signOut } from 'firebase/auth'
 import * as authApi from '../../api/auth.api'
 import { clearStoredAuthToken, setStoredAuthToken } from '../../lib/auth-token'
-import { firebaseAuth, googleAuthProvider } from '../../lib/firebase'
+import { getFirebaseAuth, getGoogleAuthProvider } from '../../lib/firebase'
 import type { CurrentUser, LoginPayload, RegisterPayload } from '../../types/auth'
 import { AuthContext } from './auth-context'
 
@@ -27,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    const firebaseAuth = getFirebaseAuth()
     const unsubscribe = onIdTokenChanged(firebaseAuth, async (firebaseUser) => {
       setIsLoading(true)
 
@@ -85,6 +86,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const handleGoogleLogin = useCallback(async () => {
+    const firebaseAuth = getFirebaseAuth()
+    const googleAuthProvider = getGoogleAuthProvider()
     const credential = await signInWithPopup(firebaseAuth, googleAuthProvider)
     const idToken = await credential.user.getIdToken()
     setStoredAuthToken(idToken)
@@ -104,7 +107,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const handleLogout = useCallback(async () => {
     await authApi.logout()
     clearStoredAuthToken()
-    await signOut(firebaseAuth)
+    await signOut(getFirebaseAuth())
     setUser(null)
   }, [])
 

@@ -6,6 +6,7 @@ import { ClipboardCheck, FileWarning, Search, ShieldCheck, UserCheck, UsersRound
 import { getUsers, updateUserRole, updateUserStatus, type UserQuery } from '../api/users.api'
 import type { CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 import { useAuth } from '../features/auth/useAuth'
+import { useLanguage } from '../i18n/LanguageProvider'
 
 const roles: UserRole[] = ['ADMIN', 'USER']
 const statuses: UserStatus[] = ['ACTIVE', 'BLOCKED', 'INACTIVE']
@@ -13,6 +14,7 @@ const DEFAULT_QUERY: UserQuery = { page: 1, pageSize: 10 }
 
 export function AdminUsersView() {
   const { user: currentUser } = useAuth()
+  const { t } = useLanguage()
   const [keyword, setKeyword] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
   const [status, setStatus] = useState<UserStatus | ''>('')
@@ -33,11 +35,11 @@ export function AdminUsersView() {
       const response = await getUsers(query)
       setData(response)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load users')
+      setError(err instanceof Error ? err.message : t('admin.loadFailed'))
     } finally {
       setIsLoading(false)
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     void loadUsers()
@@ -52,7 +54,7 @@ export function AdminUsersView() {
     setError('')
 
     if (targetUser.id === currentUser?.id && nextStatus === 'BLOCKED') {
-      setError('Admins should not block their own account.')
+      setError(t('admin.selfBlock'))
       return
     }
 
@@ -62,7 +64,7 @@ export function AdminUsersView() {
       await updateUserStatus(targetUser.id, nextStatus)
       await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update user status')
+      setError(err instanceof Error ? err.message : t('admin.statusFailed'))
     } finally {
       setUpdatingUserId(null)
     }
@@ -76,41 +78,42 @@ export function AdminUsersView() {
       await updateUserRole(targetUser.id, nextRole)
       await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not update user role')
+      setError(err instanceof Error ? err.message : t('admin.roleFailed'))
     } finally {
       setUpdatingUserId(null)
     }
   }
 
   return (
-    <main className="page">
-      <div className="page-header">
+    <main className="page" id="main-content">
+      <div className="page-header page-header--editorial">
         <div>
-          <p className="eyebrow">Admin UI</p>
-          <h2>User Management</h2>
-          <p>Manage roles, account status, moderation handoff, and audit-aware admin operations.</p>
+          <p className="eyebrow">{t('admin.eyebrow')}</p>
+          <h1>{t('admin.usersTitle')}</h1>
+          <p>{t('admin.usersBody')}</p>
         </div>
+        <span className="page-number">02 / ADMIN</span>
       </div>
 
       <section className="admin-stats">
         <article className="stat-card">
           <UsersRound size={20} />
-          <span>Total users</span>
+          <span>{t('admin.totalUsers')}</span>
           <strong>{data?.total ?? users.length}</strong>
         </article>
         <article className="stat-card">
           <UserCheck size={20} />
-          <span>Active</span>
+          <span>{t('admin.active')}</span>
           <strong>{activeUsers}</strong>
         </article>
         <article className="stat-card">
           <ShieldCheck size={20} />
-          <span>Admins</span>
+          <span>{t('admin.admins')}</span>
           <strong>{adminUsers}</strong>
         </article>
         <article className="stat-card">
           <UserX size={20} />
-          <span>Blocked</span>
+          <span>{t('admin.blocked')}</span>
           <strong>{blockedUsers}</strong>
         </article>
       </section>
@@ -118,36 +121,43 @@ export function AdminUsersView() {
       <section className="admin-workflow">
         <article>
           <ShieldCheck size={18} />
-          <strong>Access control</strong>
-          <span>Every admin request is checked against the authenticated role.</span>
+          <strong>{t('admin.accessTitle')}</strong>
+          <span>{t('admin.accessBody')}</span>
         </article>
         <article>
           <FileWarning size={18} />
-          <strong>Reports & moderation</strong>
-          <span>Admin reviews reported public documents and user activity.</span>
+          <strong>{t('admin.moderationTitle')}</strong>
+          <span>{t('admin.moderationBody')}</span>
         </article>
         <article>
           <ClipboardCheck size={18} />
-          <strong>Audit logs</strong>
-          <span>Important auth, upload, payment, and moderation actions are logged.</span>
+          <strong>{t('admin.auditTitle')}</strong>
+          <span>{t('admin.auditBody')}</span>
         </article>
       </section>
 
       <form className="toolbar" onSubmit={handleSearch}>
         <label className="search-box">
           <Search size={18} />
-          <input value={keyword} onChange={(event) => setKeyword(event.target.value)} placeholder="Search name or email" />
+          <input
+            name="userSearch"
+            aria-label={t('admin.searchPlaceholder')}
+            autoComplete="off"
+            value={keyword}
+            onChange={(event) => setKeyword(event.target.value)}
+            placeholder={`${t('admin.searchPlaceholder')}…`}
+          />
         </label>
-        <select value={role} onChange={(event) => setRole(event.target.value as UserRole | '')}>
-          <option value="">All roles</option>
+        <select name="roleFilter" aria-label={t('admin.allRoles')} value={role} onChange={(event) => setRole(event.target.value as UserRole | '')}>
+          <option value="">{t('admin.allRoles')}</option>
           {roles.map((item) => (
             <option key={item} value={item}>
               {item}
             </option>
           ))}
         </select>
-        <select value={status} onChange={(event) => setStatus(event.target.value as UserStatus | '')}>
-          <option value="">All statuses</option>
+        <select name="statusFilter" aria-label={t('admin.allStatuses')} value={status} onChange={(event) => setStatus(event.target.value as UserStatus | '')}>
+          <option value="">{t('admin.allStatuses')}</option>
           {statuses.map((item) => (
             <option key={item} value={item}>
               {item}
@@ -155,23 +165,23 @@ export function AdminUsersView() {
           ))}
         </select>
         <button className="secondary-button" type="submit" disabled={isLoading}>
-          {isLoading ? 'Searching...' : 'Search'}
+          {isLoading ? t('common.searching') : t('common.search')}
         </button>
       </form>
 
       <section className="content-panel">
         {error ? <p className="form-error">{error}</p> : null}
-        {isLoading ? <p>Loading users...</p> : null}
-        {!isLoading && data?.items.length === 0 ? <p>No matching users found.</p> : null}
+        {isLoading ? <div className="loading-state"><span className="loading-line" /><p>{t('admin.loadingUsers')}</p></div> : null}
+        {!isLoading && data?.items.length === 0 ? <div className="empty-state"><UsersRound size={28} /><p>{t('admin.noUsers')}</p></div> : null}
         {!isLoading && data?.items.length ? (
           <div className="table-wrap">
             <table>
               <thead>
                 <tr>
-                  <th>User</th>
-                  <th>Role</th>
-                  <th>Status</th>
-                  <th>Last login</th>
+                  <th>{t('admin.user')}</th>
+                  <th>{t('admin.role')}</th>
+                  <th>{t('admin.status')}</th>
+                  <th>{t('admin.lastLogin')}</th>
                   <th></th>
                 </tr>
               </thead>
@@ -210,12 +220,12 @@ export function AdminUsersView() {
                     </td>
                     <td>
                       <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>
-                        {item.lastLogin ?? 'No data yet'}
+                        {item.lastLogin ?? t('profile.noData')}
                       </span>
                     </td>
                     <td>
                       <Link className="detail-link" href={`/admin/users/${item.id}`}>
-                        Details
+                        {t('common.details')}
                       </Link>
                     </td>
                   </tr>

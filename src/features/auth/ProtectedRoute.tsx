@@ -5,6 +5,7 @@ import { useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from './useAuth'
 import type { UserRole } from '../../types/auth'
+import { useLanguage } from '../../i18n/LanguageProvider'
 
 type ProtectedRouteProps = {
   allowedRoles?: UserRole[]
@@ -15,6 +16,7 @@ export function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) 
   const { user, isLoading } = useAuth()
   const pathname = usePathname()
   const router = useRouter()
+  const { t } = useLanguage()
 
   useEffect(() => {
     if (isLoading) return
@@ -36,7 +38,12 @@ export function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) 
   }, [allowedRoles, isLoading, pathname, router, user])
 
   if (isLoading) {
-    return <div className="screen-message">Checking your session...</div>
+    return (
+      <div className="screen-message">
+        <span className="loading-line" />
+        <strong>{t('auth.checking')}</strong>
+      </div>
+    )
   }
 
   if (!user || user.status !== 'ACTIVE' || (allowedRoles && !allowedRoles.includes(user.role))) {

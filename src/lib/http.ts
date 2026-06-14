@@ -1,4 +1,4 @@
-import { firebaseAuth } from './firebase'
+import { getFirebaseAuth } from './firebase'
 import { clearStoredAuthToken, getStoredAuthToken, notifyUnauthorized, setStoredAuthToken } from './auth-token'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api'
@@ -20,6 +20,7 @@ export class ApiError extends Error {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers)
   let body = options.body
+  const firebaseAuth = getFirebaseAuth()
 
   if (!headers.has('Authorization') && firebaseAuth.currentUser) {
     const idToken = await firebaseAuth.currentUser.getIdToken()

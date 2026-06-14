@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { KeyRound } from 'lucide-react'
 import { resetPassword } from '../api/auth.api'
+import { useLanguage } from '../i18n/LanguageProvider'
 
 export function ResetPasswordView() {
+  const { t } = useLanguage()
   const searchParams = useSearchParams()
   const code = searchParams?.get('oobCode') ?? ''
   const [password, setPassword] = useState('')
@@ -21,12 +23,12 @@ export function ResetPasswordView() {
     setError('')
 
     if (!code) {
-      setError('Liên kết đặt lại mật khẩu không hợp lệ')
+      setError(t('auth.invalidResetLink'))
       return
     }
 
     if (password !== confirmPassword) {
-      setError('Mật khẩu xác nhận không khớp')
+      setError(t('auth.passwordMismatch'))
       return
     }
 
@@ -34,11 +36,11 @@ export function ResetPasswordView() {
 
     try {
       await resetPassword(code, password)
-      setMessage('Mật khẩu đã được cập nhật. Bạn có thể đăng nhập lại.')
+      setMessage(t('auth.passwordUpdated'))
       setPassword('')
       setConfirmPassword('')
     } catch {
-      setError('Liên kết đặt lại mật khẩu đã hết hạn hoặc không hợp lệ')
+      setError(t('auth.expiredResetLink'))
     } finally {
       setIsSubmitting(false)
     }
@@ -46,13 +48,15 @@ export function ResetPasswordView() {
 
   return (
     <section className="auth-card">
-      <p className="eyebrow">Account Recovery</p>
-      <h2>Set new password</h2>
-      <p className="auth-copy">Enter a new password for your AI Study Hub account.</p>
+      <p className="eyebrow">{t('auth.recovery')}</p>
+      <h2>{t('auth.resetTitle')}</h2>
+      <p className="auth-copy">{t('auth.resetBody')}</p>
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
-          New password
+          {t('auth.newPassword')}
           <input
+            name="password"
+            autoComplete="new-password"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             type="password"
@@ -61,8 +65,10 @@ export function ResetPasswordView() {
           />
         </label>
         <label>
-          Confirm password
+          {t('auth.confirmPassword')}
           <input
+            name="confirmPassword"
+            autoComplete="new-password"
             value={confirmPassword}
             onChange={(event) => setConfirmPassword(event.target.value)}
             type="password"
@@ -74,11 +80,11 @@ export function ResetPasswordView() {
         {error ? <p className="form-error">{error}</p> : null}
         <button className="primary-button" type="submit" disabled={isSubmitting}>
           <KeyRound size={18} />
-          {isSubmitting ? 'Updating...' : 'Update password'}
+          {isSubmitting ? t('auth.updating') : t('auth.updatePassword')}
         </button>
       </form>
       <div className="form-links">
-        <Link href="/login">Back to login</Link>
+        <Link href="/login">{t('auth.backLogin')}</Link>
       </div>
     </section>
   )

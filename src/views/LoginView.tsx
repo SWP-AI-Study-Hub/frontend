@@ -6,9 +6,11 @@ import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { LogIn } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
+import { useLanguage } from '../i18n/LanguageProvider'
 
 export function LoginView() {
   const { login, loginWithGoogle } = useAuth()
+  const { t } = useLanguage()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
@@ -31,7 +33,7 @@ export function LoginView() {
       const user = await login({ email, password })
       redirectAfterLogin(user.role)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed')
+      setError(err instanceof Error ? err.message : t('auth.loginFailed'))
     } finally {
       setIsSubmitting(false)
     }
@@ -45,7 +47,7 @@ export function LoginView() {
       const user = await loginWithGoogle()
       redirectAfterLogin(user.role)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google login failed')
+      setError(err instanceof Error ? err.message : t('auth.googleFailed'))
     } finally {
       setIsGoogleSubmitting(false)
     }
@@ -53,8 +55,9 @@ export function LoginView() {
 
   return (
     <section className="auth-card">
-      <h2>Log in</h2>
-      <p className="auth-copy">Sign in to load your profile, role, plan, quota, and protected study workspace.</p>
+      <p className="eyebrow">DOCUMIND</p>
+      <h2>{t('auth.loginTitle')}</h2>
+      <p className="auth-copy">{t('auth.loginBody')}</p>
       <button
         className="google-button"
         type="button"
@@ -62,29 +65,44 @@ export function LoginView() {
         onClick={handleGoogleLogin}
       >
         <Image src="/google.svg" alt="" aria-hidden="true" width={18} height={18} />
-        {isGoogleSubmitting ? 'Connecting...' : 'Continue with Google'}
+        {isGoogleSubmitting ? t('auth.connecting') : t('auth.google')}
       </button>
       <div className="auth-divider">
-        <span>or</span>
+        <span>{t('auth.or')}</span>
       </div>
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
-          Email
-          <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" required />
+          {t('auth.email')}
+          <input
+            name="email"
+            autoComplete="email"
+            spellCheck={false}
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            type="email"
+            required
+          />
         </label>
         <label>
-          Password
-          <input value={password} onChange={(event) => setPassword(event.target.value)} type="password" required />
+          {t('auth.password')}
+          <input
+            name="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            type="password"
+            required
+          />
         </label>
         {error ? <p className="form-error">{error}</p> : null}
         <button className="primary-button" type="submit" disabled={isSubmitting || isGoogleSubmitting}>
           <LogIn size={18} />
-          {isSubmitting ? 'Processing...' : 'Log in'}
+          {isSubmitting ? t('auth.processing') : t('common.login')}
         </button>
       </form>
       <div className="form-links">
-        <Link href="/forgot-password">Forgot password</Link>
-        <Link href="/register">Create account</Link>
+        <Link href="/forgot-password">{t('auth.forgot')}</Link>
+        <Link href="/register">{t('auth.create')}</Link>
       </div>
     </section>
   )
