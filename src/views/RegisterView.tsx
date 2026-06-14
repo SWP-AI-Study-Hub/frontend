@@ -3,7 +3,7 @@
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Database, UserPlus } from 'lucide-react'
+import { UserPlus } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 
 export function RegisterView() {
@@ -56,12 +56,6 @@ export function RegisterView() {
       </form>
       <div className="form-links">
         <Link href="/login">Already have an account</Link>
-      </div>
-      <div className="auth-meta">
-        <span>
-          <Database size={16} />
-          Creates your learning profile
-        </span>
       </div>
     </section>
   )

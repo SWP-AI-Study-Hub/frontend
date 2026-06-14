@@ -389,8 +389,9 @@ td span {
   width: 100%;
 }
 
-.google-button svg {
-  color: #2563eb;
+.google-button img {
+  height: 18px;
+  width: 18px;
 }
 
 .auth-divider {

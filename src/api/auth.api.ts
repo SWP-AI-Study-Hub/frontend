@@ -1,10 +1,11 @@
+import { FirebaseError } from 'firebase/app'
 import {
+  confirmPasswordReset,
   createUserWithEmailAndPassword,
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile,
 } from 'firebase/auth'
-import { FirebaseError } from 'firebase/app'
 import { apiRequest } from '../lib/http'
 import { firebaseAuth } from '../lib/firebase'
 import type { CurrentUser, GoogleLoginPayload, LoginPayload, RegisterPayload } from '../types/auth'
@@ -48,15 +49,12 @@ export function getCurrentUser() {
 
 export function forgotPassword(email: string) {
   return sendPasswordResetEmail(firebaseAuth, email, {
-    url: `${window.location.origin}/login`,
+    url: `${window.location.origin}/reset-password`,
   })
 }
 
 export function resetPassword(token: string, password: string) {
-  return apiRequest<void>('/auth/reset-password', {
-    method: 'POST',
-    body: { token, password },
-  })
+  return confirmPasswordReset(firebaseAuth, token, password)
 }
 
 function normalizeAuthError(error: unknown): Error {
