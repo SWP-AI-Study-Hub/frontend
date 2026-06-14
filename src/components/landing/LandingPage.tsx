@@ -113,68 +113,72 @@ export function LandingPage() {
       <main id="main-content">
         <section className="hero-section" aria-labelledby="hero-title">
           <div className="landing-container hero-grid">
-            <div className="hero-copy">
-              <p className="eyebrow">{t('landing.eyebrow')}</p>
-              <h1 id="hero-title">{t('landing.title')}</h1>
-              <p className="hero-lede">{t('landing.subtitle')}</p>
-              <div className="hero-ctas">
-                <Link href="/register" className="button button--primary button--large">
-                  {t('landing.primaryCta')}
-                  <ArrowRight size={18} />
-                </Link>
-                <a href="#workflow" className="button button--secondary button--large">
-                  {t('landing.secondaryCta')}
-                </a>
+            <Reveal className="hero-copy-reveal">
+              <div className="hero-copy">
+                <p className="eyebrow">{t('landing.eyebrow')}</p>
+                <h1 id="hero-title">{t('landing.title')}</h1>
+                <p className="hero-lede">{t('landing.subtitle')}</p>
+                <div className="hero-ctas">
+                  <Link href="/register" className="button button--primary button--large">
+                    {t('landing.primaryCta')}
+                    <ArrowRight size={18} />
+                  </Link>
+                  <a href="#workflow" className="button button--secondary button--large">
+                    {t('landing.secondaryCta')}
+                  </a>
+                </div>
+                <div className="hero-note">
+                  <span className="hero-note-line" aria-hidden="true" />
+                  <span>PDF · DOCX · PPTX · XLSX</span>
+                </div>
               </div>
-              <div className="hero-note">
-                <span className="hero-note-line" aria-hidden="true" />
-                <span>PDF · DOCX · PPTX · XLSX</span>
-              </div>
-            </div>
+            </Reveal>
 
-            <div className="product-preview" aria-label={t('landing.proofLabel')}>
-              <div className="preview-kicker">
-                <span>{t('landing.proofLabel')}</span>
-                <span className="preview-status">
-                  <span />
-                  AI READY
-                </span>
-              </div>
-              <div className="preview-filebar">
-                <div className="file-icon">
-                  <BookOpen size={20} />
-                </div>
-                <div>
-                  <strong>Lecture Notes.pdf</strong>
-                  <span>Research Methods · 24 pages</span>
-                </div>
-                <span className="preview-more" aria-hidden="true">•••</span>
-              </div>
-              <div className="preview-chat">
-                <div className="message message--user">{t('landing.question')}</div>
-                <div className="message message--ai">
-                  <span className="ai-mark">
-                    <Sparkles size={16} />
+            <Reveal className="hero-preview-reveal" delay={120}>
+              <div className="product-preview" aria-label={t('landing.proofLabel')}>
+                <div className="preview-kicker">
+                  <span>{t('landing.proofLabel')}</span>
+                  <span className="preview-status">
+                    <span />
+                    AI READY
                   </span>
-                  <p>
-                    {t('landing.answer')}{' '}
-                    <span className="citation" tabIndex={0}>
-                      [1]
-                      <span className="citation-tooltip" role="tooltip">
-                        <strong>{t('landing.source')}</strong>
-                        <span>{t('landing.citationHint')}</span>
-                      </span>
+                </div>
+                <div className="preview-filebar">
+                  <div className="file-icon">
+                    <BookOpen size={20} />
+                  </div>
+                  <div>
+                    <strong>Lecture Notes.pdf</strong>
+                    <span>Research Methods · 24 pages</span>
+                  </div>
+                  <span className="preview-more" aria-hidden="true">•••</span>
+                </div>
+                <div className="preview-chat">
+                  <div className="message message--user">{t('landing.question')}</div>
+                  <div className="message message--ai">
+                    <span className="ai-mark">
+                      <Sparkles size={16} />
                     </span>
-                  </p>
+                    <p>
+                      {t('landing.answer')}{' '}
+                      <span className="citation" tabIndex={0}>
+                        [1]
+                        <span className="citation-tooltip" role="tooltip">
+                          <strong>{t('landing.source')}</strong>
+                          <span>{t('landing.citationHint')}</span>
+                        </span>
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <div className="preview-input">
+                  <span>Ask a follow-up question...</span>
+                  <span className="preview-send" aria-hidden="true">
+                    <ArrowRight size={17} />
+                  </span>
                 </div>
               </div>
-              <div className="preview-input">
-                <span>Ask a follow-up question...</span>
-                <span className="preview-send" aria-hidden="true">
-                  <ArrowRight size={17} />
-                </span>
-              </div>
-            </div>
+            </Reveal>
           </div>
         </section>
 
@@ -187,10 +191,10 @@ export function LandingPage() {
               </div>
             </Reveal>
             <div className="workflow-grid">
-              {workflow.map((step) => {
+              {workflow.map((step, index) => {
                 const Icon = step.icon
                 return (
-                  <Reveal key={step.number} className="workflow-reveal">
+                  <Reveal key={step.number} className="workflow-reveal" delay={index * 100}>
                     <article className="workflow-card">
                       <div className="workflow-card-top">
                         <Icon size={24} />
@@ -215,10 +219,10 @@ export function LandingPage() {
               </div>
             </Reveal>
             <div className="feature-list-landing">
-              {features.map((feature) => {
+              {features.map((feature, index) => {
                 const Icon = feature.icon
                 return (
-                  <Reveal key={feature.index}>
+                  <Reveal key={feature.index} delay={index * 80}>
                     <article className="feature-row">
                       <span className="feature-index">{feature.index}</span>
                       <div className="feature-icon">
@@ -247,7 +251,7 @@ export function LandingPage() {
                 </div>
               </div>
             </Reveal>
-            <Reveal>
+            <Reveal delay={100}>
               <div className="security-copy">
                 <p>{t('landing.securityBody')}</p>
                 <ul>
@@ -277,17 +281,19 @@ export function LandingPage() {
               {faqs.map((faq, index) => {
                 const isOpen = openFaq === index
                 return (
-                  <article className={`faq-item${isOpen ? ' is-open' : ''}`} key={faq.question}>
-                    <button type="button" aria-expanded={isOpen} onClick={() => setOpenFaq(isOpen ? -1 : index)}>
-                      <span>{t(faq.question)}</span>
-                      <ChevronDown size={20} />
-                    </button>
-                    <div className="faq-answer">
-                      <div>
-                        <p>{t(faq.answer)}</p>
+                  <Reveal key={faq.question} delay={index * 90}>
+                    <article className={`faq-item${isOpen ? ' is-open' : ''}`}>
+                      <button type="button" aria-expanded={isOpen} onClick={() => setOpenFaq(isOpen ? -1 : index)}>
+                        <span>{t(faq.question)}</span>
+                        <ChevronDown size={20} />
+                      </button>
+                      <div className="faq-answer">
+                        <div>
+                          <p>{t(faq.answer)}</p>
+                        </div>
                       </div>
-                    </div>
-                  </article>
+                    </article>
+                  </Reveal>
                 )
               })}
             </div>
