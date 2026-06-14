@@ -6,17 +6,25 @@ import {
   BrainCircuit,
   FileUp,
   LayoutDashboard,
+  LogOut,
   Sparkles,
   UserRound,
   UsersRound,
 } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '../features/auth/useAuth'
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { user } = useAuth()
+  const { logout, user } = useAuth()
   const pathname = usePathname() ?? '/'
+  const router = useRouter()
+  const initial = user?.fullName?.charAt(0).toUpperCase() ?? 'U'
+
+  async function handleSignOut() {
+    await logout()
+    router.replace('/login')
+  }
 
   return (
     <div className="app-shell">
@@ -67,6 +75,23 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="main-column">
+        <div className="account-corner" aria-label="Current account">
+          <div className="account-chip">
+            {user?.avatarUrl ? (
+              <span
+                className="account-avatar account-avatar-image"
+                style={{ backgroundImage: `url(${user.avatarUrl})` }}
+              />
+            ) : (
+              <span className="account-avatar">{initial}</span>
+            )}
+            <span className="account-name">{user?.fullName ?? 'Study member'}</span>
+            <button type="button" className="account-signout" onClick={handleSignOut} aria-label="Sign out">
+              <LogOut size={16} />
+              <span>Sign out</span>
+            </button>
+          </div>
+        </div>
         {children}
       </div>
     </div>

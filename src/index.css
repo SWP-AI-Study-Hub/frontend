@@ -566,6 +566,76 @@ td span {
   min-width: 0;
 }
 
+.account-corner {
+  display: flex;
+  justify-content: flex-end;
+  padding: 0.85rem 1.5rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 6;
+}
+
+.account-chip {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid #e7ebf6;
+  border-radius: 999px;
+  box-shadow: 0 14px 35px rgba(32, 42, 90, 0.1);
+  display: inline-flex;
+  gap: 0.55rem;
+  max-width: min(100%, 420px);
+  padding: 0.35rem;
+}
+
+.account-avatar {
+  align-items: center;
+  background: linear-gradient(135deg, #ff9f68, #ff6f91);
+  background-position: center;
+  background-size: cover;
+  border-radius: 999px;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.88rem;
+  font-weight: 900;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.account-avatar-image {
+  border: 1px solid rgba(105, 87, 255, 0.18);
+}
+
+.account-name {
+  color: #151936;
+  font-size: 0.9rem;
+  font-weight: 850;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-signout {
+  align-items: center;
+  background: #f3f6ff;
+  border: 0;
+  border-radius: 999px;
+  color: #4f46e5;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 0.82rem;
+  font-weight: 850;
+  gap: 0.35rem;
+  min-height: 34px;
+  padding: 0 0.75rem;
+}
+
+.account-signout:hover {
+  background: #e8edff;
+}
+
 .topbar {
   align-items: center;
   background: rgba(255, 255, 255, 0.9);
@@ -1007,6 +1077,18 @@ td span {
   .topbar {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  .account-corner {
+    padding: 0.7rem 1rem 0;
+  }
+
+  .account-chip {
+    max-width: 100%;
+  }
+
+  .account-name {
+    max-width: 120px;
   }
 
   .hero-actions,
