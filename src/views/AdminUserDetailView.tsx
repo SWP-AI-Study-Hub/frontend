@@ -5,32 +5,34 @@ import Link from 'next/link'
 import { ShieldCheck, UserRound } from 'lucide-react'
 import { getUserById } from '../api/users.api'
 import type { CurrentUser } from '../types/auth'
+import { useLanguage } from '../i18n/LanguageProvider'
 
 export function AdminUserDetailView({ userId }: { userId: string }) {
+  const { t } = useLanguage()
   const [user, setUser] = useState<CurrentUser | null>(null)
   const [error, setError] = useState('')
 
   useEffect(() => {
     getUserById(userId)
       .then(setUser)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Could not load user'))
-  }, [userId])
+      .catch((err) => setError(err instanceof Error ? err.message : t('admin.detailFailed')))
+  }, [t, userId])
 
   return (
-    <main className="page">
-      <div className="page-header">
+    <main className="page" id="main-content">
+      <div className="page-header page-header--editorial">
         <div>
-          <p className="eyebrow">Admin UI</p>
-          <h2>User Detail</h2>
-          <p>Detailed information for this account.</p>
+          <p className="eyebrow">{t('admin.eyebrow')}</p>
+          <h1>{t('admin.detailTitle')}</h1>
+          <p>{t('admin.detailBody')}</p>
         </div>
         <Link className="secondary-button" href="/admin/users">
-          Back
+          {t('common.back')}
         </Link>
       </div>
       <section className="content-panel">
         {error ? <p className="form-error">{error}</p> : null}
-        {!user && !error ? <p>Loading user...</p> : null}
+        {!user && !error ? <div className="loading-state"><span className="loading-line" /><p>{t('common.loading')}</p></div> : null}
         {user ? (
           <div className="detail-layout">
             <aside className="detail-summary">
@@ -49,24 +51,24 @@ export function AdminUserDetailView({ userId }: { userId: string }) {
               </div>
             </aside>
             <div className="info-grid">
-              <span>Full name</span>
+              <span>{t('auth.fullName')}</span>
               <strong>{user.fullName}</strong>
-              <span>Email</span>
+              <span>{t('auth.email')}</span>
               <strong>{user.email}</strong>
-              <span>Role</span>
+              <span>{t('admin.role')}</span>
               <strong>{user.role}</strong>
-              <span>Status</span>
+              <span>{t('admin.status')}</span>
               <strong>{user.status}</strong>
-              <span>Auth provider</span>
+              <span>{t('admin.authProvider')}</span>
               <strong>{user.authProvider ?? 'Firebase Auth'}</strong>
               <span>Firebase UID</span>
-              <strong>{user.firebaseUid ?? 'Verified by backend'}</strong>
-              <span>Created at</span>
+              <strong>{user.firebaseUid ?? t('profile.verified')}</strong>
+              <span>{t('admin.createdAt')}</span>
               <strong>{user.createdAt}</strong>
-              <span>Last login</span>
-              <strong>{user.lastLogin ?? 'No data yet'}</strong>
-              <span>Admin rule</span>
-              <strong>Role/status updates should create audit logs</strong>
+              <span>{t('admin.lastLogin')}</span>
+              <strong>{user.lastLogin ?? t('profile.noData')}</strong>
+              <span>{t('admin.rule')}</span>
+              <strong>{t('admin.ruleBody')}</strong>
             </div>
           </div>
         ) : null}
