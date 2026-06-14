@@ -4,7 +4,7 @@ import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { signInWithPopup, signOut } from 'firebase/auth'
 import * as authApi from '../../api/auth.api'
-import { firebaseAuth, googleAuthProvider } from '../../lib/firebase'
+import { getFirebaseAuth, getGoogleAuthProvider } from '../../lib/firebase'
 import type { CurrentUser, LoginPayload, RegisterPayload } from '../../types/auth'
 import { AuthContext } from './auth-context'
 
@@ -58,6 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const handleGoogleLogin = useCallback(async () => {
+    const firebaseAuth = getFirebaseAuth()
+    const googleAuthProvider = getGoogleAuthProvider()
     const credential = await signInWithPopup(firebaseAuth, googleAuthProvider)
     const idToken = await credential.user.getIdToken()
     const currentUser = await authApi.loginWithGoogle({ idToken })
@@ -75,7 +77,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleLogout = useCallback(async () => {
     await authApi.logout()
-    await signOut(firebaseAuth)
+    await signOut(getFirebaseAuth())
     setUser(null)
   }, [])
 

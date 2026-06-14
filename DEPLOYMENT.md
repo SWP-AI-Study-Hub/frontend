@@ -18,16 +18,17 @@ deployments.
 
 ## 2. Production Environment Variables
 
-In **Project Settings > Environment Variables**, add:
+In **Project Settings > Environment Variables**, add the real Firebase Web App
+configuration. Enable each variable for both **Production** and **Preview**:
 
 | Variable | Environment |
 | --- | --- |
-| `NEXT_PUBLIC_API_BASE_URL` | Production |
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | Production |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Production |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Production |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Production |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | Production |
+| `NEXT_PUBLIC_API_BASE_URL` | Production, Preview |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Production, Preview |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Production, Preview |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Production, Preview |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Production, Preview |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Production, Preview |
 
 Example API value:
 
@@ -37,6 +38,8 @@ NEXT_PUBLIC_API_BASE_URL=https://ai-study-hub-backend.onrender.com/api
 
 Only put `NEXT_PUBLIC_*` browser configuration in Vercel. Never add
 `DATABASE_URL`, Firebase Admin private keys, R2 secret keys, or Gemini keys.
+After adding or changing variables, redeploy the latest deployment because
+Vercel does not inject new values into an already-built deployment.
 
 ## 3. Firebase Authorization
 
