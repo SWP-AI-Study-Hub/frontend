@@ -1,3 +1,5 @@
+import { firebaseAuth } from './firebase'
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api'
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
@@ -17,6 +19,11 @@ export class ApiError extends Error {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers)
   let body = options.body
+
+  if (!headers.has('Authorization') && firebaseAuth.currentUser) {
+    const idToken = await firebaseAuth.currentUser.getIdToken()
+    headers.set('Authorization', `Bearer ${idToken}`)
+  }
 
   if (body && !(body instanceof FormData) && typeof body !== 'string') {
     headers.set('Content-Type', 'application/json')

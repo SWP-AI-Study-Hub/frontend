@@ -2,8 +2,9 @@
 
 import { FormEvent, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Globe, KeyRound, LogIn, ShieldCheck } from 'lucide-react'
+import { LogIn } from 'lucide-react'
 import { useAuth } from '../features/auth/useAuth'
 
 export function LoginView() {
@@ -60,7 +61,7 @@ export function LoginView() {
         disabled={isSubmitting || isGoogleSubmitting}
         onClick={handleGoogleLogin}
       >
-        <Globe size={18} />
+        <Image src="/google.svg" alt="" aria-hidden="true" width={18} height={18} />
         {isGoogleSubmitting ? 'Connecting...' : 'Continue with Google'}
       </button>
       <div className="auth-divider">
@@ -84,16 +85,6 @@ export function LoginView() {
       <div className="form-links">
         <Link href="/forgot-password">Forgot password</Link>
         <Link href="/register">Create account</Link>
-      </div>
-      <div className="auth-meta">
-        <span>
-          <KeyRound size={16} />
-          Backend verifies session
-        </span>
-        <span>
-          <ShieldCheck size={16} />
-          Role-based access guard
-        </span>
       </div>
     </section>
   )

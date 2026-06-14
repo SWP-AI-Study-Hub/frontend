@@ -2,30 +2,21 @@
 
 import type { ReactNode } from 'react'
 import {
-  Bell,
   BookOpen,
   BrainCircuit,
   FileUp,
   LayoutDashboard,
-  LogOut,
-  ShieldCheck,
   Sparkles,
   UserRound,
   UsersRound,
 } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { useAuth } from '../features/auth/useAuth'
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
   const pathname = usePathname() ?? '/'
-  const router = useRouter()
-
-  async function handleLogout() {
-    await logout()
-    router.push('/login')
-  }
 
   return (
     <div className="app-shell">
@@ -76,37 +67,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="main-column">
-        <header id="top" className="topbar">
-          <nav className="top-nav" aria-label="Primary navigation">
-            <Link className={pathname === '/profile' ? 'active' : undefined} href="/profile">
-              Dashboard
-            </Link>
-            <span>My Library</span>
-            <span>Upload</span>
-            <span>Ask AI</span>
-            {user?.role === 'ADMIN' ? <Link href="/admin/users">Admin</Link> : null}
-          </nav>
-          <div className="topbar-actions">
-            <button className="icon-button" type="button" aria-label="Notifications">
-              <Bell size={18} />
-            </button>
-            <div className="user-chip">
-              <span className="mini-avatar">{user?.fullName.charAt(0).toUpperCase()}</span>
-              <div>
-                <strong>{user?.fullName}</strong>
-                <span>{user?.role}</span>
-              </div>
-              <ShieldCheck size={16} />
-            </div>
-          </div>
-          <div className="mobile-user">
-            <strong>{user?.fullName}</strong>
-            <span>{user?.role}</span>
-          </div>
-          <button className="icon-button" type="button" onClick={handleLogout} aria-label="Log out">
-            <LogOut size={18} />
-          </button>
-        </header>
         {children}
       </div>
     </div>
