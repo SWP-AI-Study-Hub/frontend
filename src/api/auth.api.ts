@@ -7,10 +7,11 @@ import {
   updateProfile,
 } from 'firebase/auth'
 import { apiRequest } from '../lib/http'
-import { firebaseAuth } from '../lib/firebase'
+import { getFirebaseAuth } from '../lib/firebase'
 import type { CurrentUser, GoogleLoginPayload, LoginPayload, RegisterPayload } from '../types/auth'
 
 export async function register(payload: RegisterPayload) {
+  const firebaseAuth = getFirebaseAuth()
   const credential = await createUserWithEmailAndPassword(firebaseAuth, payload.email, payload.password)
 
   await updateProfile(credential.user, { displayName: payload.fullName })
@@ -21,6 +22,7 @@ export async function register(payload: RegisterPayload) {
 
 export async function login(payload: LoginPayload) {
   try {
+    const firebaseAuth = getFirebaseAuth()
     const credential = await signInWithEmailAndPassword(firebaseAuth, payload.email, payload.password)
     const idToken = await credential.user.getIdToken()
 
@@ -48,13 +50,13 @@ export function getCurrentUser() {
 }
 
 export function forgotPassword(email: string) {
-  return sendPasswordResetEmail(firebaseAuth, email, {
+  return sendPasswordResetEmail(getFirebaseAuth(), email, {
     url: `${window.location.origin}/reset-password`,
   })
 }
 
 export function resetPassword(token: string, password: string) {
-  return confirmPasswordReset(firebaseAuth, token, password)
+  return confirmPasswordReset(getFirebaseAuth(), token, password)
 }
 
 function normalizeAuthError(error: unknown): Error {
