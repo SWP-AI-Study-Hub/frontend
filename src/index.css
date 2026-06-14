@@ -448,6 +448,25 @@ th {
   box-shadow: var(--shadow-lg);
 }
 
+.hero-preview-reveal {
+  width: 100%;
+}
+
+.hero-preview-reveal.is-revealed .product-preview {
+  animation: preview-float 6s 900ms ease-in-out infinite;
+}
+
+@keyframes preview-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
 .product-preview::before {
   display: none;
 }
@@ -659,14 +678,17 @@ th {
   background: var(--surface);
   box-shadow: var(--shadow-sm);
   transition:
-    transform 180ms ease,
-    background-color 180ms ease;
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 240ms ease,
+    background-color 240ms ease,
+    box-shadow 320ms ease;
 }
 
 .workflow-card:hover {
   background: var(--amber-soft);
   border-color: #f3d5ad;
-  transform: translateY(-2px);
+  box-shadow: 0 18px 42px rgba(15, 23, 42, 0.1);
+  transform: translateY(-6px);
 }
 
 .workflow-card-top {
@@ -677,6 +699,14 @@ th {
   color: var(--amber);
   font-family: var(--font-mono), monospace;
   font-size: 0.78rem;
+}
+
+.workflow-card-top svg {
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.workflow-card:hover .workflow-card-top svg {
+  transform: rotate(-7deg) scale(1.1);
 }
 
 .workflow-card h3 {
@@ -710,15 +740,15 @@ th {
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
   transition:
-    transform 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease;
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 240ms ease,
+    box-shadow 320ms ease;
 }
 
 .feature-row:hover {
   border-color: var(--border-strong);
-  box-shadow: var(--shadow-sm);
-  transform: translateY(-2px);
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.09);
+  transform: translateY(-4px);
 }
 
 .feature-index {
@@ -734,6 +764,14 @@ th {
   border-radius: 12px;
   color: var(--amber);
   background: var(--amber-soft);
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 240ms ease;
+}
+
+.feature-row:hover .feature-icon {
+  background: #ffedd5;
+  transform: scale(1.08);
 }
 
 .feature-row h3 {
@@ -746,7 +784,7 @@ th {
 }
 
 .feature-row:hover .feature-arrow {
-  transform: translateX(4px);
+  transform: translateX(6px);
 }
 
 .security-section {
@@ -864,6 +902,16 @@ th {
   border-radius: var(--radius-panel);
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+  transition:
+    transform 320ms cubic-bezier(0.16, 1, 0.3, 1),
+    border-color 240ms ease,
+    box-shadow 320ms ease;
+}
+
+.faq-item:hover {
+  border-color: var(--border-strong);
+  box-shadow: 0 14px 32px rgba(15, 23, 42, 0.08);
+  transform: translateY(-3px);
 }
 
 .faq-item button {
@@ -959,24 +1007,17 @@ th {
   transform: none;
 }
 
-@keyframes reveal-in {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+.reveal.is-reveal-ready {
+  opacity: 0;
+  transform: translateY(24px);
 }
 
-@supports (animation-timeline: view()) {
-  .reveal {
-    animation: reveal-in both ease-out;
-    animation-timeline: view();
-    animation-range: entry 5% cover 24%;
-  }
+.reveal.is-reveal-ready.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    opacity 680ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    transform 680ms cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms);
 }
 
 /* Authentication */
@@ -1848,6 +1889,10 @@ td select {
 
   .product-preview {
     width: min(100%, 620px);
+  }
+
+  .hero-preview-reveal {
+    width: min(100%, 620px);
     justify-self: center;
   }
 
@@ -2090,6 +2135,21 @@ td select {
 
   .reveal {
     opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hero-preview-reveal.is-revealed .product-preview,
+  .security-seal {
+    animation: none;
+  }
+
+  .workflow-card:hover,
+  .feature-row:hover,
+  .faq-item:hover,
+  .workflow-card:hover .workflow-card-top svg,
+  .feature-row:hover .feature-icon,
+  .feature-row:hover .feature-arrow {
     transform: none;
   }
 }
