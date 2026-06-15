@@ -1,5 +1,14 @@
-import type { NextConfig } from 'next'
+import type { NextConfig } from "next";
 
-const nextConfig: NextConfig = {}
+const nextConfig: NextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: "/__/auth/action",
+        destination: "/auth/action",
+      },
+    ];
+  },
+};
 
-export default nextConfig
+export default nextConfig;
