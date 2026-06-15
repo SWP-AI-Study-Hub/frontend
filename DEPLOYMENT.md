@@ -33,7 +33,7 @@ configuration. Enable each variable for both **Production** and **Preview**:
 Example API value:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=https://ai-study-hub-backend.onrender.com/api
+NEXT_PUBLIC_API_BASE_URL=https://ai-study-hub-backend-5frw.onrender.com/api
 ```
 
 Only put `NEXT_PUBLIC_*` browser configuration in Vercel. Never add
@@ -50,6 +50,23 @@ In **Firebase Console > Authentication > Settings > Authorized domains**, add:
 ```
 
 Add the custom production domain too if the team configures one.
+
+### Password Reset Handler
+
+To use the DocuMind reset-password screen instead of Firebase's hosted form:
+
+1. Open **Firebase Console > Authentication > Templates**.
+2. Edit the **Password reset** template.
+3. Choose **Customize action URL**.
+4. Set it to:
+
+```text
+https://documind-hub.vercel.app/reset-password
+```
+
+The `url` passed by the frontend is the post-reset continue URL and must point
+to `/login`, not `/reset-password`. Existing reset emails generated before this
+change may still use the old two-step flow; request a new email after deployment.
 
 ## 4. GitHub Protection
 
@@ -69,7 +86,7 @@ Only merges to `main` become production.
 After Vercel assigns the production URL, set the backend Render variable:
 
 ```env
-CORS_ORIGIN=https://<vercel-production-domain>
+CORS_ORIGIN=https://documind-hub.vercel.app
 ```
 
 Do not include a trailing slash. The backend supports comma-separated origins

@@ -1249,6 +1249,43 @@ select:focus {
   background: var(--success-soft);
 }
 
+.reset-account-email {
+  width: fit-content;
+  margin: -0.5rem 0 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.4rem 0.65rem;
+  color: var(--muted);
+  background: #f8fafc;
+  font-size: 0.76rem;
+}
+
+.reset-link-state {
+  display: grid;
+  justify-items: start;
+}
+
+.reset-link-state > svg {
+  margin-bottom: 1rem;
+  color: var(--amber);
+}
+
+.reset-link-state .primary-button {
+  width: 100%;
+  justify-content: center;
+}
+
+.reset-link-state--success > svg {
+  color: var(--success);
+}
+
+.reset-secondary-link {
+  margin-top: 1rem;
+  color: var(--amber-dark);
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
 /* Protected application */
 .app-shell {
   display: grid;
