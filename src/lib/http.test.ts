@@ -77,6 +77,40 @@ describe('apiRequest', () => {
     )
   })
 
+  it('preserves pagination metadata from the shared API envelope', async () => {
+    vi.mocked(fetch).mockResolvedValue(
+      jsonResponse({
+        success: true,
+        data: [{ id: 'user-1' }],
+        meta: {
+          page: 1,
+          limit: 10,
+          totalItems: 12,
+          totalPages: 2,
+          hasNext: true,
+          hasPrevious: false,
+        },
+      }),
+    )
+
+    await expect(
+      apiRequest<{
+        items: Array<{ id: string }>
+        meta: { totalItems: number }
+      }>('/admin/users'),
+    ).resolves.toEqual({
+      items: [{ id: 'user-1' }],
+      meta: {
+        page: 1,
+        limit: 10,
+        totalItems: 12,
+        totalPages: 2,
+        hasNext: true,
+        hasPrevious: false,
+      },
+    })
+  })
+
   it('clears auth state and notifies the provider on 401', async () => {
     vi.mocked(fetch).mockResolvedValue(
       jsonResponse(
