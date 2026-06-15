@@ -2,8 +2,9 @@
 
 import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { signInWithPopup, signOut } from 'firebase/auth'
+import { onIdTokenChanged, signInWithPopup, signOut } from 'firebase/auth'
 import * as authApi from '../../api/auth.api'
+import { clearStoredAuthToken, setStoredAuthToken } from '../../lib/auth-token'
 import { getFirebaseAuth, getGoogleAuthProvider } from '../../lib/firebase'
 import type { CurrentUser, LoginPayload, RegisterPayload } from '../../types/auth'
 import { AuthContext } from './auth-context'
@@ -26,35 +27,62 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
-    void refreshUser()
-  }, [refreshUser])
+    const firebaseAuth = getFirebaseAuth()
+    const unsubscribe = onIdTokenChanged(firebaseAuth, async (firebaseUser) => {
+      setIsLoading(true)
+
+      if (!firebaseUser) {
+        clearStoredAuthToken()
+        setUser(null)
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const idToken = await firebaseUser.getIdToken()
+        setStoredAuthToken(idToken)
+        const currentUser = await authApi.loginWithFirebaseToken({ idToken })
+        setUser(currentUser)
+      } catch {
+        clearStoredAuthToken()
+        setUser(null)
+      } finally {
+        setIsLoading(false)
+      }
+    })
+
+    function handleUnauthorized() {
+      clearStoredAuthToken()
+      setUser(null)
+      void signOut(firebaseAuth)
+    }
+
+    window.addEventListener('ai-study-hub:unauthorized', handleUnauthorized)
+
+    return () => {
+      unsubscribe()
+      window.removeEventListener('ai-study-hub:unauthorized', handleUnauthorized)
+    }
+  }, [])
 
   const handleLogin = useCallback(
     async (payload: LoginPayload) => {
-      await authApi.login(payload)
-      const currentUser = await refreshUser()
-
-      if (!currentUser) {
-        throw new Error('Cannot load current user after login')
-      }
-
+      const currentUser = await authApi.login(payload)
+      setUser(currentUser)
+      setIsLoading(false)
       return currentUser
     },
-    [refreshUser],
+    [],
   )
 
   const handleRegister = useCallback(
     async (payload: RegisterPayload) => {
-      await authApi.register(payload)
-      const currentUser = await refreshUser()
-
-      if (!currentUser) {
-        throw new Error('Cannot load current user after register')
-      }
-
+      const currentUser = await authApi.register(payload)
+      setUser(currentUser)
+      setIsLoading(false)
       return currentUser
     },
-    [refreshUser],
+    [],
   )
 
   const handleGoogleLogin = useCallback(async () => {
@@ -62,7 +90,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const googleAuthProvider = getGoogleAuthProvider()
     const credential = await signInWithPopup(firebaseAuth, googleAuthProvider)
     const idToken = await credential.user.getIdToken()
-    const currentUser = await authApi.loginWithGoogle({ idToken })
+    setStoredAuthToken(idToken)
+    const currentUser = await authApi.loginWithFirebaseToken({ idToken })
 
     setUser(currentUser)
     setIsLoading(false)
@@ -76,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const handleLogout = useCallback(async () => {
-    await authApi.logout()
+    clearStoredAuthToken()
     await signOut(getFirebaseAuth())
     setUser(null)
   }, [])

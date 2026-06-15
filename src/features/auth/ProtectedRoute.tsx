@@ -27,6 +27,11 @@ export function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) 
       return
     }
 
+    if (user.status !== 'ACTIVE') {
+      router.replace('/unauthorized')
+      return
+    }
+
     if (allowedRoles && !allowedRoles.includes(user.role)) {
       router.replace('/unauthorized')
     }
@@ -41,7 +46,7 @@ export function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) 
     )
   }
 
-  if (!user || (allowedRoles && !allowedRoles.includes(user.role))) {
+  if (!user || user.status !== 'ACTIVE' || (allowedRoles && !allowedRoles.includes(user.role))) {
     return null
   }
 

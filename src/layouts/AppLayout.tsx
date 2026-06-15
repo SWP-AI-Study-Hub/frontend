@@ -13,7 +13,7 @@ import {
   UsersRound,
 } from 'lucide-react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Brand } from '../components/ui/Brand'
 import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
 import { useAuth } from '../features/auth/useAuth'
@@ -23,6 +23,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth()
   const { t } = useLanguage()
   const pathname = usePathname() ?? '/'
+  const router = useRouter()
+  const initial = user?.fullName?.charAt(0).toUpperCase() ?? 'D'
+
+  async function handleLogout() {
+    await logout()
+    router.replace('/login')
+  }
 
   return (
     <div className="app-shell">
@@ -80,7 +87,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="main-column">
         <header className="app-topbar">
           <div className="app-topbar-user">
-            <span className="mini-avatar">{user?.fullName?.charAt(0).toUpperCase() ?? 'D'}</span>
+            {user?.avatarUrl ? (
+              <span
+                className="mini-avatar mini-avatar--image"
+                style={{ backgroundImage: `url(${user.avatarUrl})` }}
+              />
+            ) : (
+              <span className="mini-avatar">{initial}</span>
+            )}
             <div>
               <strong>{user?.fullName}</strong>
               <span>{user?.email}</span>
@@ -88,7 +102,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="app-topbar-actions">
             <LanguageSwitcher />
-            <button type="button" className="icon-text-button" onClick={() => void logout()}>
+            <button type="button" className="icon-text-button" onClick={() => void handleLogout()}>
               <LogOut size={17} />
               {t('common.logout')}
             </button>

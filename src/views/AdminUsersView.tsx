@@ -1,16 +1,15 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
 import { ClipboardCheck, FileWarning, Search, ShieldCheck, UserCheck, UsersRound, UserX } from 'lucide-react'
-import { getUsers, updateUserRole, updateUserStatus, type UserQuery } from '../api/users.api'
+import { getUsers, updateUserStatus, type UserQuery } from '../api/users.api'
 import type { CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 import { useAuth } from '../features/auth/useAuth'
 import { useLanguage } from '../i18n/LanguageProvider'
 
 const roles: UserRole[] = ['ADMIN', 'USER']
 const statuses: UserStatus[] = ['ACTIVE', 'BLOCKED', 'INACTIVE']
-const DEFAULT_QUERY: UserQuery = { page: 1, pageSize: 10 }
+const DEFAULT_QUERY: UserQuery = { page: 1, limit: 10 }
 
 export function AdminUsersView() {
   const { user: currentUser } = useAuth()
@@ -70,20 +69,6 @@ export function AdminUsersView() {
     }
   }
 
-  async function handleRoleChange(targetUser: CurrentUser, nextRole: UserRole) {
-    setError('')
-    setUpdatingUserId(targetUser.id)
-
-    try {
-      await updateUserRole(targetUser.id, nextRole)
-      await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.roleFailed'))
-    } finally {
-      setUpdatingUserId(null)
-    }
-  }
-
   return (
     <main className="page" id="main-content">
       <div className="page-header page-header--editorial">
@@ -99,7 +84,7 @@ export function AdminUsersView() {
         <article className="stat-card">
           <UsersRound size={20} />
           <span>{t('admin.totalUsers')}</span>
-          <strong>{data?.total ?? users.length}</strong>
+          <strong>{data?.meta.totalItems ?? users.length}</strong>
         </article>
         <article className="stat-card">
           <UserCheck size={20} />
@@ -182,7 +167,6 @@ export function AdminUsersView() {
                   <th>{t('admin.role')}</th>
                   <th>{t('admin.status')}</th>
                   <th>{t('admin.lastLogin')}</th>
-                  <th></th>
                 </tr>
               </thead>
               <tbody>
@@ -193,17 +177,7 @@ export function AdminUsersView() {
                       <span>{item.email}</span>
                     </td>
                     <td>
-                      <select
-                        value={item.role}
-                        disabled={isLoading || updatingUserId === item.id}
-                        onChange={(event) => void handleRoleChange(item, event.target.value as UserRole)}
-                      >
-                        {roles.map((roleItem) => (
-                          <option key={roleItem} value={roleItem}>
-                            {roleItem}
-                          </option>
-                        ))}
-                      </select>
+                      <span className="status-pill role">{item.role}</span>
                     </td>
                     <td>
                       <select
@@ -222,11 +196,6 @@ export function AdminUsersView() {
                       <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>
                         {item.lastLogin ?? t('profile.noData')}
                       </span>
-                    </td>
-                    <td>
-                      <Link className="detail-link" href={`/admin/users/${item.id}`}>
-                        {t('common.details')}
-                      </Link>
                     </td>
                   </tr>
                 ))}

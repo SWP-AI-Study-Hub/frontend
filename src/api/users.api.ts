@@ -5,7 +5,7 @@ const ADMIN_USERS_PATH = '/admin/users'
 
 export type UserQuery = {
   page?: number
-  pageSize?: number
+  limit?: number
   keyword?: string
   role?: UserRole | ''
   status?: UserStatus | ''
@@ -28,20 +28,9 @@ export function getUsers(query: UserQuery = {}) {
   return apiRequest<UserListResponse>(`${ADMIN_USERS_PATH}${toQueryString(query)}`)
 }
 
-export function getUserById(id: string) {
-  return apiRequest<CurrentUser>(`${ADMIN_USERS_PATH}/${id}`)
-}
-
 export function updateUserStatus(id: string, status: UserStatus) {
   return apiRequest<CurrentUser>(`${ADMIN_USERS_PATH}/${id}/status`, {
-    method: 'PUT',
+    method: 'PATCH',
     body: { status },
-  })
-}
-
-export function updateUserRole(id: string, role: UserRole) {
-  return apiRequest<CurrentUser>(`${ADMIN_USERS_PATH}/${id}/role`, {
-    method: 'PUT',
-    body: { role },
   })
 }

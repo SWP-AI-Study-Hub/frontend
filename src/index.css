@@ -1383,6 +1383,11 @@ select:focus {
   border-radius: 10px;
 }
 
+.mini-avatar--image {
+  background-position: center;
+  background-size: cover;
+}
+
 .icon-text-button {
   min-height: 38px;
   color: var(--muted);

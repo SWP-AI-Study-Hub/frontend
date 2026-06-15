@@ -6,7 +6,7 @@ export type AuthProvider = 'GOOGLE' | 'EMAIL_PASSWORD'
 
 export type CurrentUser = {
   id: string
-  roleId?: number
+  roleId?: string
   firebaseUid?: string
   authProvider?: AuthProvider
   fullName: string
@@ -36,7 +36,12 @@ export type RegisterPayload = {
 
 export type UserListResponse = {
   items: CurrentUser[]
-  page: number
-  pageSize: number
-  total: number
+  meta: {
+    page: number
+    limit: number
+    totalItems: number
+    totalPages: number
+    hasNext: boolean
+    hasPrevious: boolean
+  }
 }
