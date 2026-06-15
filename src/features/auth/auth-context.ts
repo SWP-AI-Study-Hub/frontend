@@ -1,20 +1,21 @@
-import { createContext } from 'react'
+import { createContext } from "react";
 import type {
   CurrentUser,
+  GoogleLoginResult,
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
-} from '../../types/auth'
+} from "../../types/auth";
 
 export type AuthContextValue = {
-  user: CurrentUser | null
-  isLoading: boolean
-  login: (payload: LoginPayload) => Promise<CurrentUser>
-  loginWithGoogle: () => Promise<CurrentUser>
-  register: (payload: RegisterPayload) => Promise<CurrentUser>
-  logout: () => Promise<void>
-  refreshUser: () => Promise<CurrentUser | null>
-  updateProfile: (payload: UpdateProfilePayload) => Promise<CurrentUser>
-}
+  user: CurrentUser | null;
+  isLoading: boolean;
+  login: (payload: LoginPayload) => Promise<CurrentUser>;
+  loginWithGoogle: () => Promise<GoogleLoginResult>;
+  register: (payload: RegisterPayload) => Promise<void>;
+  logout: () => Promise<void>;
+  refreshUser: () => Promise<CurrentUser | null>;
+  updateProfile: (payload: UpdateProfilePayload) => Promise<CurrentUser>;
+};
 
-export const AuthContext = createContext<AuthContextValue | null>(null)
+export const AuthContext = createContext<AuthContextValue | null>(null);

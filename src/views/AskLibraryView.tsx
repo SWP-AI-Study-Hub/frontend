@@ -19,7 +19,7 @@ export function AskLibraryView() {
       id: 'welcome',
       sender: 'AI',
       content:
-        'Ask a question across your indexed library. I will retrieve the strongest matching sources and show why they matter.',
+        'Hãy đặt câu hỏi trên thư viện đã được lập chỉ mục. Tôi sẽ tìm các nguồn phù hợp nhất và cho biết vì sao chúng liên quan.',
       sources: [],
     },
   ])
@@ -63,12 +63,12 @@ export function AskLibraryView() {
     <main id="main-content" className="ai-page ai-page--library">
       <header className="workspace-heading">
         <div>
-          <p className="eyebrow">ASK MY LIBRARY</p>
-          <h1>Connect ideas across every source.</h1>
+          <p className="eyebrow">HỎI THƯ VIỆN CỦA TÔI</p>
+          <h1>Kết nối ý tưởng từ mọi nguồn tài liệu.</h1>
         </div>
         <span className="scope-chip">
           <Library size={15} />
-          Scope: Entire library
+          Phạm vi: Toàn bộ thư viện
         </span>
       </header>
 
@@ -80,14 +80,14 @@ export function AskLibraryView() {
                 <Sparkles size={17} />
               </span>
               <div>
-                <strong>Library research session</strong>
-                <span>Retrieval across indexed documents</span>
+                <strong>Phiên nghiên cứu thư viện</strong>
+                <span>Truy xuất trên các tài liệu đã lập chỉ mục</span>
               </div>
             </div>
             <label className="compact-filter">
               <Filter size={15} />
               <select value={fileType} onChange={(event) => setFileType(event.target.value)}>
-                <option value="">All files</option>
+                <option value="">Tất cả tệp</option>
                 <option value="PDF">PDF</option>
                 <option value="DOCX">DOCX</option>
                 <option value="PPTX">PPTX</option>
@@ -129,7 +129,7 @@ export function AskLibraryView() {
                 <span />
                 <span />
                 <span />
-                <p>Searching your library...</p>
+                <p>Đang tìm kiếm trong thư viện...</p>
               </div>
             ) : null}
           </div>
@@ -137,9 +137,9 @@ export function AskLibraryView() {
           <div className="chat-footer">
             <div className="prompt-chips">
               {[
-                'Compare my notes on distributed systems',
-                'Find evidence about research validity',
-                'Build a study plan from my files',
+                'So sánh ghi chú về hệ thống phân tán',
+                'Tìm bằng chứng về độ tin cậy của nghiên cứu',
+                'Lập kế hoạch học tập từ các tệp của tôi',
               ].map((prompt) => (
                 <button type="button" key={prompt} onClick={() => setQuestion(prompt)}>
                   {prompt}
@@ -151,7 +151,7 @@ export function AskLibraryView() {
               onChange={setQuestion}
               onSubmit={() => void submitQuestion()}
               isLoading={isLoading}
-              placeholder="Ask across your study library..."
+              placeholder="Đặt câu hỏi trên thư viện học tập..."
             />
           </div>
         </article>
@@ -159,8 +159,8 @@ export function AskLibraryView() {
         <aside className="retrieved-panel">
           <header>
             <div>
-              <p className="eyebrow">RETRIEVED SOURCES</p>
-              <h2>Evidence used</h2>
+              <p className="eyebrow">NGUỒN ĐÃ TRUY XUẤT</p>
+              <h2>Bằng chứng được sử dụng</h2>
             </div>
             <span>{sources.length || '—'}</span>
           </header>
@@ -179,8 +179,8 @@ export function AskLibraryView() {
           ) : (
             <div className="soft-empty-state">
               <FileSearch size={28} />
-              <strong>Your evidence panel is ready</strong>
-              <p>Ask a question to retrieve the most relevant document snippets.</p>
+              <strong>Bảng bằng chứng đã sẵn sàng</strong>
+              <p>Đặt câu hỏi để truy xuất các đoạn tài liệu phù hợp nhất.</p>
             </div>
           )}
         </aside>

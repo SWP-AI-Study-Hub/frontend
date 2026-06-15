@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from 'react'
-import Link from 'next/link'
+import { ChangeEvent, DragEvent, FormEvent, useRef, useState } from "react";
+import Link from "next/link";
 import {
   Check,
   CloudUpload,
@@ -10,68 +10,69 @@ import {
   Lock,
   Sparkles,
   X,
-} from 'lucide-react'
+} from "lucide-react";
 import {
   ACCEPTED_FILE_EXTENSIONS,
   createDemoDocument,
   formatFileSize,
   validateDocumentFile,
-} from '../api/documents.api'
-import type { DocumentVisibility, LibraryDocument } from '../types/document'
+} from "../api/documents.api";
+import type { DocumentVisibility, LibraryDocument } from "../types/document";
+import { ROUTES } from "../lib/routes";
 
 export function UploadDocumentView() {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const [file, setFile] = useState<File>()
-  const [fileError, setFileError] = useState('')
-  const [title, setTitle] = useState('')
-  const [description, setDescription] = useState('')
-  const [subject, setSubject] = useState('')
-  const [category, setCategory] = useState('')
-  const [tagInput, setTagInput] = useState('')
-  const [tags, setTags] = useState<string[]>([])
-  const [visibility, setVisibility] = useState<DocumentVisibility>('PRIVATE')
-  const [isUploading, setIsUploading] = useState(false)
-  const [progress, setProgress] = useState(0)
-  const [createdDocument, setCreatedDocument] = useState<LibraryDocument>()
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File>();
+  const [fileError, setFileError] = useState("");
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [subject, setSubject] = useState("");
+  const [category, setCategory] = useState("");
+  const [tagInput, setTagInput] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [visibility, setVisibility] = useState<DocumentVisibility>("PRIVATE");
+  const [isUploading, setIsUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [createdDocument, setCreatedDocument] = useState<LibraryDocument>();
 
   function selectFile(nextFile?: File) {
-    if (!nextFile) return
-    const error = validateDocumentFile(nextFile)
-    setFileError(error ?? '')
-    if (error) return
-    setFile(nextFile)
+    if (!nextFile) return;
+    const error = validateDocumentFile(nextFile);
+    setFileError(error ?? "");
+    if (error) return;
+    setFile(nextFile);
     if (!title) {
-      setTitle(nextFile.name.replace(/\.[^.]+$/, '').replaceAll('-', ' '))
+      setTitle(nextFile.name.replace(/\.[^.]+$/, "").replaceAll("-", " "));
     }
   }
 
   function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    selectFile(event.target.files?.[0])
+    selectFile(event.target.files?.[0]);
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
-    event.preventDefault()
-    selectFile(event.dataTransfer.files[0])
+    event.preventDefault();
+    selectFile(event.dataTransfer.files[0]);
   }
 
   function addTag() {
-    const tag = tagInput.trim().toLowerCase()
-    if (!tag || tags.includes(tag) || tags.length >= 10) return
-    setTags((current) => [...current, tag])
-    setTagInput('')
+    const tag = tagInput.trim().toLowerCase();
+    if (!tag || tags.includes(tag) || tags.length >= 10) return;
+    setTags((current) => [...current, tag]);
+    setTagInput("");
   }
 
   async function submit(event: FormEvent) {
-    event.preventDefault()
-    if (!file || fileError || !title.trim() || !subject || !category) return
+    event.preventDefault();
+    if (!file || fileError || !title.trim() || !subject || !category) return;
 
-    setIsUploading(true)
-    setProgress(18)
-    await new Promise((resolve) => setTimeout(resolve, 350))
-    setProgress(48)
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    setProgress(76)
-    await new Promise((resolve) => setTimeout(resolve, 450))
+    setIsUploading(true);
+    setProgress(18);
+    await new Promise((resolve) => setTimeout(resolve, 350));
+    setProgress(48);
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    setProgress(76);
+    await new Promise((resolve) => setTimeout(resolve, 450));
     const document = createDemoDocument({
       title: title.trim(),
       description: description.trim(),
@@ -80,18 +81,21 @@ export function UploadDocumentView() {
       tags,
       visibility,
       file,
-    })
-    setProgress(100)
-    setCreatedDocument(document)
-    setIsUploading(false)
+    });
+    setProgress(100);
+    setCreatedDocument(document);
+    setIsUploading(false);
   }
 
   return (
     <main id="main-content" className="upload-page">
       <header className="upload-heading">
-        <p className="eyebrow">UPLOAD DOCUMENT</p>
-        <h1>Add a source to your knowledge library.</h1>
-        <p>DocuMind validates the file, stores its metadata, then prepares the content for grounded AI answers.</p>
+        <p className="eyebrow">TẢI TÀI LIỆU LÊN</p>
+        <h1>Thêm nguồn vào thư viện kiến thức.</h1>
+        <p>
+          DocuMind kiểm tra tệp, lưu metadata và chuẩn bị nội dung để AI trả lời
+          có căn cứ.
+        </p>
       </header>
 
       {createdDocument ? (
@@ -100,18 +104,34 @@ export function UploadDocumentView() {
             <Check size={24} />
           </span>
           <div>
-            <p className="eyebrow">UPLOAD COMPLETE</p>
+            <p className="eyebrow">TẢI LÊN HOÀN TẤT</p>
             <h2>{createdDocument.title}</h2>
-            <p>The file is saved. Text extraction and AI indexing are now processing.</p>
+            <p>
+              Tệp đã được lưu. Hệ thống đang trích xuất văn bản và lập chỉ mục
+              AI.
+            </p>
             <div className="extraction-steps">
-              <span className="done"><Check size={14} /> File validated</span>
-              <span className="done"><Check size={14} /> Metadata saved</span>
-              <span className="processing"><LoaderCircle className="spin" size={14} /> Extracting content</span>
+              <span className="done">
+                <Check size={14} /> Đã kiểm tra tệp
+              </span>
+              <span className="done">
+                <Check size={14} /> Đã lưu metadata
+              </span>
+              <span className="processing">
+                <LoaderCircle className="spin" size={14} /> Đang trích xuất nội
+                dung
+              </span>
             </div>
             <div className="upload-success-actions">
-              <Link href="/library" className="primary-button">Open My Library</Link>
-              <button type="button" className="secondary-button" onClick={() => window.location.reload()}>
-                Upload another
+              <Link href={ROUTES.library} className="primary-button">
+                Mở thư viện của tôi
+              </Link>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => window.location.reload()}
+              >
+                Tải tệp khác
               </button>
             </div>
           </div>
@@ -120,7 +140,13 @@ export function UploadDocumentView() {
         <form className="upload-workspace" onSubmit={submit}>
           <section className="upload-main">
             <div
-              className={fileError ? 'upload-dropzone error' : file ? 'upload-dropzone selected' : 'upload-dropzone'}
+              className={
+                fileError
+                  ? "upload-dropzone error"
+                  : file
+                    ? "upload-dropzone selected"
+                    : "upload-dropzone"
+              }
               onDragOver={(event) => event.preventDefault()}
               onDrop={handleDrop}
             >
@@ -128,27 +154,41 @@ export function UploadDocumentView() {
                 ref={inputRef}
                 type="file"
                 hidden
-                accept={ACCEPTED_FILE_EXTENSIONS.map((item) => `.${item}`).join(',')}
+                accept={ACCEPTED_FILE_EXTENSIONS.map((item) => `.${item}`).join(
+                  ",",
+                )}
                 onChange={handleFileChange}
               />
               {file ? (
                 <>
-                  <span className="upload-file-icon"><FileText size={24} /></span>
+                  <span className="upload-file-icon">
+                    <FileText size={24} />
+                  </span>
                   <div>
                     <strong>{file.name}</strong>
-                    <p>{formatFileSize(file.size)} / Ready to upload</p>
+                    <p>{formatFileSize(file.size)} / Sẵn sàng tải lên</p>
                   </div>
-                  <button type="button" className="icon-button" onClick={() => setFile(undefined)}>
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => setFile(undefined)}
+                  >
                     <X size={18} />
                   </button>
                 </>
               ) : (
                 <>
-                  <span className="upload-cloud"><CloudUpload size={28} /></span>
-                  <strong>Drop your study document here</strong>
-                  <p>PDF, DOCX, PPTX, or XLSX / Maximum 20 MB</p>
-                  <button type="button" className="secondary-button" onClick={() => inputRef.current?.click()}>
-                    Choose file
+                  <span className="upload-cloud">
+                    <CloudUpload size={28} />
+                  </span>
+                  <strong>Thả tài liệu học tập vào đây</strong>
+                  <p>PDF, DOCX, PPTX hoặc XLSX / Tối đa 20 MB</p>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => inputRef.current?.click()}
+                  >
+                    Chọn tệp
                   </button>
                 </>
               )}
@@ -159,60 +199,88 @@ export function UploadDocumentView() {
               <div className="section-heading">
                 <span>01</span>
                 <div>
-                  <strong>Document details</strong>
-                  <p>Clear metadata makes retrieval more reliable.</p>
+                  <strong>Thông tin tài liệu</strong>
+                  <p>Metadata rõ ràng giúp việc truy xuất chính xác hơn.</p>
                 </div>
               </div>
               <div className="upload-form-grid">
                 <label className="full-field">
-                  Document title
-                  <input value={title} onChange={(event) => setTitle(event.target.value)} maxLength={200} required />
+                  Tiêu đề tài liệu
+                  <input
+                    value={title}
+                    onChange={(event) => setTitle(event.target.value)}
+                    maxLength={200}
+                    required
+                  />
                 </label>
                 <label className="full-field">
-                  Description
-                  <textarea value={description} onChange={(event) => setDescription(event.target.value)} rows={3} />
+                  Mô tả
+                  <textarea
+                    value={description}
+                    onChange={(event) => setDescription(event.target.value)}
+                    rows={3}
+                  />
                 </label>
                 <label>
-                  Subject
-                  <select value={subject} onChange={(event) => setSubject(event.target.value)} required>
-                    <option value="">Select subject</option>
-                    <option>Computer Science</option>
-                    <option>Artificial Intelligence</option>
-                    <option>Research</option>
-                    <option>Business</option>
+                  Môn học
+                  <select
+                    value={subject}
+                    onChange={(event) => setSubject(event.target.value)}
+                    required
+                  >
+                    <option value="">Chọn môn học</option>
+                    <option>Khoa học máy tính</option>
+                    <option>Trí tuệ nhân tạo</option>
+                    <option>Nghiên cứu</option>
+                    <option>Kinh doanh</option>
                   </select>
                 </label>
                 <label>
-                  Category
-                  <select value={category} onChange={(event) => setCategory(event.target.value)} required>
-                    <option value="">Select category</option>
-                    <option>Lecture Notes</option>
-                    <option>Research Paper</option>
-                    <option>Methodology</option>
-                    <option>Reference</option>
+                  Danh mục
+                  <select
+                    value={category}
+                    onChange={(event) => setCategory(event.target.value)}
+                    required
+                  >
+                    <option value="">Chọn danh mục</option>
+                    <option>Ghi chú bài giảng</option>
+                    <option>Bài báo nghiên cứu</option>
+                    <option>Phương pháp luận</option>
+                    <option>Tài liệu tham khảo</option>
                   </select>
                 </label>
                 <label className="full-field">
-                  Tags
+                  Thẻ
                   <div className="tag-input">
                     <input
                       value={tagInput}
                       onChange={(event) => setTagInput(event.target.value)}
                       onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                          event.preventDefault()
-                          addTag()
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          addTag();
                         }
                       }}
-                      placeholder="Type a tag and press Enter"
+                      placeholder="Nhập thẻ và nhấn Enter"
                     />
-                    <button type="button" onClick={addTag}>Add</button>
+                    <button type="button" onClick={addTag}>
+                      Thêm
+                    </button>
                   </div>
                   {tags.length > 0 ? (
                     <span className="tag-list">
                       {tags.map((tag) => (
-                        <button type="button" key={tag} onClick={() => setTags((current) => current.filter((item) => item !== tag))}>
-                          {tag}<X size={12} />
+                        <button
+                          type="button"
+                          key={tag}
+                          onClick={() =>
+                            setTags((current) =>
+                              current.filter((item) => item !== tag),
+                            )
+                          }
+                        >
+                          {tag}
+                          <X size={12} />
                         </button>
                       ))}
                     </span>
@@ -227,51 +295,95 @@ export function UploadDocumentView() {
               <div className="section-heading">
                 <span>02</span>
                 <div>
-                  <strong>Visibility</strong>
-                  <p>Choose who can discover this source.</p>
+                  <strong>Quyền hiển thị</strong>
+                  <p>Chọn người có thể tìm thấy nguồn này.</p>
                 </div>
               </div>
               <div className="visibility-options">
-                <button type="button" className={visibility === 'PRIVATE' ? 'active' : undefined} onClick={() => setVisibility('PRIVATE')}>
+                <button
+                  type="button"
+                  className={visibility === "PRIVATE" ? "active" : undefined}
+                  onClick={() => setVisibility("PRIVATE")}
+                >
                   <Lock size={18} />
-                  <span><strong>Private</strong><small>Only you can access this file</small></span>
+                  <span>
+                    <strong>Riêng tư</strong>
+                    <small>Chỉ bạn có thể truy cập tệp này</small>
+                  </span>
                 </button>
-                <button type="button" className={visibility === 'PUBLIC' ? 'active' : undefined} onClick={() => setVisibility('PUBLIC')}>
+                <button
+                  type="button"
+                  className={visibility === "PUBLIC" ? "active" : undefined}
+                  onClick={() => setVisibility("PUBLIC")}
+                >
                   <Sparkles size={18} />
-                  <span><strong>Community</strong><small>Share it as a public study source</small></span>
+                  <span>
+                    <strong>Cộng đồng</strong>
+                    <small>Chia sẻ dưới dạng nguồn học tập công khai</small>
+                  </span>
                 </button>
               </div>
             </div>
 
             <div className="extraction-preview">
-              <p className="eyebrow">WHAT HAPPENS NEXT</p>
+              <p className="eyebrow">CÁC BƯỚC TIẾP THEO</p>
               <ol>
-                <li><span>1</span> Validate file and metadata</li>
-                <li><span>2</span> Store document securely</li>
-                <li><span>3</span> Extract readable content</li>
-                <li><span>4</span> Prepare grounded AI retrieval</li>
+                <li>
+                  <span>1</span> Kiểm tra tệp và metadata
+                </li>
+                <li>
+                  <span>2</span> Lưu tài liệu an toàn
+                </li>
+                <li>
+                  <span>3</span> Trích xuất nội dung có thể đọc
+                </li>
+                <li>
+                  <span>4</span> Chuẩn bị dữ liệu truy xuất cho AI
+                </li>
               </ol>
             </div>
 
             {isUploading ? (
               <div className="upload-progress">
-                <div><strong>Preparing your document...</strong><span>{progress}%</span></div>
-                <span className="progress-track"><span style={{ width: `${progress}%` }} /></span>
-                <p>{progress < 50 ? 'Uploading securely...' : progress < 90 ? 'Reading source content...' : 'Finalizing metadata...'}</p>
+                <div>
+                  <strong>Đang chuẩn bị tài liệu...</strong>
+                  <span>{progress}%</span>
+                </div>
+                <span className="progress-track">
+                  <span style={{ width: `${progress}%` }} />
+                </span>
+                <p>
+                  {progress < 50
+                    ? "Đang tải lên an toàn..."
+                    : progress < 90
+                      ? "Đang đọc nội dung nguồn..."
+                      : "Đang hoàn tất metadata..."}
+                </p>
               </div>
             ) : null}
 
             <button
               type="submit"
               className="upload-submit"
-              disabled={!file || Boolean(fileError) || !title.trim() || !subject || !category || isUploading}
+              disabled={
+                !file ||
+                Boolean(fileError) ||
+                !title.trim() ||
+                !subject ||
+                !category ||
+                isUploading
+              }
             >
-              {isUploading ? <LoaderCircle className="spin" size={18} /> : <CloudUpload size={18} />}
-              {isUploading ? 'Uploading...' : 'Upload and prepare for AI'}
+              {isUploading ? (
+                <LoaderCircle className="spin" size={18} />
+              ) : (
+                <CloudUpload size={18} />
+              )}
+              {isUploading ? "Đang tải lên..." : "Tải lên và chuẩn bị cho AI"}
             </button>
           </aside>
         </form>
       )}
     </main>
-  )
+  );
 }

@@ -1,137 +1,153 @@
-'use client'
+"use client";
 
-import type { ReactNode } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { onIdTokenChanged, signInWithPopup, signOut } from 'firebase/auth'
-import * as authApi from '../../api/auth.api'
-import * as profileApi from '../../api/profile.api'
-import { clearStoredAuthToken, setStoredAuthToken } from '../../lib/auth-token'
-import { getFirebaseAuth, getGoogleAuthProvider } from '../../lib/firebase'
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { onIdTokenChanged, signInWithPopup, signOut } from "firebase/auth";
+import * as authApi from "../../api/auth.api";
+import * as profileApi from "../../api/profile.api";
+import { clearStoredAuthToken, setStoredAuthToken } from "../../lib/auth-token";
+import { getFirebaseAuth, getGoogleAuthProvider } from "../../lib/firebase";
 import type {
   CurrentUser,
+  GoogleLoginResult,
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
-} from '../../types/auth'
-import { AuthContext } from './auth-context'
+} from "../../types/auth";
+import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<CurrentUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
     try {
-      const currentUser = await authApi.getCurrentUser()
-      setUser(currentUser)
-      return currentUser
+      const currentUser = await authApi.getCurrentUser();
+      setUser(currentUser);
+      return currentUser;
     } catch {
-      setUser(null)
-      return null
+      setUser(null);
+      return null;
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }, [])
+  }, []);
 
   useEffect(() => {
-    const firebaseAuth = getFirebaseAuth()
+    const firebaseAuth = getFirebaseAuth();
     const unsubscribe = onIdTokenChanged(firebaseAuth, async (firebaseUser) => {
-      setIsLoading(true)
+      setIsLoading(true);
 
       if (!firebaseUser) {
-        clearStoredAuthToken()
-        setUser(null)
-        setIsLoading(false)
-        return
+        clearStoredAuthToken();
+        setUser(null);
+        setIsLoading(false);
+        return;
       }
 
       try {
-        const idToken = await firebaseUser.getIdToken()
-        setStoredAuthToken(idToken)
-        const currentUser = await authApi.loginWithFirebaseToken({ idToken })
-        setUser(currentUser)
+        const idToken = await firebaseUser.getIdToken();
+        setStoredAuthToken(idToken);
+        const currentUser = await authApi.loginWithFirebaseToken({ idToken });
+        setUser(currentUser);
       } catch {
-        clearStoredAuthToken()
-        setUser(null)
+        clearStoredAuthToken();
+        setUser(null);
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
-    })
+    });
 
     function handleUnauthorized() {
-      clearStoredAuthToken()
-      setUser(null)
-      void signOut(firebaseAuth)
+      clearStoredAuthToken();
+      setUser(null);
+      void signOut(firebaseAuth);
     }
 
-    window.addEventListener('ai-study-hub:unauthorized', handleUnauthorized)
+    window.addEventListener("ai-study-hub:unauthorized", handleUnauthorized);
 
     return () => {
-      unsubscribe()
-      window.removeEventListener('ai-study-hub:unauthorized', handleUnauthorized)
-    }
-  }, [])
+      unsubscribe();
+      window.removeEventListener(
+        "ai-study-hub:unauthorized",
+        handleUnauthorized,
+      );
+    };
+  }, []);
 
-  const handleLogin = useCallback(
-    async (payload: LoginPayload) => {
-      const currentUser = await authApi.login(payload)
-      setUser(currentUser)
-      setIsLoading(false)
-      return currentUser
-    },
-    [],
-  )
+  const handleLogin = useCallback(async (payload: LoginPayload) => {
+    const currentUser = await authApi.login(payload);
+    setUser(currentUser);
+    setIsLoading(false);
+    return currentUser;
+  }, []);
 
-  const handleRegister = useCallback(
-    async (payload: RegisterPayload) => {
-      const currentUser = await authApi.register(payload)
-      setUser(currentUser)
-      setIsLoading(false)
-      return currentUser
-    },
-    [],
-  )
+  const handleRegister = useCallback(async (payload: RegisterPayload) => {
+    await authApi.register(payload);
+    clearStoredAuthToken();
+    setUser(null);
+    setIsLoading(false);
+  }, []);
 
-  const handleGoogleLogin = useCallback(async () => {
-    const firebaseAuth = getFirebaseAuth()
-    const googleAuthProvider = getGoogleAuthProvider()
-    const credential = await signInWithPopup(firebaseAuth, googleAuthProvider)
-    const idToken = await credential.user.getIdToken()
-    setStoredAuthToken(idToken)
-    const currentUser = await authApi.loginWithFirebaseToken({ idToken })
-
-    setUser(currentUser)
-    setIsLoading(false)
-
-    if (!currentUser) {
-      await signOut(firebaseAuth)
-      throw new Error('Cannot load current user after Google login')
-    }
-
-    return currentUser
-  }, [])
+  const handleGoogleLogin =
+    useCallback(async (): Promise<GoogleLoginResult> => {
+      const firebaseAuth = getFirebaseAuth();
+      const googleAuthProvider = getGoogleAuthProvider();
+      const credential = await signInWithPopup(
+        firebaseAuth,
+        googleAuthProvider,
+      );
+      const idToken = await credential.user.getIdToken();
+      setStoredAuthToken(idToken);
+      try {
+        const currentUser = await authApi.loginWithFirebaseToken({ idToken });
+        setUser(currentUser);
+        setIsLoading(false);
+        return { status: "authenticated", user: currentUser };
+      } catch (error) {
+        if (
+          error instanceof Error &&
+          error.message === "Account registration is required"
+        ) {
+          clearStoredAuthToken();
+          setUser(null);
+          setIsLoading(false);
+          return {
+            status: "registration-required",
+            profile: {
+              fullName: credential.user.displayName ?? "",
+              email: credential.user.email ?? "",
+              avatarUrl: credential.user.photoURL,
+            },
+          };
+        }
+        await signOut(firebaseAuth);
+        throw error;
+      }
+    }, []);
 
   const handleLogout = useCallback(async () => {
-    clearStoredAuthToken()
-    await signOut(getFirebaseAuth())
-    setUser(null)
-  }, [])
+    clearStoredAuthToken();
+    await signOut(getFirebaseAuth());
+    setUser(null);
+  }, []);
 
   const handleUpdateProfile = useCallback(
     async (payload: UpdateProfilePayload) => {
-      const profile = await profileApi.updateProfile(payload)
+      const profile = await profileApi.updateProfile(payload);
       const updatedUser: CurrentUser = {
         ...profile,
         firebaseUid: user?.firebaseUid,
         authProvider: user?.authProvider,
         roleId: user?.roleId,
         lastLogin: user?.lastLogin ?? null,
-      }
+      };
 
-      setUser(updatedUser)
-      return updatedUser
+      setUser(updatedUser);
+      return updatedUser;
     },
     [user],
-  )
+  );
 
   const value = useMemo(
     () => ({
@@ -154,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshUser,
       user,
     ],
-  )
+  );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

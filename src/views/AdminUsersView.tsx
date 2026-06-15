@@ -84,7 +84,7 @@ export function AdminUsersView() {
         <article className="stat-card">
           <UsersRound size={20} />
           <span>{t('admin.totalUsers')}</span>
-          <strong>{data?.meta.totalItems ?? users.length}</strong>
+          <strong>{data?.meta?.totalItems ?? users.length}</strong>
         </article>
         <article className="stat-card">
           <UserCheck size={20} />
@@ -157,8 +157,8 @@ export function AdminUsersView() {
       <section className="content-panel">
         {error ? <p className="form-error">{error}</p> : null}
         {isLoading ? <div className="loading-state"><span className="loading-line" /><p>{t('admin.loadingUsers')}</p></div> : null}
-        {!isLoading && data?.items.length === 0 ? <div className="empty-state"><UsersRound size={28} /><p>{t('admin.noUsers')}</p></div> : null}
-        {!isLoading && data?.items.length ? (
+        {!isLoading && users.length === 0 ? <div className="empty-state"><UsersRound size={28} /><p>{t('admin.noUsers')}</p></div> : null}
+        {!isLoading && users.length ? (
           <div className="table-wrap">
             <table>
               <thead>
@@ -170,7 +170,7 @@ export function AdminUsersView() {
                 </tr>
               </thead>
               <tbody>
-                {data.items.map((item) => (
+                {users.map((item) => (
                   <tr key={item.id}>
                     <td>
                       <strong>{item.fullName}</strong>

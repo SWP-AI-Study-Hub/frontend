@@ -17,6 +17,14 @@ type RequestOptions = Omit<RequestInit, 'body'> & {
 type ApiEnvelope<T> = {
   success: boolean
   data?: T
+  meta?: {
+    page: number
+    limit: number
+    totalItems: number
+    totalPages: number
+    hasNext: boolean
+    hasPrevious: boolean
+  }
   error?: {
     code?: string
     message?: string
@@ -90,6 +98,13 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   }
 
   if (data && typeof data === 'object' && 'success' in data && data.success) {
+    if (data.meta && Array.isArray(data.data)) {
+      return {
+        items: data.data,
+        meta: data.meta,
+      } as T
+    }
+
     return data.data as T
   }
 

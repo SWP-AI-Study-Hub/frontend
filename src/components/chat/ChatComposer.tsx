@@ -35,7 +35,7 @@ export function ChatComposer({
         type="submit"
         className="chat-send"
         disabled={!value.trim() || isLoading}
-        aria-label="Send question"
+        aria-label="Gửi câu hỏi"
       >
         {isLoading ? <LoaderCircle className="spin" size={19} /> : <ArrowUp size={19} />}
       </button>

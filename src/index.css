@@ -1249,6 +1249,88 @@ select:focus {
   background: var(--success-soft);
 }
 
+.terms-checkbox {
+  display: grid !important;
+  grid-template-columns: 18px minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  font-weight: 500 !important;
+  line-height: 1.5;
+}
+
+.terms-checkbox input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  accent-color: #d56600;
+}
+
+.terms-checkbox a {
+  color: #b75300;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.verification-card {
+  text-align: center;
+}
+
+.verification-card .primary-button {
+  margin-top: 8px;
+}
+
+.verification-icon {
+  margin: 0 auto 14px;
+}
+
+.verification-icon--success {
+  color: #16845b;
+}
+
+.verification-icon--error {
+  color: #c0392b;
+}
+
+.verification-icon--spin {
+  animation: verification-spin 0.9s linear infinite;
+}
+
+@keyframes verification-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.legal-page {
+  min-height: 100vh;
+  padding: 64px 24px;
+  background: #f7f6f2;
+}
+
+.legal-page article {
+  width: min(720px, 100%);
+  margin: 0 auto;
+}
+
+.legal-page h1 {
+  margin: 12px 0 24px;
+  font-family: var(--font-serif);
+  font-size: clamp(2rem, 5vw, 3.5rem);
+}
+
+.legal-page p {
+  margin: 0 0 16px;
+  color: #334155;
+  line-height: 1.75;
+}
+
+.legal-page a {
+  display: inline-block;
+  margin-top: 16px;
+  color: #b75300;
+  font-weight: 700;
+}
+
 .reset-account-email {
   width: fit-content;
   margin: -0.5rem 0 1.25rem;

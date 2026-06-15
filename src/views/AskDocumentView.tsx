@@ -27,16 +27,16 @@ export function AskDocumentView() {
       id: 'welcome',
       sender: 'AI',
       content:
-        'I am ready to answer questions grounded in this document. Every answer will keep its source visible.',
+        'Tôi sẵn sàng trả lời dựa trên tài liệu này. Mỗi câu trả lời đều hiển thị rõ nguồn tham chiếu.',
       sources: [],
     },
   ])
 
   const prompts = useMemo(
     () => [
-      'Summarize the core argument',
-      'Explain the failure models',
-      'Create five review questions',
+      'Tóm tắt luận điểm chính',
+      'Giải thích các mô hình lỗi',
+      'Tạo năm câu hỏi ôn tập',
     ],
     [],
   )
@@ -82,12 +82,12 @@ export function AskDocumentView() {
     <main id="main-content" className="ai-page ai-page--document">
       <header className="workspace-heading">
         <div>
-          <p className="eyebrow">ASK THIS DOCUMENT</p>
-          <h1>Read closely. Ask precisely.</h1>
+          <p className="eyebrow">HỎI TÀI LIỆU NÀY</p>
+          <h1>Đọc kỹ. Hỏi chính xác.</h1>
         </div>
         <span className="scope-chip">
           <FileText size={15} />
-          Scope: Current file
+          Phạm vi: Tệp hiện tại
         </span>
       </header>
 
@@ -96,9 +96,9 @@ export function AskDocumentView() {
           <header className="panel-toolbar">
             <div>
               <span className="file-type-badge">PDF</span>
-              <strong>Distributed Systems Field Notes</strong>
+              <strong>Ghi chú về hệ thống phân tán</strong>
             </div>
-            <button className="icon-button" type="button" title="Collapse preview">
+            <button className="icon-button" type="button" title="Thu gọn bản xem trước">
               <PanelLeftClose size={18} />
             </button>
           </header>
@@ -110,36 +110,38 @@ export function AskDocumentView() {
           >
             <span>
               <Sparkles size={16} />
-              Generated summary
+              Bản tóm tắt được tạo
             </span>
             <ChevronDown className={summaryOpen ? 'rotate' : ''} size={18} />
           </button>
           {summaryOpen ? (
             <p className="document-summary">
-              A practical overview of distributed system guarantees, failure assumptions,
-              consensus, replication, and the tradeoffs behind consistency models.
+              Tổng quan thực tế về các đảm bảo của hệ thống phân tán, giả định
+              lỗi, đồng thuận, sao chép và những đánh đổi giữa các mô hình nhất
+              quán.
             </p>
           ) : null}
 
           <div className="document-canvas">
             <div className="document-page">
-              <p className="document-page-label">LECTURE 04 · PAGE 12 OF 42</p>
-              <h2>Consensus begins with failure assumptions</h2>
+              <p className="document-page-label">BÀI GIẢNG 04 · TRANG 12 / 42</p>
+              <h2>Đồng thuận bắt đầu từ các giả định lỗi</h2>
               <p>
-                A distributed system cannot choose a meaningful coordination strategy
-                until it states which failures are expected. Crash failures, network
-                partitions, and delayed messages each change what the system can promise.
+                Hệ thống phân tán không thể chọn chiến lược phối hợp phù hợp
+                trước khi xác định các loại lỗi dự kiến. Lỗi dừng, phân vùng
+                mạng và thông điệp bị trễ đều làm thay đổi những gì hệ thống có
+                thể cam kết.
               </p>
               <blockquote
                 className={selectedCitation ? 'source-highlight' : undefined}
               >
-                Consensus protocols trade additional coordination for a single agreed
-                ordering of state transitions.
+                Giao thức đồng thuận đánh đổi thêm chi phí phối hợp để đạt được
+                một thứ tự chuyển trạng thái thống nhất.
               </blockquote>
-              <h3>Replication is not a consistency model</h3>
+              <h3>Sao chép không phải là mô hình nhất quán</h3>
               <p>
-                Replication improves availability and durability, but the application
-                still needs rules for reconciling concurrent state and exposing updates.
+                Sao chép cải thiện tính sẵn sàng và độ bền, nhưng ứng dụng vẫn
+                cần quy tắc xử lý trạng thái đồng thời và công bố cập nhật.
               </p>
             </div>
           </div>
@@ -152,11 +154,11 @@ export function AskDocumentView() {
                 <Sparkles size={17} />
               </span>
               <div>
-                <strong>Document research session</strong>
-                <span>Answers grounded in one source</span>
+                <strong>Phiên nghiên cứu tài liệu</strong>
+                <span>Câu trả lời dựa trên một nguồn</span>
               </div>
             </div>
-            <span className="status-dot">AI ready</span>
+            <span className="status-dot">AI sẵn sàng</span>
           </header>
 
           <div className="message-stream">
@@ -184,8 +186,8 @@ export function AskDocumentView() {
               <div className="ai-thinking">
                 <span />
                 <div>
-                  <strong>Reading source snippets...</strong>
-                  <p>Building an answer from this document.</p>
+                  <strong>Đang đọc các đoạn trích nguồn...</strong>
+                  <p>Đang xây dựng câu trả lời từ tài liệu này.</p>
                 </div>
               </div>
             ) : null}
@@ -204,11 +206,11 @@ export function AskDocumentView() {
               onChange={setQuestion}
               onSubmit={() => void submitQuestion()}
               isLoading={isLoading}
-              placeholder="Ask about this document..."
+              placeholder="Đặt câu hỏi về tài liệu này..."
             />
             <p className="grounded-note">
               <BookOpenText size={14} />
-              Answers may include citations from the current file only.
+              Câu trả lời chỉ có thể trích dẫn từ tệp hiện tại.
             </p>
           </div>
         </article>
