@@ -1,7 +1,14 @@
 import { getFirebaseAuth } from './firebase'
 import { clearStoredAuthToken, getStoredAuthToken, notifyUnauthorized, setStoredAuthToken } from './auth-token'
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api'
+export function normalizeApiBaseUrl(value: string) {
+  const baseUrl = value.replace(/\/+$/, '')
+  return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`
+}
+
+const API_BASE_URL = normalizeApiBaseUrl(
+  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api',
+)
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, unknown> | null

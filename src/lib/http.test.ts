@@ -5,7 +5,7 @@ import {
   notifyUnauthorized,
   setStoredAuthToken,
 } from './auth-token'
-import { ApiError, apiRequest } from './http'
+import { ApiError, apiRequest, normalizeApiBaseUrl } from './http'
 
 vi.mock('./firebase', () => ({
   getFirebaseAuth: vi.fn(),
@@ -117,5 +117,19 @@ describe('apiRequest', () => {
     )
     expect(clearStoredAuthToken).not.toHaveBeenCalled()
     expect(notifyUnauthorized).not.toHaveBeenCalled()
+  })
+})
+
+describe('normalizeApiBaseUrl', () => {
+  it('appends the global API prefix to a host-only URL', () => {
+    expect(normalizeApiBaseUrl('https://backend.example.com')).toBe(
+      'https://backend.example.com/api',
+    )
+  })
+
+  it('preserves an existing API prefix and removes trailing slashes', () => {
+    expect(normalizeApiBaseUrl('https://backend.example.com/api/')).toBe(
+      'https://backend.example.com/api',
+    )
   })
 })

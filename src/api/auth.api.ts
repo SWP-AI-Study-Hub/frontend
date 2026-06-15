@@ -5,6 +5,7 @@ import {
   sendPasswordResetEmail,
   signInWithEmailAndPassword,
   updateProfile,
+  verifyPasswordResetCode,
 } from 'firebase/auth'
 import { apiRequest } from '../lib/http'
 import { getFirebaseAuth } from '../lib/firebase'
@@ -56,8 +57,12 @@ export function getCurrentUser() {
 
 export function forgotPassword(email: string) {
   return sendPasswordResetEmail(getFirebaseAuth(), email, {
-    url: `${window.location.origin}/reset-password`,
+    url: `${window.location.origin}/login?reset=success`,
   })
+}
+
+export function verifyResetPasswordCode(token: string) {
+  return verifyPasswordResetCode(getFirebaseAuth(), token)
 }
 
 export function resetPassword(token: string, password: string) {
