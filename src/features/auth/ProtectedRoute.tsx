@@ -22,7 +22,7 @@ export function ProtectedRoute({ allowedRoles, children }: ProtectedRouteProps) 
     if (isLoading) return
 
     if (!user) {
-      const redirectPath = pathname ?? '/profile'
+      const redirectPath = pathname ?? '/dashboard'
       router.replace(`/login?from=${encodeURIComponent(redirectPath)}`)
       return
     }

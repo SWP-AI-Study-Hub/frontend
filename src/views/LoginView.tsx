@@ -21,7 +21,7 @@ export function LoginView() {
 
   function redirectAfterLogin(role: 'ADMIN' | 'USER') {
     const from = searchParams?.get('from')
-    router.replace(from ?? (role === 'ADMIN' ? '/admin/users' : '/profile'))
+    router.replace(from ?? (role === 'ADMIN' ? '/admin/users' : '/dashboard'))
   }
 
   async function handleSubmit(event: FormEvent) {

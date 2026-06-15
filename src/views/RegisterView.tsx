@@ -26,7 +26,7 @@ export function RegisterView() {
 
     try {
       const user = await register({ fullName, email, password })
-      router.replace(user.role === 'ADMIN' ? '/admin/users' : '/profile')
+      router.replace(user.role === 'ADMIN' ? '/admin/users' : '/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.registerFailed'))
     } finally {
@@ -40,7 +40,7 @@ export function RegisterView() {
 
     try {
       const user = await loginWithGoogle()
-      router.replace(user.role === 'ADMIN' ? '/admin/users' : '/profile')
+      router.replace(user.role === 'ADMIN' ? '/admin/users' : '/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : t('auth.googleFailed'))
     } finally {

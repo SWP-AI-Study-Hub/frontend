@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { Playfair_Display, Plus_Jakarta_Sans, Source_Code_Pro } from 'next/font/google'
 import '../index.css'
+import '../ai-workspaces.css'
 import { AuthProvider } from '../features/auth/AuthProvider'
 import { LanguageProvider } from '../i18n/LanguageProvider'
 
