@@ -1,77 +1,140 @@
-'use client'
+"use client";
 
-import { FormEvent, useState } from 'react'
-import Link from 'next/link'
-import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { UserPlus } from 'lucide-react'
-import { useAuth } from '../features/auth/useAuth'
-import { useLanguage } from '../i18n/LanguageProvider'
+import { FormEvent, useState } from "react";
+import Link from "next/link";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { CheckCircle2, UserPlus } from "lucide-react";
+import { useAuth } from "../features/auth/useAuth";
+import { useLanguage } from "../i18n/LanguageProvider";
+import { ROUTES } from "../lib/routes";
 
 export function RegisterView() {
-  const { loginWithGoogle, register } = useAuth()
-  const { t } = useLanguage()
-  const router = useRouter()
-  const [fullName, setFullName] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [error, setError] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false)
+  const { loginWithGoogle, register } = useAuth();
+  const { t } = useLanguage();
+  const router = useRouter();
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [isGoogleRegistration, setIsGoogleRegistration] = useState(false);
+  const [isRegistrationComplete, setIsRegistrationComplete] = useState(false);
+  const [error, setError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
   async function handleSubmit(event: FormEvent) {
-    event.preventDefault()
-    setError('')
-    setIsSubmitting(true)
+    event.preventDefault();
+    setError("");
+
+    if (password !== confirmPassword) {
+      setError("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+
+    if (!acceptedTerms) {
+      setError("Bạn cần đồng ý với Điều khoản dịch vụ và Chính sách bảo mật.");
+      return;
+    }
+
+    setIsSubmitting(true);
 
     try {
-      const user = await register({ fullName, email, password })
-      router.replace(user.role === 'ADMIN' ? '/admin/users' : '/dashboard')
+      await register({
+        fullName,
+        email,
+        password,
+        confirmPassword,
+        acceptedTerms,
+      });
+      setIsRegistrationComplete(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('auth.registerFailed'))
+      setError(err instanceof Error ? err.message : t("auth.registerFailed"));
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
   }
 
   async function handleGoogleRegister() {
-    setError('')
-    setIsGoogleSubmitting(true)
+    setError("");
+    setIsGoogleSubmitting(true);
 
     try {
-      const user = await loginWithGoogle()
-      router.replace(user.role === 'ADMIN' ? '/admin/users' : '/dashboard')
+      const result = await loginWithGoogle();
+      if (result.status === "authenticated") {
+        router.replace(
+          result.user.role === "ADMIN" ? ROUTES.adminUsers : ROUTES.dashboard,
+        );
+        return;
+      }
+
+      setFullName(result.profile.fullName);
+      setEmail(result.profile.email);
+      setIsGoogleRegistration(true);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('auth.googleFailed'))
+      setError(err instanceof Error ? err.message : t("auth.googleFailed"));
     } finally {
-      setIsGoogleSubmitting(false)
+      setIsGoogleSubmitting(false);
     }
+  }
+
+  if (isRegistrationComplete) {
+    return (
+      <section className="auth-card verification-card">
+        <CheckCircle2
+          className="verification-icon verification-icon--success"
+          size={36}
+        />
+        <p className="eyebrow">KÍCH HOẠT TÀI KHOẢN</p>
+        <h2>Kiểm tra email của bạn</h2>
+        <p className="auth-copy">
+          DocuMind đã gửi liên kết kích hoạt đến <strong>{email}</strong>. Tài
+          khoản chỉ có thể đăng nhập sau khi bạn xác thực email.
+        </p>
+        <Link className="primary-button" href={ROUTES.login}>
+          Về trang đăng nhập
+        </Link>
+      </section>
+    );
   }
 
   return (
     <section className="auth-card">
-      <p className="eyebrow">{t('auth.registerEyebrow')}</p>
-      <h2>{t('auth.registerTitle')}</h2>
-      <p className="auth-copy">{t('auth.registerBody')}</p>
+      <p className="eyebrow">{t("auth.registerEyebrow")}</p>
+      <h2>{t("auth.registerTitle")}</h2>
+      <p className="auth-copy">{t("auth.registerBody")}</p>
       <button
         className="google-button"
         type="button"
         disabled={isSubmitting || isGoogleSubmitting}
         onClick={handleGoogleRegister}
       >
-        <Image src="/google.svg" alt="" aria-hidden="true" width={18} height={18} />
-        {isGoogleSubmitting ? t('auth.connecting') : t('auth.google')}
+        <Image
+          src="/google.svg"
+          alt=""
+          aria-hidden="true"
+          width={18}
+          height={18}
+        />
+        {isGoogleSubmitting ? t("auth.connecting") : t("auth.google")}
       </button>
       <div className="auth-divider">
-        <span>{t('auth.or')}</span>
+        <span>{t("auth.or")}</span>
       </div>
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
-          {t('auth.fullName')}
-          <input name="fullName" autoComplete="name" value={fullName} onChange={(event) => setFullName(event.target.value)} required />
+          {t("auth.fullName")}
+          <input
+            name="fullName"
+            autoComplete="name"
+            value={fullName}
+            onChange={(event) => setFullName(event.target.value)}
+            required
+          />
         </label>
         <label>
-          {t('auth.email')}
+          {t("auth.email")}
           <input
             name="email"
             autoComplete="email"
@@ -79,11 +142,12 @@ export function RegisterView() {
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             type="email"
+            readOnly={isGoogleRegistration}
             required
           />
         </label>
         <label>
-          {t('auth.password')}
+          {t("auth.password")}
           <input
             name="password"
             autoComplete="new-password"
@@ -94,15 +158,44 @@ export function RegisterView() {
             required
           />
         </label>
+        <label>
+          Xác nhận mật khẩu
+          <input
+            name="confirmPassword"
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(event) => setConfirmPassword(event.target.value)}
+            type="password"
+            minLength={8}
+            required
+          />
+        </label>
+        <label className="terms-checkbox">
+          <input
+            name="acceptedTerms"
+            type="checkbox"
+            checked={acceptedTerms}
+            onChange={(event) => setAcceptedTerms(event.target.checked)}
+            required
+          />
+          <span>
+            Tôi đồng ý với <Link href={ROUTES.terms}>Điều khoản dịch vụ</Link>{" "}
+            và <Link href={ROUTES.privacy}>Chính sách bảo mật</Link>.
+          </span>
+        </label>
         {error ? <p className="form-error">{error}</p> : null}
-        <button className="primary-button" type="submit" disabled={isSubmitting || isGoogleSubmitting}>
+        <button
+          className="primary-button"
+          type="submit"
+          disabled={isSubmitting || isGoogleSubmitting || !acceptedTerms}
+        >
           <UserPlus size={18} />
-          {isSubmitting ? t('auth.creating') : t('auth.signup')}
+          {isSubmitting ? t("auth.creating") : t("auth.signup")}
         </button>
       </form>
       <div className="form-links">
-        <Link href="/login">{t('auth.haveAccount')}</Link>
+        <Link href={ROUTES.login}>{t("auth.haveAccount")}</Link>
       </div>
     </section>
-  )
+  );
 }

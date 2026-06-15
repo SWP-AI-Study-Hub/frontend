@@ -61,10 +61,12 @@ To use the DocuMind reset-password screen instead of Firebase's hosted form:
 4. Set it to:
 
 ```text
-https://documind-hub.vercel.app/reset-password
+https://documind-hub.vercel.app/__/auth/action
 ```
 
-The `url` passed by the frontend is the post-reset continue URL and must point
+The technical Firebase URL is rewritten internally to the Vietnamese
+`/xu-ly-xac-thuc` route. The `url` passed by the frontend is the post-reset
+continue URL and must point
 to `/login`, not `/reset-password`. Existing reset emails generated before this
 change may still use the old two-step flow; request a new email after deployment.
 

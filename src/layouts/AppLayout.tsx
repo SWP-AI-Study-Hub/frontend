@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import {
   BookOpen,
   Bookmark,
@@ -17,78 +17,102 @@ import {
   UserRound,
   UsersRound,
   X,
-} from 'lucide-react'
-import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
-import { Brand } from '../components/ui/Brand'
-import { LanguageSwitcher } from '../components/ui/LanguageSwitcher'
-import { useAuth } from '../features/auth/useAuth'
-import { useLanguage } from '../i18n/LanguageProvider'
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { Brand } from "../components/ui/Brand";
+import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
+import { useAuth } from "../features/auth/useAuth";
+import { useLanguage } from "../i18n/LanguageProvider";
+import { ROUTES } from "../lib/routes";
 
 type NavItem = {
-  href: string
-  label: string
-  icon: typeof LayoutDashboard
-  accent?: boolean
-}
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  accent?: boolean;
+};
 
 function isActivePath(pathname: string, href: string) {
-  return pathname === href || (href !== '/dashboard' && pathname.startsWith(`${href}/`))
+  return (
+    pathname === href ||
+    (href !== ROUTES.dashboard && pathname.startsWith(`${href}/`))
+  );
 }
 
 export function AppLayout({ children }: { children: ReactNode }) {
-  const { user, logout } = useAuth()
-  const { t } = useLanguage()
-  const pathname = usePathname() ?? '/dashboard'
-  const router = useRouter()
-  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false)
-  const [isSidebarCompact, setIsSidebarCompact] = useState(false)
-  const initial = user?.fullName?.charAt(0).toUpperCase() ?? 'D'
+  const { user, logout } = useAuth();
+  const { t } = useLanguage();
+  const pathname = usePathname() ?? ROUTES.dashboard;
+  const router = useRouter();
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
+  const [isSidebarCompact, setIsSidebarCompact] = useState(false);
+  const initial = user?.fullName?.charAt(0).toUpperCase() ?? "D";
 
   const workspaceNav: NavItem[] = [
-    { href: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-    { href: '/library', label: t('nav.library'), icon: LibraryBig },
-    { href: '/upload', label: t('nav.upload'), icon: FileUp },
-    { href: '/community', label: t('nav.community'), icon: UsersRound },
-    { href: '/saved', label: t('nav.saved'), icon: Bookmark },
-  ]
+    {
+      href: ROUTES.dashboard,
+      label: t("nav.dashboard"),
+      icon: LayoutDashboard,
+    },
+    { href: ROUTES.library, label: t("nav.library"), icon: LibraryBig },
+    { href: ROUTES.upload, label: t("nav.upload"), icon: FileUp },
+    { href: ROUTES.community, label: t("nav.community"), icon: UsersRound },
+    { href: ROUTES.saved, label: t("nav.saved"), icon: Bookmark },
+  ];
 
   const aiNav: NavItem[] = [
-    { href: '/ask-document', label: 'Ask this document', icon: FileText, accent: true },
-    { href: '/ask-library', label: 'Ask my library', icon: BookOpen, accent: true },
-  ]
+    {
+      href: ROUTES.askDocument,
+      label: "Hỏi tài liệu này",
+      icon: FileText,
+      accent: true,
+    },
+    {
+      href: ROUTES.askLibrary,
+      label: "Hỏi thư viện của tôi",
+      icon: BookOpen,
+      accent: true,
+    },
+  ];
 
   const accountNav: NavItem[] = [
-    { href: '/subscription', label: t('nav.subscription'), icon: CreditCard },
-    { href: '/profile', label: t('common.profile'), icon: UserRound },
-  ]
+    {
+      href: ROUTES.subscription,
+      label: t("nav.subscription"),
+      icon: CreditCard,
+    },
+    { href: ROUTES.profile, label: t("common.profile"), icon: UserRound },
+  ];
 
   useEffect(() => {
-    setIsMobileNavOpen(false)
-  }, [pathname])
+    setIsMobileNavOpen(false);
+  }, [pathname]);
 
   async function handleLogout() {
-    await logout()
-    router.replace('/login')
+    await logout();
+    router.replace(ROUTES.login);
   }
 
   function renderLink(item: NavItem) {
-    const Icon = item.icon
+    const Icon = item.icon;
     return (
       <Link
         key={item.href}
         href={item.href}
-        className={`${isActivePath(pathname, item.href) ? 'active' : ''}${item.accent ? ' ai-nav-link' : ''}`}
+        className={`${isActivePath(pathname, item.href) ? "active" : ""}${item.accent ? " ai-nav-link" : ""}`}
         title={isSidebarCompact ? item.label : undefined}
       >
         <Icon size={18} />
         <span>{item.label}</span>
       </Link>
-    )
+    );
   }
 
   return (
-    <div className={`app-shell${isSidebarCompact ? ' app-shell--compact' : ''}`}>
+    <div
+      className={`app-shell${isSidebarCompact ? " app-shell--compact" : ""}`}
+    >
       {isMobileNavOpen ? (
         <button
           type="button"
@@ -98,7 +122,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         />
       ) : null}
 
-      <aside className={`sidebar${isMobileNavOpen ? ' sidebar--open' : ''}`}>
+      <aside className={`sidebar${isMobileNavOpen ? " sidebar--open" : ""}`}>
         <div className="sidebar-brand-row">
           <Brand compact={isSidebarCompact} />
           <button
@@ -117,30 +141,34 @@ export function AppLayout({ children }: { children: ReactNode }) {
         </nav>
 
         <nav className="side-nav side-nav--ai" aria-label="AI navigation">
-          <span className="side-nav-label"><Sparkles size={13} />Ask AI</span>
+          <span className="side-nav-label">
+            <Sparkles size={13} />
+            Ask AI
+          </span>
           {aiNav.map(renderLink)}
         </nav>
 
-        <nav className="side-nav side-nav--utility" aria-label="Account navigation">
+        <nav
+          className="side-nav side-nav--utility"
+          aria-label="Account navigation"
+        >
           <span className="side-nav-label">Account</span>
           {accountNav.map(renderLink)}
-          {user?.role === 'ADMIN' ? (
-            renderLink({ href: '/admin/users', label: t('common.admin'), icon: UsersRound })
-          ) : (
-            <span className="disabled-nav" title={isSidebarCompact ? t('common.admin') : undefined}>
-              <UsersRound size={18} />
-              <span>{t('common.admin')}</span>
-              <small>Admin only</small>
-            </span>
-          )}
+          {user?.role === "ADMIN"
+            ? renderLink({
+                href: ROUTES.adminUsers,
+                label: t("common.admin"),
+                icon: UsersRound,
+              })
+            : null}
         </nav>
 
         <button
           type="button"
           className="sidebar-collapse"
           onClick={() => setIsSidebarCompact((current) => !current)}
-          aria-label={isSidebarCompact ? 'Expand sidebar' : 'Collapse sidebar'}
-          title={isSidebarCompact ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={isSidebarCompact ? "Expand sidebar" : "Collapse sidebar"}
+          title={isSidebarCompact ? "Expand sidebar" : "Collapse sidebar"}
         >
           <PanelLeftClose size={17} />
           <span>Collapse sidebar</span>
@@ -174,14 +202,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
           </div>
           <div className="app-topbar-actions">
             <LanguageSwitcher />
-            <button type="button" className="icon-text-button" onClick={() => void handleLogout()}>
+            <button
+              type="button"
+              className="icon-text-button"
+              onClick={() => void handleLogout()}
+            >
               <LogOut size={17} />
-              <span>{t('common.logout')}</span>
+              <span>{t("common.logout")}</span>
             </button>
           </div>
         </header>
         {children}
       </div>
     </div>
-  )
+  );
 }

@@ -1,7 +1,7 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import Link from 'next/link'
+import { useState } from "react";
+import Link from "next/link";
 import {
   ArrowRight,
   BookOpen,
@@ -17,46 +17,82 @@ import {
   Sparkles,
   UsersRound,
   X,
-} from 'lucide-react'
-import { useLanguage } from '../../i18n/LanguageProvider'
-import type { TranslationKey } from '../../i18n/translations'
-import { Brand } from '../ui/Brand'
-import { LanguageSwitcher } from '../ui/LanguageSwitcher'
-import { Reveal } from '../ui/Reveal'
+} from "lucide-react";
+import { useLanguage } from "../../i18n/LanguageProvider";
+import { ROUTES } from "../../lib/routes";
+import type { TranslationKey } from "../../i18n/translations";
+import { Brand } from "../ui/Brand";
+import { LanguageSwitcher } from "../ui/LanguageSwitcher";
+import { Reveal } from "../ui/Reveal";
 
 const navItems: Array<{ href: string; label: TranslationKey }> = [
-  { href: '#features', label: 'nav.features' },
-  { href: '#workflow', label: 'nav.workflow' },
-  { href: '#security', label: 'nav.security' },
-  { href: '#faq', label: 'nav.faq' },
-]
+  { href: "#features", label: "nav.features" },
+  { href: "#workflow", label: "nav.workflow" },
+  { href: "#security", label: "nav.security" },
+  { href: "#faq", label: "nav.faq" },
+];
 
 const workflow = [
-  { icon: FileUp, number: '01', title: 'landing.step1Title', body: 'landing.step1Body' },
-  { icon: FileSearch, number: '02', title: 'landing.step2Title', body: 'landing.step2Body' },
-  { icon: MessageSquareText, number: '03', title: 'landing.step3Title', body: 'landing.step3Body' },
-] as const
+  {
+    icon: FileUp,
+    number: "01",
+    title: "landing.step1Title",
+    body: "landing.step1Body",
+  },
+  {
+    icon: FileSearch,
+    number: "02",
+    title: "landing.step2Title",
+    body: "landing.step2Body",
+  },
+  {
+    icon: MessageSquareText,
+    number: "03",
+    title: "landing.step3Title",
+    body: "landing.step3Body",
+  },
+] as const;
 
 const features = [
-  { icon: BookOpen, title: 'landing.feature1Title', body: 'landing.feature1Body', index: '01' },
-  { icon: Library, title: 'landing.feature2Title', body: 'landing.feature2Body', index: '02' },
-  { icon: Search, title: 'landing.feature3Title', body: 'landing.feature3Body', index: '03' },
-  { icon: UsersRound, title: 'landing.feature4Title', body: 'landing.feature4Body', index: '04' },
-] as const
+  {
+    icon: BookOpen,
+    title: "landing.feature1Title",
+    body: "landing.feature1Body",
+    index: "01",
+  },
+  {
+    icon: Library,
+    title: "landing.feature2Title",
+    body: "landing.feature2Body",
+    index: "02",
+  },
+  {
+    icon: Search,
+    title: "landing.feature3Title",
+    body: "landing.feature3Body",
+    index: "03",
+  },
+  {
+    icon: UsersRound,
+    title: "landing.feature4Title",
+    body: "landing.feature4Body",
+    index: "04",
+  },
+] as const;
 
 const faqs = [
-  { question: 'landing.faq1Q', answer: 'landing.faq1A' },
-  { question: 'landing.faq2Q', answer: 'landing.faq2A' },
-  { question: 'landing.faq3Q', answer: 'landing.faq3A' },
-] as const
+  { question: "landing.faq1Q", answer: "landing.faq1A" },
+  { question: "landing.faq2Q", answer: "landing.faq2A" },
+  { question: "landing.faq3Q", answer: "landing.faq3A" },
+] as const;
 
 export function LandingPage() {
-  const { t } = useLanguage()
-  const [menuOpen, setMenuOpen] = useState(false)
-  const [openFaq, setOpenFaq] = useState(0)
+  const { t } = useLanguage();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [openFaq, setOpenFaq] = useState(0);
 
   function closeMenu() {
-    setMenuOpen(false)
+    setMenuOpen(false);
   }
 
   return (
@@ -73,24 +109,27 @@ export function LandingPage() {
           </nav>
           <div className="header-actions">
             <LanguageSwitcher />
-            <Link href="/login" className="text-link">
-              {t('common.login')}
+            <Link href={ROUTES.login} className="text-link">
+              {t("common.login")}
             </Link>
-            <Link href="/register" className="button button--primary button--small">
-              {t('common.register')}
+            <Link
+              href={ROUTES.register}
+              className="button button--primary button--small"
+            >
+              {t("common.register")}
             </Link>
           </div>
           <button
             type="button"
             className="mobile-menu-button"
-            aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+            aria-label={menuOpen ? "Close navigation" : "Open navigation"}
             aria-expanded={menuOpen}
             onClick={() => setMenuOpen((current) => !current)}
           >
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
-        <div className={`mobile-nav${menuOpen ? ' is-open' : ''}`}>
+        <div className={`mobile-nav${menuOpen ? " is-open" : ""}`}>
           <nav aria-label="Mobile navigation">
             {navItems.map((item) => (
               <a key={item.href} href={item.href} onClick={closeMenu}>
@@ -100,11 +139,19 @@ export function LandingPage() {
           </nav>
           <div className="mobile-nav-actions">
             <LanguageSwitcher />
-            <Link href="/login" className="button button--secondary" onClick={closeMenu}>
-              {t('common.login')}
+            <Link
+              href={ROUTES.login}
+              className="button button--secondary"
+              onClick={closeMenu}
+            >
+              {t("common.login")}
             </Link>
-            <Link href="/register" className="button button--primary" onClick={closeMenu}>
-              {t('common.register')}
+            <Link
+              href={ROUTES.register}
+              className="button button--primary"
+              onClick={closeMenu}
+            >
+              {t("common.register")}
             </Link>
           </div>
         </div>
@@ -115,16 +162,22 @@ export function LandingPage() {
           <div className="landing-container hero-grid">
             <Reveal className="hero-copy-reveal">
               <div className="hero-copy">
-                <p className="eyebrow">{t('landing.eyebrow')}</p>
-                <h1 id="hero-title">{t('landing.title')}</h1>
-                <p className="hero-lede">{t('landing.subtitle')}</p>
+                <p className="eyebrow">{t("landing.eyebrow")}</p>
+                <h1 id="hero-title">{t("landing.title")}</h1>
+                <p className="hero-lede">{t("landing.subtitle")}</p>
                 <div className="hero-ctas">
-                  <Link href="/register" className="button button--primary button--large">
-                    {t('landing.primaryCta')}
+                  <Link
+                    href={ROUTES.register}
+                    className="button button--primary button--large"
+                  >
+                    {t("landing.primaryCta")}
                     <ArrowRight size={18} />
                   </Link>
-                  <a href="#workflow" className="button button--secondary button--large">
-                    {t('landing.secondaryCta')}
+                  <a
+                    href="#workflow"
+                    className="button button--secondary button--large"
+                  >
+                    {t("landing.secondaryCta")}
                   </a>
                 </div>
                 <div className="hero-note">
@@ -135,9 +188,12 @@ export function LandingPage() {
             </Reveal>
 
             <Reveal className="hero-preview-reveal" delay={120}>
-              <div className="product-preview" aria-label={t('landing.proofLabel')}>
+              <div
+                className="product-preview"
+                aria-label={t("landing.proofLabel")}
+              >
                 <div className="preview-kicker">
-                  <span>{t('landing.proofLabel')}</span>
+                  <span>{t("landing.proofLabel")}</span>
                   <span className="preview-status">
                     <span />
                     AI READY
@@ -151,21 +207,25 @@ export function LandingPage() {
                     <strong>Lecture Notes.pdf</strong>
                     <span>Research Methods · 24 pages</span>
                   </div>
-                  <span className="preview-more" aria-hidden="true">•••</span>
+                  <span className="preview-more" aria-hidden="true">
+                    •••
+                  </span>
                 </div>
                 <div className="preview-chat">
-                  <div className="message message--user">{t('landing.question')}</div>
+                  <div className="message message--user">
+                    {t("landing.question")}
+                  </div>
                   <div className="message message--ai">
                     <span className="ai-mark">
                       <Sparkles size={16} />
                     </span>
                     <p>
-                      {t('landing.answer')}{' '}
+                      {t("landing.answer")}{" "}
                       <span className="citation" tabIndex={0}>
                         [1]
                         <span className="citation-tooltip" role="tooltip">
-                          <strong>{t('landing.source')}</strong>
-                          <span>{t('landing.citationHint')}</span>
+                          <strong>{t("landing.source")}</strong>
+                          <span>{t("landing.citationHint")}</span>
                         </span>
                       </span>
                     </p>
@@ -182,19 +242,27 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="workflow-section section-pad" id="workflow" aria-labelledby="workflow-title">
+        <section
+          className="workflow-section section-pad"
+          id="workflow"
+          aria-labelledby="workflow-title"
+        >
           <div className="landing-container">
             <Reveal>
               <div className="section-heading">
-                <p className="eyebrow">{t('landing.workflowEyebrow')}</p>
-                <h2 id="workflow-title">{t('landing.workflowTitle')}</h2>
+                <p className="eyebrow">{t("landing.workflowEyebrow")}</p>
+                <h2 id="workflow-title">{t("landing.workflowTitle")}</h2>
               </div>
             </Reveal>
             <div className="workflow-grid">
               {workflow.map((step, index) => {
-                const Icon = step.icon
+                const Icon = step.icon;
                 return (
-                  <Reveal key={step.number} className="workflow-reveal" delay={index * 100}>
+                  <Reveal
+                    key={step.number}
+                    className="workflow-reveal"
+                    delay={index * 100}
+                  >
                     <article className="workflow-card">
                       <div className="workflow-card-top">
                         <Icon size={24} />
@@ -204,23 +272,27 @@ export function LandingPage() {
                       <p>{t(step.body)}</p>
                     </article>
                   </Reveal>
-                )
+                );
               })}
             </div>
           </div>
         </section>
 
-        <section className="features-section section-pad" id="features" aria-labelledby="features-title">
+        <section
+          className="features-section section-pad"
+          id="features"
+          aria-labelledby="features-title"
+        >
           <div className="landing-container">
             <Reveal>
               <div className="section-heading section-heading--split">
-                <p className="eyebrow">{t('landing.featuresEyebrow')}</p>
-                <h2 id="features-title">{t('landing.featuresTitle')}</h2>
+                <p className="eyebrow">{t("landing.featuresEyebrow")}</p>
+                <h2 id="features-title">{t("landing.featuresTitle")}</h2>
               </div>
             </Reveal>
             <div className="feature-list-landing">
               {features.map((feature, index) => {
-                const Icon = feature.icon
+                const Icon = feature.icon;
                 return (
                   <Reveal key={feature.index} delay={index * 80}>
                     <article className="feature-row">
@@ -230,32 +302,52 @@ export function LandingPage() {
                       </div>
                       <h3>{t(feature.title)}</h3>
                       <p>{t(feature.body)}</p>
-                      <ArrowRight className="feature-arrow" size={20} aria-hidden="true" />
+                      <ArrowRight
+                        className="feature-arrow"
+                        size={20}
+                        aria-hidden="true"
+                      />
                     </article>
                   </Reveal>
-                )
+                );
               })}
             </div>
           </div>
         </section>
 
-        <section className="security-section section-pad" id="security" aria-labelledby="security-title">
+        <section
+          className="security-section section-pad"
+          id="security"
+          aria-labelledby="security-title"
+        >
           <div className="landing-container security-grid">
             <Reveal>
               <div className="security-left">
-                <p className="eyebrow eyebrow--amber">{t('landing.securityEyebrow')}</p>
-                <h2 id="security-title">{t('landing.securityTitle')}</h2>
+                <p className="eyebrow eyebrow--amber">
+                  {t("landing.securityEyebrow")}
+                </p>
+                <h2 id="security-title">{t("landing.securityTitle")}</h2>
                 <div className="security-seal" aria-hidden="true">
                   <ShieldCheck size={36} />
-                  <span>SOURCE<br />GROUNDED</span>
+                  <span>
+                    SOURCE
+                    <br />
+                    GROUNDED
+                  </span>
                 </div>
               </div>
             </Reveal>
             <Reveal delay={100}>
               <div className="security-copy">
-                <p>{t('landing.securityBody')}</p>
+                <p>{t("landing.securityBody")}</p>
                 <ul>
-                  {(['landing.security1', 'landing.security2', 'landing.security3'] as const).map((key) => (
+                  {(
+                    [
+                      "landing.security1",
+                      "landing.security2",
+                      "landing.security3",
+                    ] as const
+                  ).map((key) => (
                     <li key={key}>
                       <span>
                         <Check size={15} />
@@ -269,21 +361,29 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="faq-section section-pad" id="faq" aria-labelledby="faq-title">
+        <section
+          className="faq-section section-pad"
+          id="faq"
+          aria-labelledby="faq-title"
+        >
           <div className="landing-container faq-grid">
             <Reveal>
               <div className="section-heading">
-                <p className="eyebrow">{t('landing.faqEyebrow')}</p>
-                <h2 id="faq-title">{t('landing.faqTitle')}</h2>
+                <p className="eyebrow">{t("landing.faqEyebrow")}</p>
+                <h2 id="faq-title">{t("landing.faqTitle")}</h2>
               </div>
             </Reveal>
             <div className="faq-list">
               {faqs.map((faq, index) => {
-                const isOpen = openFaq === index
+                const isOpen = openFaq === index;
                 return (
                   <Reveal key={faq.question} delay={index * 90}>
-                    <article className={`faq-item${isOpen ? ' is-open' : ''}`}>
-                      <button type="button" aria-expanded={isOpen} onClick={() => setOpenFaq(isOpen ? -1 : index)}>
+                    <article className={`faq-item${isOpen ? " is-open" : ""}`}>
+                      <button
+                        type="button"
+                        aria-expanded={isOpen}
+                        onClick={() => setOpenFaq(isOpen ? -1 : index)}
+                      >
                         <span>{t(faq.question)}</span>
                         <ChevronDown size={20} />
                       </button>
@@ -294,7 +394,7 @@ export function LandingPage() {
                       </div>
                     </article>
                   </Reveal>
-                )
+                );
               })}
             </div>
           </div>
@@ -304,10 +404,13 @@ export function LandingPage() {
           <div className="landing-container final-cta-inner">
             <Reveal>
               <p className="eyebrow eyebrow--amber">DOCUMIND</p>
-              <h2>{t('landing.finalTitle')}</h2>
-              <p>{t('landing.finalBody')}</p>
-              <Link href="/register" className="button button--amber button--large">
-                {t('common.register')}
+              <h2>{t("landing.finalTitle")}</h2>
+              <p>{t("landing.finalBody")}</p>
+              <Link
+                href={ROUTES.register}
+                className="button button--amber button--large"
+              >
+                {t("common.register")}
                 <ArrowRight size={18} />
               </Link>
             </Reveal>
@@ -318,13 +421,13 @@ export function LandingPage() {
       <footer className="landing-footer">
         <div className="landing-container footer-inner">
           <Brand compact />
-          <p>{t('landing.footerCopy')}</p>
+          <p>{t("landing.footerCopy")}</p>
           <div>
-            <a href="#features">{t('nav.features')}</a>
-            <Link href="/login">{t('common.login')}</Link>
+            <a href="#features">{t("nav.features")}</a>
+            <Link href={ROUTES.login}>{t("common.login")}</Link>
           </div>
         </div>
       </footer>
     </div>
-  )
+  );
 }
