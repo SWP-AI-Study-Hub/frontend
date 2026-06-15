@@ -7,7 +7,7 @@ export const ACCEPTED_FILE_EXTENSIONS = ['pdf', 'docx', 'pptx', 'xlsx']
 const seedDocuments: LibraryDocument[] = [
   {
     id: '79c555d8-b4ce-4d98-9f93-15f2fe1c9813',
-    title: 'Ghi chú về hệ thống phân tán',
+    title: 'Distributed Systems Field Notes',
     description: 'Đồng thuận, sao chép, mô hình lỗi và các đánh đổi trong thiết kế hệ thống.',
     subject: 'Khoa học máy tính',
     category: 'Hệ thống',
@@ -22,7 +22,7 @@ const seedDocuments: LibraryDocument[] = [
   },
   {
     id: '16f32b32-68da-43bf-86a3-c9ad003a8a39',
-    title: 'Cẩm nang phương pháp nghiên cứu',
+    title: 'Research Methods Handbook',
     description: 'Câu hỏi nghiên cứu, tổng quan tài liệu, lấy mẫu và chất lượng bằng chứng.',
     subject: 'Nghiên cứu',
     category: 'Phương pháp luận',
@@ -37,7 +37,7 @@ const seedDocuments: LibraryDocument[] = [
   },
   {
     id: '26ce9f92-23ad-4bba-b197-9196fb0c5ad6',
-    title: 'Ôn tập học máy ứng dụng',
+    title: 'Applied Machine Learning Review',
     description: 'Lựa chọn mô hình, chỉ số đánh giá, rò rỉ dữ liệu và kiểm tra triển khai.',
     subject: 'Trí tuệ nhân tạo',
     category: 'Học máy',
@@ -52,7 +52,7 @@ const seedDocuments: LibraryDocument[] = [
   },
   {
     id: '9433ffbd-2fed-40b3-a7a3-16ef4153503e',
-    title: 'Giải thích về lập chỉ mục cơ sở dữ liệu',
+    title: 'Database Indexing Explained',
     description: 'B-tree, chỉ mục kết hợp, kế hoạch truy vấn và các lỗi hiệu năng thường gặp.',
     subject: 'Khoa học máy tính',
     category: 'Cơ sở dữ liệu',

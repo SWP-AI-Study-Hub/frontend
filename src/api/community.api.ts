@@ -3,7 +3,7 @@ import type { CommunityDocument } from '../types/community'
 export const communityDocuments: CommunityDocument[] = [
   {
     id: '79c555d8-b4ce-4d98-9f93-15f2fe1c9813',
-    title: 'Ghi chú về hệ thống phân tán',
+    title: 'Distributed Systems Field Notes',
     description:
       'Ghi chú cô đọng về đồng thuận, sao chép, mô hình lỗi và các đánh đổi trong thiết kế hệ thống.',
     subject: 'Khoa học máy tính',
@@ -17,7 +17,7 @@ export const communityDocuments: CommunityDocument[] = [
   },
   {
     id: '16f32b32-68da-43bf-86a3-c9ad003a8a39',
-    title: 'Cẩm nang phương pháp nghiên cứu',
+    title: 'Research Methods Handbook',
     description:
       'Hướng dẫn có cấu trúc về câu hỏi nghiên cứu, tổng quan tài liệu, lấy mẫu và chất lượng bằng chứng.',
     subject: 'Nghiên cứu',
@@ -31,7 +31,7 @@ export const communityDocuments: CommunityDocument[] = [
   },
   {
     id: '26ce9f92-23ad-4bba-b197-9196fb0c5ad6',
-    title: 'Ôn tập học máy ứng dụng',
+    title: 'Applied Machine Learning Review',
     description:
       'Giải thích bằng ví dụ về lựa chọn mô hình, chỉ số đánh giá, rò rỉ dữ liệu và kiểm tra triển khai.',
     subject: 'Trí tuệ nhân tạo',
@@ -45,7 +45,7 @@ export const communityDocuments: CommunityDocument[] = [
   },
   {
     id: 'bc5df6ac-1334-4a6e-8acd-4d822985b481',
-    title: 'Mẫu viết học thuật',
+    title: 'Academic Writing Patterns',
     description:
       'Các cấu trúc có thể tái sử dụng cho lập luận, đoạn tổng hợp, trích dẫn và văn phong kỹ thuật rõ ràng.',
     subject: 'Ngôn ngữ',
@@ -59,7 +59,7 @@ export const communityDocuments: CommunityDocument[] = [
   },
   {
     id: '9433ffbd-2fed-40b3-a7a3-16ef4153503e',
-    title: 'Giải thích về lập chỉ mục cơ sở dữ liệu',
+    title: 'Database Indexing Explained',
     description:
       'B-tree, chỉ mục kết hợp, kế hoạch truy vấn và các lỗi hiệu năng thường gặp trong cơ sở dữ liệu quan hệ.',
     subject: 'Khoa học máy tính',
@@ -73,7 +73,7 @@ export const communityDocuments: CommunityDocument[] = [
   },
   {
     id: '132b3ce6-62bd-4a43-ad69-a119752ed09c',
-    title: 'Hội thảo khám phá sản phẩm',
+    title: 'Product Discovery Workshop',
     description:
       'Câu hỏi phỏng vấn, bản đồ cơ hội, kiểm thử giả định và mẫu hội thảo cho đội ngũ sản phẩm.',
     subject: 'Kinh doanh',

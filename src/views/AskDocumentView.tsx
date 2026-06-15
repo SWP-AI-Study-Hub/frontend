@@ -96,7 +96,7 @@ export function AskDocumentView() {
           <header className="panel-toolbar">
             <div>
               <span className="file-type-badge">PDF</span>
-              <strong>Ghi chú về hệ thống phân tán</strong>
+              <strong>Distributed Systems Field Notes</strong>
             </div>
             <button className="icon-button" type="button" title="Thu gọn bản xem trước">
               <PanelLeftClose size={18} />

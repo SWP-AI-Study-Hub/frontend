@@ -19,7 +19,7 @@ export function SavedView() {
             <FileText size={20} />
           </span>
           <div>
-            <strong>Ứng dụng thực tế của kỹ thuật RAG</strong>
+            <strong>Practical Retrieval-Augmented Generation</strong>
             <p>Trí tuệ nhân tạo / Đã lưu từ cộng đồng</p>
           </div>
           <Link href={ROUTES.askDocument}>
@@ -32,7 +32,7 @@ export function SavedView() {
             <Bookmark size={20} />
           </span>
           <div>
-            <strong>Giải thích về lập chỉ mục cơ sở dữ liệu</strong>
+            <strong>Database Indexing Explained</strong>
             <p>Khoa học máy tính / Thư viện riêng tư</p>
           </div>
           <Link href={ROUTES.askDocument}>

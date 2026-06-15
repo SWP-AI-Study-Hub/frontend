@@ -42,7 +42,7 @@ export function UploadDocumentView() {
     if (error) return;
     setFile(nextFile);
     if (!title) {
-      setTitle(nextFile.name.replace(/\.[^.]+$/, "").replaceAll("-", " "));
+      setTitle(nextFile.name);
     }
   }
 

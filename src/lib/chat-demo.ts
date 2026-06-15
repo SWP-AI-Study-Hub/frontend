@@ -3,7 +3,7 @@ import type { AiChatResponse, Citation } from '../types/chat'
 const documentCitation: Citation = {
   sourceNumber: 1,
   documentId: '79c555d8-b4ce-4d98-9f93-15f2fe1c9813',
-  title: 'Ghi chú về hệ thống phân tán',
+  title: 'Distributed Systems Field Notes',
   snippet:
     'Giao thức đồng thuận đánh đổi thêm chi phí phối hợp để đạt được một thứ tự chuyển trạng thái thống nhất.',
   relevanceScore: 0.94,
@@ -38,7 +38,7 @@ export function demoLibraryAnswer(question: string): AiChatResponse {
       {
         sourceNumber: 2,
         documentId: '16f32b32-68da-43bf-86a3-c9ad003a8a39',
-        title: 'Cẩm nang phương pháp nghiên cứu',
+        title: 'Research Methods Handbook',
         snippet:
           'Đối chiếu tam giác tăng độ tin cậy bằng cách so sánh bằng chứng thu thập từ nhiều phương pháp hoặc nguồn khác nhau.',
         relevanceScore: 0.88,
@@ -46,7 +46,7 @@ export function demoLibraryAnswer(question: string): AiChatResponse {
       {
         sourceNumber: 3,
         documentId: '9433ffbd-2fed-40b3-a7a3-16ef4153503e',
-        title: 'Giải thích về lập chỉ mục cơ sở dữ liệu',
+        title: 'Database Indexing Explained',
         snippet:
           'Kế hoạch truy vấn cần được kiểm tra theo mẫu truy cập thực tế thay vì chỉ tối ưu dựa trên trực giác.',
         relevanceScore: 0.76,
