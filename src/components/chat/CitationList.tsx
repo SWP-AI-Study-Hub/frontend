@@ -15,7 +15,7 @@ export function CitationList({
   if (citations.length === 0) return null
 
   return (
-    <div className="citation-list" aria-label="Answer sources">
+    <div className="citation-list" aria-label="Nguồn của câu trả lời">
       {citations.map((citation) => (
         <button
           type="button"

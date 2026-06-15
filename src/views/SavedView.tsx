@@ -6,11 +6,11 @@ export function SavedView() {
   return (
     <main id="main-content" className="simple-workspace-page">
       <header>
-        <p className="eyebrow">SAVED</p>
-        <h1>Your bookmarked study sources.</h1>
+        <p className="eyebrow">ĐÃ LƯU</p>
+        <h1>Các nguồn học tập bạn đã đánh dấu.</h1>
         <p>
-          Return to useful community material and continue asking grounded
-          questions.
+          Quay lại những tài liệu cộng đồng hữu ích và tiếp tục đặt câu hỏi có
+          căn cứ.
         </p>
       </header>
       <section className="saved-source-list">
@@ -19,8 +19,8 @@ export function SavedView() {
             <FileText size={20} />
           </span>
           <div>
-            <strong>Practical Retrieval-Augmented Generation</strong>
-            <p>Artificial Intelligence / Saved from Community</p>
+            <strong>Ứng dụng thực tế của kỹ thuật RAG</strong>
+            <p>Trí tuệ nhân tạo / Đã lưu từ cộng đồng</p>
           </div>
           <Link href={ROUTES.askDocument}>
             <Sparkles size={15} />
@@ -32,8 +32,8 @@ export function SavedView() {
             <Bookmark size={20} />
           </span>
           <div>
-            <strong>Database Indexing Explained</strong>
-            <p>Computer Science / Private library</p>
+            <strong>Giải thích về lập chỉ mục cơ sở dữ liệu</strong>
+            <p>Khoa học máy tính / Thư viện riêng tư</p>
           </div>
           <Link href={ROUTES.askDocument}>
             <Sparkles size={15} />

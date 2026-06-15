@@ -90,11 +90,11 @@ export function UploadDocumentView() {
   return (
     <main id="main-content" className="upload-page">
       <header className="upload-heading">
-        <p className="eyebrow">UPLOAD DOCUMENT</p>
-        <h1>Add a source to your knowledge library.</h1>
+        <p className="eyebrow">TẢI TÀI LIỆU LÊN</p>
+        <h1>Thêm nguồn vào thư viện kiến thức.</h1>
         <p>
-          DocuMind validates the file, stores its metadata, then prepares the
-          content for grounded AI answers.
+          DocuMind kiểm tra tệp, lưu metadata và chuẩn bị nội dung để AI trả lời
+          có căn cứ.
         </p>
       </header>
 
@@ -104,21 +104,22 @@ export function UploadDocumentView() {
             <Check size={24} />
           </span>
           <div>
-            <p className="eyebrow">UPLOAD COMPLETE</p>
+            <p className="eyebrow">TẢI LÊN HOÀN TẤT</p>
             <h2>{createdDocument.title}</h2>
             <p>
-              The file is saved. Text extraction and AI indexing are now
-              processing.
+              Tệp đã được lưu. Hệ thống đang trích xuất văn bản và lập chỉ mục
+              AI.
             </p>
             <div className="extraction-steps">
               <span className="done">
-                <Check size={14} /> File validated
+                <Check size={14} /> Đã kiểm tra tệp
               </span>
               <span className="done">
-                <Check size={14} /> Metadata saved
+                <Check size={14} /> Đã lưu metadata
               </span>
               <span className="processing">
-                <LoaderCircle className="spin" size={14} /> Extracting content
+                <LoaderCircle className="spin" size={14} /> Đang trích xuất nội
+                dung
               </span>
             </div>
             <div className="upload-success-actions">
@@ -130,7 +131,7 @@ export function UploadDocumentView() {
                 className="secondary-button"
                 onClick={() => window.location.reload()}
               >
-                Upload another
+                Tải tệp khác
               </button>
             </div>
           </div>
@@ -165,7 +166,7 @@ export function UploadDocumentView() {
                   </span>
                   <div>
                     <strong>{file.name}</strong>
-                    <p>{formatFileSize(file.size)} / Ready to upload</p>
+                    <p>{formatFileSize(file.size)} / Sẵn sàng tải lên</p>
                   </div>
                   <button
                     type="button"
@@ -180,14 +181,14 @@ export function UploadDocumentView() {
                   <span className="upload-cloud">
                     <CloudUpload size={28} />
                   </span>
-                  <strong>Drop your study document here</strong>
-                  <p>PDF, DOCX, PPTX, or XLSX / Maximum 20 MB</p>
+                  <strong>Thả tài liệu học tập vào đây</strong>
+                  <p>PDF, DOCX, PPTX hoặc XLSX / Tối đa 20 MB</p>
                   <button
                     type="button"
                     className="secondary-button"
                     onClick={() => inputRef.current?.click()}
                   >
-                    Choose file
+                    Chọn tệp
                   </button>
                 </>
               )}
@@ -198,13 +199,13 @@ export function UploadDocumentView() {
               <div className="section-heading">
                 <span>01</span>
                 <div>
-                  <strong>Document details</strong>
-                  <p>Clear metadata makes retrieval more reliable.</p>
+                  <strong>Thông tin tài liệu</strong>
+                  <p>Metadata rõ ràng giúp việc truy xuất chính xác hơn.</p>
                 </div>
               </div>
               <div className="upload-form-grid">
                 <label className="full-field">
-                  Document title
+                  Tiêu đề tài liệu
                   <input
                     value={title}
                     onChange={(event) => setTitle(event.target.value)}
@@ -213,7 +214,7 @@ export function UploadDocumentView() {
                   />
                 </label>
                 <label className="full-field">
-                  Description
+                  Mô tả
                   <textarea
                     value={description}
                     onChange={(event) => setDescription(event.target.value)}
@@ -221,35 +222,35 @@ export function UploadDocumentView() {
                   />
                 </label>
                 <label>
-                  Subject
+                  Môn học
                   <select
                     value={subject}
                     onChange={(event) => setSubject(event.target.value)}
                     required
                   >
-                    <option value="">Select subject</option>
-                    <option>Computer Science</option>
-                    <option>Artificial Intelligence</option>
-                    <option>Research</option>
-                    <option>Business</option>
+                    <option value="">Chọn môn học</option>
+                    <option>Khoa học máy tính</option>
+                    <option>Trí tuệ nhân tạo</option>
+                    <option>Nghiên cứu</option>
+                    <option>Kinh doanh</option>
                   </select>
                 </label>
                 <label>
-                  Category
+                  Danh mục
                   <select
                     value={category}
                     onChange={(event) => setCategory(event.target.value)}
                     required
                   >
-                    <option value="">Select category</option>
-                    <option>Lecture Notes</option>
-                    <option>Research Paper</option>
-                    <option>Methodology</option>
-                    <option>Reference</option>
+                    <option value="">Chọn danh mục</option>
+                    <option>Ghi chú bài giảng</option>
+                    <option>Bài báo nghiên cứu</option>
+                    <option>Phương pháp luận</option>
+                    <option>Tài liệu tham khảo</option>
                   </select>
                 </label>
                 <label className="full-field">
-                  Tags
+                  Thẻ
                   <div className="tag-input">
                     <input
                       value={tagInput}
@@ -260,10 +261,10 @@ export function UploadDocumentView() {
                           addTag();
                         }
                       }}
-                      placeholder="Type a tag and press Enter"
+                      placeholder="Nhập thẻ và nhấn Enter"
                     />
                     <button type="button" onClick={addTag}>
-                      Add
+                      Thêm
                     </button>
                   </div>
                   {tags.length > 0 ? (
@@ -294,8 +295,8 @@ export function UploadDocumentView() {
               <div className="section-heading">
                 <span>02</span>
                 <div>
-                  <strong>Visibility</strong>
-                  <p>Choose who can discover this source.</p>
+                  <strong>Quyền hiển thị</strong>
+                  <p>Chọn người có thể tìm thấy nguồn này.</p>
                 </div>
               </div>
               <div className="visibility-options">
@@ -306,8 +307,8 @@ export function UploadDocumentView() {
                 >
                   <Lock size={18} />
                   <span>
-                    <strong>Private</strong>
-                    <small>Only you can access this file</small>
+                    <strong>Riêng tư</strong>
+                    <small>Chỉ bạn có thể truy cập tệp này</small>
                   </span>
                 </button>
                 <button
@@ -317,27 +318,27 @@ export function UploadDocumentView() {
                 >
                   <Sparkles size={18} />
                   <span>
-                    <strong>Community</strong>
-                    <small>Share it as a public study source</small>
+                    <strong>Cộng đồng</strong>
+                    <small>Chia sẻ dưới dạng nguồn học tập công khai</small>
                   </span>
                 </button>
               </div>
             </div>
 
             <div className="extraction-preview">
-              <p className="eyebrow">WHAT HAPPENS NEXT</p>
+              <p className="eyebrow">CÁC BƯỚC TIẾP THEO</p>
               <ol>
                 <li>
-                  <span>1</span> Validate file and metadata
+                  <span>1</span> Kiểm tra tệp và metadata
                 </li>
                 <li>
-                  <span>2</span> Store document securely
+                  <span>2</span> Lưu tài liệu an toàn
                 </li>
                 <li>
-                  <span>3</span> Extract readable content
+                  <span>3</span> Trích xuất nội dung có thể đọc
                 </li>
                 <li>
-                  <span>4</span> Prepare grounded AI retrieval
+                  <span>4</span> Chuẩn bị dữ liệu truy xuất cho AI
                 </li>
               </ol>
             </div>
@@ -345,7 +346,7 @@ export function UploadDocumentView() {
             {isUploading ? (
               <div className="upload-progress">
                 <div>
-                  <strong>Preparing your document...</strong>
+                  <strong>Đang chuẩn bị tài liệu...</strong>
                   <span>{progress}%</span>
                 </div>
                 <span className="progress-track">
@@ -353,10 +354,10 @@ export function UploadDocumentView() {
                 </span>
                 <p>
                   {progress < 50
-                    ? "Uploading securely..."
+                    ? "Đang tải lên an toàn..."
                     : progress < 90
-                      ? "Reading source content..."
-                      : "Finalizing metadata..."}
+                      ? "Đang đọc nội dung nguồn..."
+                      : "Đang hoàn tất metadata..."}
                 </p>
               </div>
             ) : null}
@@ -378,7 +379,7 @@ export function UploadDocumentView() {
               ) : (
                 <CloudUpload size={18} />
               )}
-              {isUploading ? "Uploading..." : "Upload and prepare for AI"}
+              {isUploading ? "Đang tải lên..." : "Tải lên và chuẩn bị cho AI"}
             </button>
           </aside>
         </form>

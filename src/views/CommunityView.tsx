@@ -42,11 +42,11 @@ export function CommunityView() {
   return (
     <main id="main-content" className="community-page">
       <header className="community-heading">
-        <p className="eyebrow">COMMUNITY LIBRARY</p>
-        <h1>Useful knowledge, shared with context.</h1>
+        <p className="eyebrow">THƯ VIỆN CỘNG ĐỒNG</p>
+        <h1>Kiến thức hữu ích, được chia sẻ đầy đủ ngữ cảnh.</h1>
         <p>
-          Discover public study materials, inspect their academic focus, and save the
-          strongest sources into your own library.
+          Khám phá tài liệu học tập công khai, xem trọng tâm học thuật và lưu
+          những nguồn phù hợp nhất vào thư viện của bạn.
         </p>
       </header>
 
@@ -56,13 +56,13 @@ export function CommunityView() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Ask AI to find useful public study materials..."
+            placeholder="Nhờ AI tìm tài liệu học tập công khai hữu ích..."
           />
-          <button type="button" aria-label="Search community">
+          <button type="button" aria-label="Tìm kiếm trong cộng đồng">
             <Search size={18} />
           </button>
         </div>
-        <div className="category-tabs" role="tablist" aria-label="Document categories">
+        <div className="category-tabs" role="tablist" aria-label="Danh mục tài liệu">
           {categories.map((item) => (
             <button
               type="button"
@@ -72,7 +72,7 @@ export function CommunityView() {
               key={item}
               onClick={() => setCategory(item)}
             >
-              {item}
+              {item === 'All' ? 'Tất cả' : item}
             </button>
           ))}
         </div>
@@ -80,12 +80,12 @@ export function CommunityView() {
 
       <div className="community-results-heading">
         <div>
-          <strong>{filteredDocuments.length} public documents</strong>
-          <span>Curated by the DocuMind learning community</span>
+          <strong>{filteredDocuments.length} tài liệu công khai</strong>
+          <span>Được tuyển chọn bởi cộng đồng học tập DocuMind</span>
         </div>
         <span className="ai-summary-badge">
           <Sparkles size={14} />
-          AI summaries available
+          Có bản tóm tắt bằng AI
         </span>
       </div>
 
@@ -98,7 +98,7 @@ export function CommunityView() {
                 <div className={`community-cover community-cover--${document.accent}`}>
                   <span>{document.fileType}</span>
                   <strong>{document.subject}</strong>
-                  <small>{document.pages} pages</small>
+                  <small>{document.pages} trang</small>
                 </div>
                 <div className="community-card-body">
                   <div className="community-card-meta">
@@ -113,7 +113,7 @@ export function CommunityView() {
                     </span>
                     <span>
                       <strong>{document.owner}</strong>
-                      <small>{document.savedCount + (isSaved ? 1 : 0)} saves</small>
+                      <small>{document.savedCount + (isSaved ? 1 : 0)} lượt lưu</small>
                     </span>
                   </div>
                   <button
@@ -122,7 +122,7 @@ export function CommunityView() {
                     onClick={() => toggleSaved(document.id)}
                   >
                     {isSaved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
-                    {isSaved ? 'Saved to My Library' : 'Save to My Library'}
+                    {isSaved ? 'Đã lưu vào thư viện' : 'Lưu vào thư viện'}
                   </button>
                 </div>
               </article>
@@ -132,8 +132,8 @@ export function CommunityView() {
       ) : (
         <div className="soft-empty-state community-empty">
           <Search size={30} />
-          <strong>No public documents match this search</strong>
-          <p>Try a broader topic or switch to another category.</p>
+          <strong>Không có tài liệu công khai phù hợp</strong>
+          <p>Thử chủ đề rộng hơn hoặc chuyển sang danh mục khác.</p>
         </div>
       )}
     </main>

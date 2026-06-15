@@ -30,6 +30,16 @@ function DocumentIcon({ type }: { type: string }) {
   );
 }
 
+function getIndexStatusLabel(status: LibraryDocument["indexStatus"]) {
+  if (status === "READY") return "AI sẵn sàng";
+  if (status === "PROCESSING") return "Đang xử lý";
+  return "Thất bại";
+}
+
+function getVisibilityLabel(visibility: LibraryDocument["visibility"]) {
+  return visibility === "PRIVATE" ? "riêng tư" : "công khai";
+}
+
 export function LibraryView() {
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState("");
@@ -61,16 +71,16 @@ export function LibraryView() {
     <main id="main-content" className="library-page">
       <header className="library-page-heading">
         <div>
-          <p className="eyebrow">MY LIBRARY</p>
-          <h1>Your documents, ready to think with.</h1>
+          <p className="eyebrow">THƯ VIỆN CỦA TÔI</p>
+          <h1>Tài liệu của bạn, sẵn sàng để khám phá.</h1>
           <p>
-            Search metadata and content, inspect indexing status, or continue
-            with AI.
+            Tìm kiếm nội dung và metadata, kiểm tra trạng thái lập chỉ mục hoặc
+            tiếp tục với AI.
           </p>
         </div>
         <Link href={ROUTES.upload} className="primary-button">
           <Upload size={17} />
-          Upload document
+          Tải tài liệu lên
         </Link>
       </header>
 
@@ -80,7 +90,7 @@ export function LibraryView() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search by content, title, or tag..."
+            placeholder="Tìm theo nội dung, tiêu đề hoặc thẻ..."
           />
         </label>
         <div className="library-filters">
@@ -88,7 +98,7 @@ export function LibraryView() {
             value={subject}
             onChange={(event) => setSubject(event.target.value)}
           >
-            <option value="">All subjects</option>
+            <option value="">Tất cả môn học</option>
             {subjects.map((item) => (
               <option key={item}>{item}</option>
             ))}
@@ -97,7 +107,7 @@ export function LibraryView() {
             value={fileType}
             onChange={(event) => setFileType(event.target.value)}
           >
-            <option value="">All file types</option>
+            <option value="">Tất cả loại tệp</option>
             {["PDF", "DOCX", "PPTX", "XLSX"].map((item) => (
               <option key={item}>{item}</option>
             ))}
@@ -106,17 +116,17 @@ export function LibraryView() {
             value={status}
             onChange={(event) => setStatus(event.target.value)}
           >
-            <option value="">All indexing states</option>
-            <option value="READY">AI ready</option>
-            <option value="PROCESSING">Processing</option>
-            <option value="FAILED">Failed</option>
+            <option value="">Tất cả trạng thái lập chỉ mục</option>
+            <option value="READY">AI sẵn sàng</option>
+            <option value="PROCESSING">Đang xử lý</option>
+            <option value="FAILED">Thất bại</option>
           </select>
-          <div className="view-toggle" aria-label="Library view">
+          <div className="view-toggle" aria-label="Kiểu hiển thị thư viện">
             <button
               type="button"
               className={view === "table" ? "active" : undefined}
               onClick={() => setView("table")}
-              title="List view"
+              title="Dạng danh sách"
             >
               <List size={17} />
             </button>
@@ -124,7 +134,7 @@ export function LibraryView() {
               type="button"
               className={view === "grid" ? "active" : undefined}
               onClick={() => setView("grid")}
-              title="Grid view"
+              title="Dạng lưới"
             >
               <Grid2X2 size={17} />
             </button>
@@ -133,32 +143,32 @@ export function LibraryView() {
       </section>
 
       <div className="library-result-count">
-        <strong>{filteredDocuments.length} documents</strong>
+        <strong>{filteredDocuments.length} tài liệu</strong>
         <span>
           {
             documents.filter((document) => document.indexStatus === "READY")
               .length
           }{" "}
-          AI ready
+          AI sẵn sàng
         </span>
       </div>
 
       {filteredDocuments.length === 0 ? (
         <div className="soft-empty-state library-empty">
           <Search size={28} />
-          <strong>No matching documents</strong>
-          <p>Clear a filter or upload a new source to your library.</p>
+          <strong>Không có tài liệu phù hợp</strong>
+          <p>Xóa bộ lọc hoặc tải nguồn tài liệu mới lên thư viện.</p>
         </div>
       ) : view === "table" ? (
         <div className="library-table-wrap">
           <table className="library-table">
             <thead>
               <tr>
-                <th>Document title</th>
-                <th>Subject</th>
-                <th>Upload date</th>
-                <th>AI index</th>
-                <th>Actions</th>
+                <th>Tiêu đề tài liệu</th>
+                <th>Môn học</th>
+                <th>Ngày tải lên</th>
+                <th>Chỉ mục AI</th>
+                <th>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -174,34 +184,34 @@ export function LibraryView() {
                         <small>
                           {document.fileType} /{" "}
                           {formatFileSize(document.fileSize)} /{" "}
-                          {document.visibility.toLowerCase()}
+                          {getVisibilityLabel(document.visibility)}
                         </small>
                       </span>
                     </div>
                   </td>
                   <td>{document.subject}</td>
-                  <td>{new Date(document.uploadedAt).toLocaleDateString()}</td>
+                  <td>
+                    {new Date(document.uploadedAt).toLocaleDateString("vi-VN")}
+                  </td>
                   <td>
                     <span
                       className={`index-status index-status--${document.indexStatus.toLowerCase()}`}
                     >
-                      {document.indexStatus === "READY"
-                        ? "AI ready"
-                        : document.indexStatus.toLowerCase()}
+                      {getIndexStatusLabel(document.indexStatus)}
                     </span>
                   </td>
                   <td>
                     <div className="document-actions">
                       <button
                         type="button"
-                        title="Preview"
+                        title="Xem trước"
                         onClick={() => setPreviewDocument(document)}
                       >
                         <Eye size={16} />
                       </button>
                       <button
                         type="button"
-                        title="Download"
+                        title="Tải xuống"
                         onClick={() => downloadDemoDocument(document)}
                       >
                         <Download size={16} />
@@ -211,7 +221,7 @@ export function LibraryView() {
                         className="ask-document-action"
                       >
                         <Bot size={16} />
-                        Ask AI
+                        Hỏi AI
                       </Link>
                     </div>
                   </td>
@@ -231,9 +241,7 @@ export function LibraryView() {
                 <span
                   className={`index-status index-status--${document.indexStatus.toLowerCase()}`}
                 >
-                  {document.indexStatus === "READY"
-                    ? "AI ready"
-                    : document.indexStatus.toLowerCase()}
+                  {getIndexStatusLabel(document.indexStatus)}
                 </span>
               </div>
               <div>
@@ -247,21 +255,21 @@ export function LibraryView() {
               <div className="document-actions">
                 <button
                   type="button"
-                  title="Preview"
+                  title="Xem trước"
                   onClick={() => setPreviewDocument(document)}
                 >
                   <Eye size={16} />
                 </button>
                 <button
                   type="button"
-                  title="Download"
+                  title="Tải xuống"
                   onClick={() => downloadDemoDocument(document)}
                 >
                   <Download size={16} />
                 </button>
                 <Link href={ROUTES.askDocument} className="ask-document-action">
                   <Bot size={16} />
-                  Ask AI
+                  Hỏi AI
                 </Link>
               </div>
             </article>
@@ -279,7 +287,7 @@ export function LibraryView() {
             className="preview-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label={`Preview ${previewDocument.title}`}
+            aria-label={`Xem trước ${previewDocument.title}`}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <header>
@@ -305,8 +313,8 @@ export function LibraryView() {
               <h2>{previewDocument.title}</h2>
               <p>{previewDocument.description}</p>
               <blockquote>
-                AI preview is ready. Open Ask This Document to explore this
-                source with grounded citations.
+                Bản xem trước đã sẵn sàng. Mở mục Hỏi tài liệu này để khám phá
+                nguồn với các trích dẫn được đối chiếu.
               </blockquote>
             </div>
             <footer>
@@ -316,11 +324,11 @@ export function LibraryView() {
                 onClick={() => downloadDemoDocument(previewDocument)}
               >
                 <Download size={16} />
-                Download
+                Tải xuống
               </button>
               <Link href={ROUTES.askDocument} className="primary-button">
                 <Bot size={16} />
-                Ask AI
+                Hỏi AI
               </Link>
             </footer>
           </article>

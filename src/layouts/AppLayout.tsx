@@ -117,7 +117,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <button
           type="button"
           className="sidebar-backdrop"
-          aria-label="Close navigation"
+          aria-label="Đóng thanh điều hướng"
           onClick={() => setIsMobileNavOpen(false)}
         />
       ) : null}
@@ -128,31 +128,31 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <button
             type="button"
             className="sidebar-close-mobile"
-            aria-label="Close navigation"
+            aria-label="Đóng thanh điều hướng"
             onClick={() => setIsMobileNavOpen(false)}
           >
             <X size={19} />
           </button>
         </div>
 
-        <nav className="side-nav" aria-label="Workspace navigation">
-          <span className="side-nav-label">Workspace</span>
+        <nav className="side-nav" aria-label="Điều hướng không gian học tập">
+          <span className="side-nav-label">Không gian học tập</span>
           {workspaceNav.map(renderLink)}
         </nav>
 
-        <nav className="side-nav side-nav--ai" aria-label="AI navigation">
+        <nav className="side-nav side-nav--ai" aria-label="Điều hướng AI">
           <span className="side-nav-label">
             <Sparkles size={13} />
-            Ask AI
+            Hỏi AI
           </span>
           {aiNav.map(renderLink)}
         </nav>
 
         <nav
           className="side-nav side-nav--utility"
-          aria-label="Account navigation"
+          aria-label="Điều hướng tài khoản"
         >
-          <span className="side-nav-label">Account</span>
+          <span className="side-nav-label">Tài khoản</span>
           {accountNav.map(renderLink)}
           {user?.role === "ADMIN"
             ? renderLink({
@@ -167,11 +167,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
           type="button"
           className="sidebar-collapse"
           onClick={() => setIsSidebarCompact((current) => !current)}
-          aria-label={isSidebarCompact ? "Expand sidebar" : "Collapse sidebar"}
-          title={isSidebarCompact ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={
+            isSidebarCompact ? "Mở rộng thanh bên" : "Thu gọn thanh bên"
+          }
+          title={isSidebarCompact ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
         >
           <PanelLeftClose size={17} />
-          <span>Collapse sidebar</span>
+          <span>Thu gọn thanh bên</span>
         </button>
       </aside>
 
@@ -180,7 +182,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <button
             type="button"
             className="mobile-menu-button"
-            aria-label="Open navigation"
+            aria-label="Mở thanh điều hướng"
             aria-expanded={isMobileNavOpen}
             onClick={() => setIsMobileNavOpen(true)}
           >
