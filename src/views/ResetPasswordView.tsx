@@ -1,28 +1,47 @@
 'use client'
 
-import { FormEvent, useState } from 'react'
+import { FormEvent, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { KeyRound } from 'lucide-react'
-import { resetPassword } from '../api/auth.api'
+import { CheckCircle2, KeyRound, LoaderCircle } from 'lucide-react'
+import { resetPassword, verifyResetPasswordCode } from '../api/auth.api'
 import { useLanguage } from '../i18n/LanguageProvider'
+
+type LinkState = 'checking' | 'valid' | 'invalid' | 'completed'
 
 export function ResetPasswordView() {
   const { t } = useLanguage()
-  const searchParams = useSearchParams()
-  const code = searchParams?.get('oobCode') ?? ''
+  const [code, setCode] = useState('')
+  const [accountEmail, setAccountEmail] = useState('')
+  const [linkState, setLinkState] = useState<LinkState>('checking')
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search)
+    const actionCode = searchParams.get('oobCode') ?? ''
+    const mode = searchParams.get('mode')
+
+    if (!actionCode || (mode && mode !== 'resetPassword')) {
+      setLinkState('invalid')
+      return
+    }
+
+    setCode(actionCode)
+    verifyResetPasswordCode(actionCode)
+      .then((email) => {
+        setAccountEmail(email)
+        setLinkState('valid')
+      })
+      .catch(() => setLinkState('invalid'))
+  }, [])
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault()
-    setMessage('')
     setError('')
 
-    if (!code) {
+    if (linkState !== 'valid' || !code) {
       setError(t('auth.invalidResetLink'))
       return
     }
@@ -36,14 +55,52 @@ export function ResetPasswordView() {
 
     try {
       await resetPassword(code, password)
-      setMessage(t('auth.passwordUpdated'))
       setPassword('')
       setConfirmPassword('')
+      setLinkState('completed')
     } catch {
       setError(t('auth.expiredResetLink'))
+      setLinkState('invalid')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  if (linkState === 'checking') {
+    return (
+      <section className="auth-card reset-link-state">
+        <LoaderCircle className="spin" size={24} />
+        <h2>Checking reset link...</h2>
+        <p className="auth-copy">Please wait while DocuMind verifies this request.</p>
+      </section>
+    )
+  }
+
+  if (linkState === 'invalid') {
+    return (
+      <section className="auth-card reset-link-state">
+        <KeyRound size={24} />
+        <p className="eyebrow">{t('auth.recovery')}</p>
+        <h2>{t('auth.invalidResetLink')}</h2>
+        <p className="auth-copy">{t('auth.expiredResetLink')}</p>
+        <Link href="/forgot-password" className="primary-button">
+          {t('auth.sendRequest')}
+        </Link>
+        <Link href="/login" className="reset-secondary-link">{t('auth.backLogin')}</Link>
+      </section>
+    )
+  }
+
+  if (linkState === 'completed') {
+    return (
+      <section className="auth-card reset-link-state reset-link-state--success">
+        <CheckCircle2 size={28} />
+        <p className="eyebrow">{t('auth.recovery')}</p>
+        <h2>{t('auth.passwordUpdated')}</h2>
+        <p className="auth-copy">Your new password is ready. You can now sign in to DocuMind.</p>
+        <Link href="/login" className="primary-button">{t('auth.backLogin')}</Link>
+      </section>
+    )
   }
 
   return (
@@ -51,6 +108,7 @@ export function ResetPasswordView() {
       <p className="eyebrow">{t('auth.recovery')}</p>
       <h2>{t('auth.resetTitle')}</h2>
       <p className="auth-copy">{t('auth.resetBody')}</p>
+      {accountEmail ? <p className="reset-account-email">{accountEmail}</p> : null}
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
           {t('auth.newPassword')}
@@ -76,10 +134,9 @@ export function ResetPasswordView() {
             required
           />
         </label>
-        {message ? <p className="form-success">{message}</p> : null}
         {error ? <p className="form-error">{error}</p> : null}
         <button className="primary-button" type="submit" disabled={isSubmitting}>
-          <KeyRound size={18} />
+          {isSubmitting ? <LoaderCircle className="spin" size={18} /> : <KeyRound size={18} />}
           {isSubmitting ? t('auth.updating') : t('auth.updatePassword')}
         </button>
       </form>

@@ -51,6 +51,23 @@ In **Firebase Console > Authentication > Settings > Authorized domains**, add:
 
 Add the custom production domain too if the team configures one.
 
+### Password Reset Handler
+
+To use the DocuMind reset-password screen instead of Firebase's hosted form:
+
+1. Open **Firebase Console > Authentication > Templates**.
+2. Edit the **Password reset** template.
+3. Choose **Customize action URL**.
+4. Set it to:
+
+```text
+https://documind-hub.vercel.app/reset-password
+```
+
+The `url` passed by the frontend is the post-reset continue URL and must point
+to `/login`, not `/reset-password`. Existing reset emails generated before this
+change may still use the old two-step flow; request a new email after deployment.
+
 ## 4. GitHub Protection
 
 In **GitHub > Settings > Branches**, protect `main`:
