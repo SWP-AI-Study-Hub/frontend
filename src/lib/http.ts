@@ -74,7 +74,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
         ? data.error?.message ?? 'Request failed'
         : 'Request failed'
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
       clearStoredAuthToken()
       notifyUnauthorized()
     }
