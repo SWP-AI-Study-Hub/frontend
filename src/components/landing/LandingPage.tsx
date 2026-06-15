@@ -182,7 +182,7 @@ export function LandingPage() {
                 </div>
                 <div className="hero-note">
                   <span className="hero-note-line" aria-hidden="true" />
-                  <span>PDF · DOCX · PPTX · XLSX</span>
+                  <span>PDF · DOCX · PPTX · XLSX · AUDIO · VIDEO · YOUTUBE · ETC</span>
                 </div>
               </div>
             </Reveal>
