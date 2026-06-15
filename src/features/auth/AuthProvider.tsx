@@ -4,9 +4,15 @@ import type { ReactNode } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { onIdTokenChanged, signInWithPopup, signOut } from 'firebase/auth'
 import * as authApi from '../../api/auth.api'
+import * as profileApi from '../../api/profile.api'
 import { clearStoredAuthToken, setStoredAuthToken } from '../../lib/auth-token'
 import { getFirebaseAuth, getGoogleAuthProvider } from '../../lib/firebase'
-import type { CurrentUser, LoginPayload, RegisterPayload } from '../../types/auth'
+import type {
+  CurrentUser,
+  LoginPayload,
+  RegisterPayload,
+  UpdateProfilePayload,
+} from '../../types/auth'
 import { AuthContext } from './auth-context'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -110,6 +116,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null)
   }, [])
 
+  const handleUpdateProfile = useCallback(
+    async (payload: UpdateProfilePayload) => {
+      const profile = await profileApi.updateProfile(payload)
+      const updatedUser: CurrentUser = {
+        ...profile,
+        firebaseUid: user?.firebaseUid,
+        authProvider: user?.authProvider,
+        roleId: user?.roleId,
+        lastLogin: user?.lastLogin ?? null,
+      }
+
+      setUser(updatedUser)
+      return updatedUser
+    },
+    [user],
+  )
+
   const value = useMemo(
     () => ({
       user,
@@ -119,8 +142,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       register: handleRegister,
       logout: handleLogout,
       refreshUser,
+      updateProfile: handleUpdateProfile,
     }),
-    [handleGoogleLogin, handleLogin, handleLogout, handleRegister, isLoading, refreshUser, user],
+    [
+      handleGoogleLogin,
+      handleLogin,
+      handleLogout,
+      handleRegister,
+      handleUpdateProfile,
+      isLoading,
+      refreshUser,
+      user,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

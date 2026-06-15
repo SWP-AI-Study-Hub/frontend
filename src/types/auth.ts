@@ -19,6 +19,18 @@ export type CurrentUser = {
   lastLogin: string | null
 }
 
+export type UserProfile = Pick<
+  CurrentUser,
+  'id' | 'email' | 'fullName' | 'avatarUrl' | 'role' | 'status' | 'createdAt'
+> & {
+  updatedAt: string
+}
+
+export type UpdateProfilePayload = {
+  fullName?: string
+  avatarUrl?: string | null
+}
+
 export type LoginPayload = {
   email: string
   password: string
