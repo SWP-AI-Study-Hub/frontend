@@ -33,7 +33,7 @@ configuration. Enable each variable for both **Production** and **Preview**:
 Example API value:
 
 ```env
-NEXT_PUBLIC_API_BASE_URL=https://ai-study-hub-backend.onrender.com/api
+NEXT_PUBLIC_API_BASE_URL=https://ai-study-hub-backend-5frw.onrender.com/api
 ```
 
 Only put `NEXT_PUBLIC_*` browser configuration in Vercel. Never add
@@ -69,7 +69,7 @@ Only merges to `main` become production.
 After Vercel assigns the production URL, set the backend Render variable:
 
 ```env
-CORS_ORIGIN=https://<vercel-production-domain>
+CORS_ORIGIN=https://documind-hub.vercel.app
 ```
 
 Do not include a trailing slash. The backend supports comma-separated origins
