@@ -3,12 +3,13 @@
 import { FormEvent, useCallback, useEffect, useState } from 'react'
 import { ClipboardCheck, FileWarning, Search, ShieldCheck, UserCheck, UsersRound, UserX } from 'lucide-react'
 import { getUsers, updateUserStatus, type UserQuery } from '../api/users.api'
-import type { CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
+import type { AdminMutableUserStatus, CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 import { useAuth } from '../features/auth/useAuth'
 import { useLanguage } from '../i18n/LanguageProvider'
 
 const roles: UserRole[] = ['ADMIN', 'USER']
 const statuses: UserStatus[] = ['ACTIVE', 'BLOCKED', 'INACTIVE']
+const mutableStatuses: AdminMutableUserStatus[] = ['ACTIVE', 'BLOCKED']
 const DEFAULT_QUERY: UserQuery = { page: 1, limit: 10 }
 
 export function AdminUsersView() {
@@ -49,7 +50,7 @@ export function AdminUsersView() {
     await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
   }
 
-  async function handleStatusChange(targetUser: CurrentUser, nextStatus: UserStatus) {
+  async function handleStatusChange(targetUser: CurrentUser, nextStatus: AdminMutableUserStatus) {
     setError('')
 
     if (targetUser.id === currentUser?.id && nextStatus === 'BLOCKED') {
@@ -180,17 +181,21 @@ export function AdminUsersView() {
                       <span className="status-pill role">{item.role}</span>
                     </td>
                     <td>
-                      <select
-                        value={item.status}
-                        disabled={isLoading || updatingUserId === item.id}
-                        onChange={(event) => void handleStatusChange(item, event.target.value as UserStatus)}
-                      >
-                        {statuses.map((statusItem) => (
-                          <option key={statusItem} value={statusItem}>
-                            {statusItem}
-                          </option>
-                        ))}
-                      </select>
+                      {item.status === 'INACTIVE' ? (
+                        <span className="status-pill">INACTIVE</span>
+                      ) : (
+                        <select
+                          value={item.status}
+                          disabled={isLoading || updatingUserId === item.id}
+                          onChange={(event) => void handleStatusChange(item, event.target.value as AdminMutableUserStatus)}
+                        >
+                          {mutableStatuses.map((statusItem) => (
+                            <option key={statusItem} value={statusItem}>
+                              {statusItem}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </td>
                     <td>
                       <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>

@@ -1,6 +1,7 @@
 export type UserRole = "ADMIN" | "USER";
 
 export type UserStatus = "ACTIVE" | "BLOCKED" | "INACTIVE";
+export type AdminMutableUserStatus = Exclude<UserStatus, "INACTIVE">;
 
 export type AuthProvider = "GOOGLE" | "EMAIL_PASSWORD";
 

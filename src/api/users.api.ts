@@ -1,5 +1,5 @@
 import { apiRequest } from '../lib/http'
-import type { CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
+import type { AdminMutableUserStatus, CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 
 const ADMIN_USERS_PATH = '/admin/users'
 
@@ -28,7 +28,7 @@ export function getUsers(query: UserQuery = {}) {
   return apiRequest<UserListResponse>(`${ADMIN_USERS_PATH}${toQueryString(query)}`)
 }
 
-export function updateUserStatus(id: string, status: UserStatus) {
+export function updateUserStatus(id: string, status: AdminMutableUserStatus) {
   return apiRequest<CurrentUser>(`${ADMIN_USERS_PATH}/${id}/status`, {
     method: 'PATCH',
     body: { status },

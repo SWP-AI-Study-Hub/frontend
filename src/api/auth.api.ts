@@ -15,6 +15,7 @@ import {
 } from "firebase/auth";
 import { apiRequest } from "../lib/http";
 import { getFirebaseAuth } from "../lib/firebase";
+import { ROUTES } from "../lib/routes";
 import type {
   CurrentUser,
   GoogleLoginPayload,
@@ -70,7 +71,7 @@ export async function register(payload: RegisterPayload) {
 
   await reload(credential.user);
   await sendEmailVerification(credential.user, {
-    url: `${window.location.origin}/xac-thuc-email`,
+    url: `${window.location.origin}${ROUTES.verifyEmail}`,
     handleCodeInApp: true,
   });
   await signOut(firebaseAuth);
@@ -114,7 +115,7 @@ export function getCurrentUser() {
 
 export function forgotPassword(email: string) {
   return sendPasswordResetEmail(getFirebaseAuth(), email, {
-    url: `${window.location.origin}/dang-nhap?reset=success`,
+    url: `${window.location.origin}${ROUTES.login}?reset=success`,
   });
 }
 

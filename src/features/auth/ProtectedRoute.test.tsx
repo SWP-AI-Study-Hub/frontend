@@ -33,7 +33,7 @@ const activeUser: CurrentUser = {
 describe("ProtectedRoute", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(usePathname).mockReturnValue("/ho-so");
+    vi.mocked(usePathname).mockReturnValue("/profile");
     vi.mocked(useRouter).mockReturnValue({ replace } as unknown as ReturnType<
       typeof useRouter
     >);
@@ -74,7 +74,7 @@ describe("ProtectedRoute", () => {
     );
 
     await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith("/dang-nhap?from=%2Fho-so"),
+      expect(replace).toHaveBeenCalledWith("/login?from=%2Fprofile"),
     );
     expect(screen.queryByText("Protected content")).not.toBeInTheDocument();
   });
@@ -92,7 +92,7 @@ describe("ProtectedRoute", () => {
     );
 
     await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith("/khong-co-quyen"),
+      expect(replace).toHaveBeenCalledWith("/unauthorized"),
     );
   });
 
@@ -109,7 +109,7 @@ describe("ProtectedRoute", () => {
     );
 
     await waitFor(() =>
-      expect(replace).toHaveBeenCalledWith("/khong-co-quyen"),
+      expect(replace).toHaveBeenCalledWith("/unauthorized"),
     );
     expect(screen.queryByText("Admin content")).not.toBeInTheDocument();
   });
