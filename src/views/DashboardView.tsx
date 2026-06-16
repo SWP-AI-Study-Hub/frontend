@@ -175,7 +175,7 @@ export function DashboardView() {
           <section className="dashboard-metrics">
             <article>
               <FileCheck2 size={19} />
-              <span>{text("Tệp đã lập chỉ mục", "Files indexed")}</span>
+              <span>{text("Tài liệu đã tải lên", "Uploaded documents")}</span>
               <strong>{readyDocuments.length}</strong>
             </article>
             <article>

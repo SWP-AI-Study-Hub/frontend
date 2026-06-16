@@ -56,7 +56,7 @@ export function CommunityView() {
     <main id="main-content" className="community-page">
       <header className="community-heading">
         <p className="eyebrow">{text('THƯ VIỆN CỘNG ĐỒNG', 'COMMUNITY LIBRARY')}</p>
-        <h1>{text('Kiến thức hữu ích, được chia sẻ đầy đủ ngữ cảnh.', 'Useful knowledge, shared with context.')}</h1>
+        <h1>{text('Kiến thức hữu ích từ cộng đồng.', 'Useful knowledge from the community.')}</h1>
         <p>
           {text(
             'Khám phá tài liệu học tập công khai, xem trọng tâm học thuật và lưu những nguồn phù hợp nhất vào thư viện của bạn.',

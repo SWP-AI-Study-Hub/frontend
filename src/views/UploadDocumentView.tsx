@@ -98,8 +98,8 @@ export function UploadDocumentView() {
         <h1>{text("Thêm nguồn vào thư viện kiến thức.", "Add a source to your knowledge library.")}</h1>
         <p>
           {text(
-            "DocuMind kiểm tra tệp, lưu metadata và chuẩn bị nội dung để AI trả lời có căn cứ.",
-            "DocuMind validates the file, stores its metadata, then prepares the content for grounded AI answers.",
+            "DocuMind kiểm tra tệp, lưu metadata và chuẩn bị nội dung để AI trả lời.",
+            "DocuMind validates the file, stores its metadata, then prepares the content for AI answers.",
           )}
         </p>
       </header>
@@ -188,7 +188,7 @@ export function UploadDocumentView() {
                   <span className="upload-cloud">
                     <CloudUpload size={28} />
                   </span>
-                  <strong>{text("Thả tài liệu học tập vào đây", "Drop your study document here")}</strong>
+                  <strong>{text("Thả tài liệu vào đây", "Drop your document here")}</strong>
                   <p>{text("PDF, DOCX, PPTX hoặc XLSX / Tối đa 20 MB", "PDF, DOCX, PPTX, or XLSX / Maximum 20 MB")}</p>
                   <button
                     type="button"
@@ -207,7 +207,6 @@ export function UploadDocumentView() {
                 <span>01</span>
                 <div>
                   <strong>{text("Thông tin tài liệu", "Document details")}</strong>
-                  <p>{text("Metadata rõ ràng giúp việc truy xuất chính xác hơn.", "Clear metadata makes retrieval more reliable.")}</p>
                 </div>
               </div>
               <div className="upload-form-grid">
@@ -326,7 +325,7 @@ export function UploadDocumentView() {
                   <Sparkles size={18} />
                   <span>
                     <strong>{text("Cộng đồng", "Community")}</strong>
-                    <small>{text("Chia sẻ dưới dạng nguồn học tập công khai", "Share it as a public study source")}</small>
+                    <small>{text("Chia sẻ tài liệu dưới dạng công khai", "Share the document publicly")}</small>
                   </span>
                 </button>
               </div>

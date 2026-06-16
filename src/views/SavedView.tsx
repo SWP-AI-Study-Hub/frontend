@@ -13,13 +13,7 @@ export function SavedView() {
     <main id="main-content" className="simple-workspace-page">
       <header>
         <p className="eyebrow">{text("ĐÃ LƯU", "SAVED")}</p>
-        <h1>{text("Các nguồn học tập bạn đã đánh dấu.", "Your bookmarked study sources.")}</h1>
-        <p>
-          {text(
-            "Quay lại những tài liệu cộng đồng hữu ích và tiếp tục đặt câu hỏi có căn cứ.",
-            "Return to useful community material and continue asking grounded questions.",
-          )}
-        </p>
+        <h1>{text("Tài liệu đã lưu.", "Saved documents.")}</h1>
       </header>
       <section className="saved-source-list">
         <article>

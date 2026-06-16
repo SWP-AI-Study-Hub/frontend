@@ -132,7 +132,7 @@ export function LibraryView() {
             value={status}
             onChange={(event) => setStatus(event.target.value)}
           >
-            <option value="">{text("Tất cả trạng thái lập chỉ mục", "All indexing states")}</option>
+            <option value="">{text("Tất cả trạng thái", "All statuses")}</option>
             <option value="READY">{text("AI sẵn sàng", "AI ready")}</option>
             <option value="PROCESSING">{text("Đang xử lý", "Processing")}</option>
             <option value="FAILED">{text("Thất bại", "Failed")}</option>
