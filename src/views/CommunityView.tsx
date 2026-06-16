@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Bookmark,
   BookmarkCheck,
@@ -13,18 +13,31 @@ import {
   getSavedCommunityDocumentIds,
   toggleSavedCommunityDocument,
 } from '../api/community.api'
+import { useLanguage } from '../i18n/LanguageProvider'
+import { localizeCommunityDocument } from '../i18n/document-display'
+import { localize } from '../i18n/localize'
 
 export function CommunityView() {
+  const { locale } = useLanguage()
+  const text = (vi: string, en: string) => localize(locale, vi, en)
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('All')
   const [savedIds, setSavedIds] = useState<string[]>(() =>
     getSavedCommunityDocumentIds(),
   )
-  const categories = ['All', ...new Set(communityDocuments.map((item) => item.category))]
+  const displayedDocuments = useMemo(
+    () => communityDocuments.map((item) => localizeCommunityDocument(item, locale)),
+    [locale],
+  )
+  const categories = ['All', ...new Set(displayedDocuments.map((item) => item.category))]
+
+  useEffect(() => {
+    setCategory('All')
+  }, [locale])
 
   const filteredDocuments = useMemo(() => {
     const normalized = query.trim().toLowerCase()
-    return communityDocuments.filter((document) => {
+    return displayedDocuments.filter((document) => {
       const categoryMatches = category === 'All' || document.category === category
       const queryMatches =
         !normalized ||
@@ -33,7 +46,7 @@ export function CommunityView() {
         )
       return categoryMatches && queryMatches
     })
-  }, [category, query])
+  }, [category, displayedDocuments, query])
 
   function toggleSaved(id: string) {
     setSavedIds(toggleSavedCommunityDocument(id))
@@ -42,11 +55,13 @@ export function CommunityView() {
   return (
     <main id="main-content" className="community-page">
       <header className="community-heading">
-        <p className="eyebrow">THƯ VIỆN CỘNG ĐỒNG</p>
-        <h1>Kiến thức hữu ích, được chia sẻ đầy đủ ngữ cảnh.</h1>
+        <p className="eyebrow">{text('THƯ VIỆN CỘNG ĐỒNG', 'COMMUNITY LIBRARY')}</p>
+        <h1>{text('Kiến thức hữu ích, được chia sẻ đầy đủ ngữ cảnh.', 'Useful knowledge, shared with context.')}</h1>
         <p>
-          Khám phá tài liệu học tập công khai, xem trọng tâm học thuật và lưu
-          những nguồn phù hợp nhất vào thư viện của bạn.
+          {text(
+            'Khám phá tài liệu học tập công khai, xem trọng tâm học thuật và lưu những nguồn phù hợp nhất vào thư viện của bạn.',
+            'Discover public study materials, inspect their academic focus, and save the strongest sources into your own library.',
+          )}
         </p>
       </header>
 
@@ -56,13 +71,13 @@ export function CommunityView() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Nhờ AI tìm tài liệu học tập công khai hữu ích..."
+            placeholder={text('Nhờ AI tìm tài liệu học tập công khai hữu ích...', 'Ask AI to find useful public study materials...')}
           />
-          <button type="button" aria-label="Tìm kiếm trong cộng đồng">
+          <button type="button" aria-label={text('Tìm kiếm trong cộng đồng', 'Search community')}>
             <Search size={18} />
           </button>
         </div>
-        <div className="category-tabs" role="tablist" aria-label="Danh mục tài liệu">
+        <div className="category-tabs" role="tablist" aria-label={text('Danh mục tài liệu', 'Document categories')}>
           {categories.map((item) => (
             <button
               type="button"
@@ -72,7 +87,7 @@ export function CommunityView() {
               key={item}
               onClick={() => setCategory(item)}
             >
-              {item === 'All' ? 'Tất cả' : item}
+              {item === 'All' ? text('Tất cả', 'All') : item}
             </button>
           ))}
         </div>
@@ -80,12 +95,12 @@ export function CommunityView() {
 
       <div className="community-results-heading">
         <div>
-          <strong>{filteredDocuments.length} tài liệu công khai</strong>
-          <span>Được tuyển chọn bởi cộng đồng học tập DocuMind</span>
+          <strong>{filteredDocuments.length} {text('tài liệu công khai', 'public documents')}</strong>
+          <span>{text('Được tuyển chọn bởi cộng đồng học tập DocuMind', 'Curated by the DocuMind learning community')}</span>
         </div>
         <span className="ai-summary-badge">
           <Sparkles size={14} />
-          Có bản tóm tắt bằng AI
+          {text('Có bản tóm tắt bằng AI', 'AI summaries available')}
         </span>
       </div>
 
@@ -98,7 +113,7 @@ export function CommunityView() {
                 <div className={`community-cover community-cover--${document.accent}`}>
                   <span>{document.fileType}</span>
                   <strong>{document.subject}</strong>
-                  <small>{document.pages} trang</small>
+                  <small>{document.pages} {text('trang', 'pages')}</small>
                 </div>
                 <div className="community-card-body">
                   <div className="community-card-meta">
@@ -113,7 +128,7 @@ export function CommunityView() {
                     </span>
                     <span>
                       <strong>{document.owner}</strong>
-                      <small>{document.savedCount + (isSaved ? 1 : 0)} lượt lưu</small>
+                      <small>{document.savedCount + (isSaved ? 1 : 0)} {text('lượt lưu', 'saves')}</small>
                     </span>
                   </div>
                   <button
@@ -122,7 +137,9 @@ export function CommunityView() {
                     onClick={() => toggleSaved(document.id)}
                   >
                     {isSaved ? <BookmarkCheck size={17} /> : <Bookmark size={17} />}
-                    {isSaved ? 'Đã lưu vào thư viện' : 'Lưu vào thư viện'}
+                    {isSaved
+                      ? text('Đã lưu vào thư viện', 'Saved to My Library')
+                      : text('Lưu vào thư viện', 'Save to My Library')}
                   </button>
                 </div>
               </article>
@@ -132,8 +149,8 @@ export function CommunityView() {
       ) : (
         <div className="soft-empty-state community-empty">
           <Search size={30} />
-          <strong>Không có tài liệu công khai phù hợp</strong>
-          <p>Thử chủ đề rộng hơn hoặc chuyển sang danh mục khác.</p>
+          <strong>{text('Không có tài liệu công khai phù hợp', 'No public documents match this search')}</strong>
+          <p>{text('Thử chủ đề rộng hơn hoặc chuyển sang danh mục khác.', 'Try a broader topic or switch to another category.')}</p>
         </div>
       )}
     </main>

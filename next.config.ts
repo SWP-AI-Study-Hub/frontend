@@ -30,12 +30,12 @@ const nextConfig: NextConfig = {
       { source: "/saved", destination: "/da-luu", permanent: true },
       {
         source: "/ask-document",
-        destination: "/hoi-tai-lieu",
+        destination: "/hoi-ai?scope=document",
         permanent: true,
       },
       {
         source: "/ask-library",
-        destination: "/hoi-thu-vien",
+        destination: "/hoi-ai",
         permanent: true,
       },
       {

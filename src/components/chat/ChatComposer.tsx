@@ -2,6 +2,8 @@
 
 import { FormEvent } from 'react'
 import { ArrowUp, LoaderCircle } from 'lucide-react'
+import { useLanguage } from '../../i18n/LanguageProvider'
+import { localize } from '../../i18n/localize'
 
 export function ChatComposer({
   value,
@@ -16,6 +18,7 @@ export function ChatComposer({
   isLoading: boolean
   placeholder: string
 }) {
+  const { locale } = useLanguage()
   function submit(event: FormEvent) {
     event.preventDefault()
     if (!value.trim() || isLoading) return
@@ -35,7 +38,7 @@ export function ChatComposer({
         type="submit"
         className="chat-send"
         disabled={!value.trim() || isLoading}
-        aria-label="Gửi câu hỏi"
+        aria-label={localize(locale, 'Gửi câu hỏi', 'Send question')}
       >
         {isLoading ? <LoaderCircle className="spin" size={19} /> : <ArrowUp size={19} />}
       </button>

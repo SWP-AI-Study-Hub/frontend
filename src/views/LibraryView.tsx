@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
   Bot,
@@ -20,6 +20,9 @@ import {
   getLibraryDocuments,
 } from "../api/documents.api";
 import type { LibraryDocument } from "../types/document";
+import { useLanguage } from "../i18n/LanguageProvider";
+import { localizeLibraryDocument } from "../i18n/document-display";
+import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
 
 function DocumentIcon({ type }: { type: string }) {
@@ -30,25 +33,36 @@ function DocumentIcon({ type }: { type: string }) {
   );
 }
 
-function getIndexStatusLabel(status: LibraryDocument["indexStatus"]) {
-  if (status === "READY") return "AI sẵn sàng";
-  if (status === "PROCESSING") return "Đang xử lý";
-  return "Thất bại";
-}
-
-function getVisibilityLabel(visibility: LibraryDocument["visibility"]) {
-  return visibility === "PRIVATE" ? "riêng tư" : "công khai";
-}
-
 export function LibraryView() {
+  const { locale } = useLanguage();
+  const text = (vi: string, en: string) => localize(locale, vi, en);
+  const getIndexStatusLabel = (status: LibraryDocument["indexStatus"]) => {
+    if (status === "READY") return text("AI sẵn sàng", "AI ready");
+    if (status === "PROCESSING") return text("Đang xử lý", "Processing");
+    return text("Thất bại", "Failed");
+  };
+  const getVisibilityLabel = (visibility: LibraryDocument["visibility"]) =>
+    visibility === "PRIVATE"
+      ? text("riêng tư", "private")
+      : text("công khai", "public");
   const [query, setQuery] = useState("");
   const [subject, setSubject] = useState("");
   const [fileType, setFileType] = useState("");
   const [status, setStatus] = useState("");
   const [view, setView] = useState<"table" | "grid">("table");
   const [previewDocument, setPreviewDocument] = useState<LibraryDocument>();
-  const documents = useMemo(() => getLibraryDocuments(), []);
+  const documents = useMemo(
+    () =>
+      getLibraryDocuments().map((document) =>
+        localizeLibraryDocument(document, locale),
+      ),
+    [locale],
+  );
   const subjects = [...new Set(documents.map((document) => document.subject))];
+
+  useEffect(() => {
+    setSubject("");
+  }, [locale]);
 
   const filteredDocuments = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -71,16 +85,18 @@ export function LibraryView() {
     <main id="main-content" className="library-page">
       <header className="library-page-heading">
         <div>
-          <p className="eyebrow">THƯ VIỆN CỦA TÔI</p>
-          <h1>Tài liệu của bạn, sẵn sàng để khám phá.</h1>
+          <p className="eyebrow">{text("THƯ VIỆN CỦA TÔI", "MY LIBRARY")}</p>
+          <h1>{text("Tài liệu của bạn, sẵn sàng để khám phá.", "Your documents, ready to think with.")}</h1>
           <p>
-            Tìm kiếm nội dung và metadata, kiểm tra trạng thái lập chỉ mục hoặc
-            tiếp tục với AI.
+            {text(
+              "Tìm kiếm nội dung và metadata, kiểm tra trạng thái lập chỉ mục hoặc tiếp tục với AI.",
+              "Search metadata and content, inspect indexing status, or continue with AI.",
+            )}
           </p>
         </div>
         <Link href={ROUTES.upload} className="primary-button">
           <Upload size={17} />
-          Tải tài liệu lên
+          {text("Tải tài liệu lên", "Upload document")}
         </Link>
       </header>
 
@@ -90,7 +106,7 @@ export function LibraryView() {
           <input
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm theo nội dung, tiêu đề hoặc thẻ..."
+            placeholder={text("Tìm theo nội dung, tiêu đề hoặc thẻ...", "Search by content, title, or tag...")}
           />
         </label>
         <div className="library-filters">
@@ -98,7 +114,7 @@ export function LibraryView() {
             value={subject}
             onChange={(event) => setSubject(event.target.value)}
           >
-            <option value="">Tất cả môn học</option>
+            <option value="">{text("Tất cả môn học", "All subjects")}</option>
             {subjects.map((item) => (
               <option key={item}>{item}</option>
             ))}
@@ -107,7 +123,7 @@ export function LibraryView() {
             value={fileType}
             onChange={(event) => setFileType(event.target.value)}
           >
-            <option value="">Tất cả loại tệp</option>
+            <option value="">{text("Tất cả loại tệp", "All file types")}</option>
             {["PDF", "DOCX", "PPTX", "XLSX"].map((item) => (
               <option key={item}>{item}</option>
             ))}
@@ -116,17 +132,17 @@ export function LibraryView() {
             value={status}
             onChange={(event) => setStatus(event.target.value)}
           >
-            <option value="">Tất cả trạng thái lập chỉ mục</option>
-            <option value="READY">AI sẵn sàng</option>
-            <option value="PROCESSING">Đang xử lý</option>
-            <option value="FAILED">Thất bại</option>
+            <option value="">{text("Tất cả trạng thái lập chỉ mục", "All indexing states")}</option>
+            <option value="READY">{text("AI sẵn sàng", "AI ready")}</option>
+            <option value="PROCESSING">{text("Đang xử lý", "Processing")}</option>
+            <option value="FAILED">{text("Thất bại", "Failed")}</option>
           </select>
-          <div className="view-toggle" aria-label="Kiểu hiển thị thư viện">
+          <div className="view-toggle" aria-label={text("Kiểu hiển thị thư viện", "Library view")}>
             <button
               type="button"
               className={view === "table" ? "active" : undefined}
               onClick={() => setView("table")}
-              title="Dạng danh sách"
+              title={text("Dạng danh sách", "List view")}
             >
               <List size={17} />
             </button>
@@ -134,7 +150,7 @@ export function LibraryView() {
               type="button"
               className={view === "grid" ? "active" : undefined}
               onClick={() => setView("grid")}
-              title="Dạng lưới"
+              title={text("Dạng lưới", "Grid view")}
             >
               <Grid2X2 size={17} />
             </button>
@@ -143,32 +159,32 @@ export function LibraryView() {
       </section>
 
       <div className="library-result-count">
-        <strong>{filteredDocuments.length} tài liệu</strong>
+        <strong>{filteredDocuments.length} {text("tài liệu", "documents")}</strong>
         <span>
           {
             documents.filter((document) => document.indexStatus === "READY")
               .length
           }{" "}
-          AI sẵn sàng
+          {text("AI sẵn sàng", "AI ready")}
         </span>
       </div>
 
       {filteredDocuments.length === 0 ? (
         <div className="soft-empty-state library-empty">
           <Search size={28} />
-          <strong>Không có tài liệu phù hợp</strong>
-          <p>Xóa bộ lọc hoặc tải nguồn tài liệu mới lên thư viện.</p>
+          <strong>{text("Không có tài liệu phù hợp", "No matching documents")}</strong>
+          <p>{text("Xóa bộ lọc hoặc tải nguồn tài liệu mới lên thư viện.", "Clear a filter or upload a new source to your library.")}</p>
         </div>
       ) : view === "table" ? (
         <div className="library-table-wrap">
           <table className="library-table">
             <thead>
               <tr>
-                <th>Tiêu đề tài liệu</th>
-                <th>Môn học</th>
-                <th>Ngày tải lên</th>
-                <th>Chỉ mục AI</th>
-                <th>Thao tác</th>
+                <th>{text("Tiêu đề tài liệu", "Document title")}</th>
+                <th>{text("Môn học", "Subject")}</th>
+                <th>{text("Ngày tải lên", "Upload date")}</th>
+                <th>{text("Chỉ mục AI", "AI index")}</th>
+                <th>{text("Thao tác", "Actions")}</th>
               </tr>
             </thead>
             <tbody>
@@ -191,7 +207,9 @@ export function LibraryView() {
                   </td>
                   <td>{document.subject}</td>
                   <td>
-                    {new Date(document.uploadedAt).toLocaleDateString("vi-VN")}
+                    {new Date(document.uploadedAt).toLocaleDateString(
+                      locale === "vi" ? "vi-VN" : "en-US",
+                    )}
                   </td>
                   <td>
                     <span
@@ -204,24 +222,24 @@ export function LibraryView() {
                     <div className="document-actions">
                       <button
                         type="button"
-                        title="Xem trước"
+                        title={text("Xem trước", "Preview")}
                         onClick={() => setPreviewDocument(document)}
                       >
                         <Eye size={16} />
                       </button>
                       <button
                         type="button"
-                        title="Tải xuống"
+                        title={text("Tải xuống", "Download")}
                         onClick={() => downloadDemoDocument(document)}
                       >
                         <Download size={16} />
                       </button>
                       <Link
-                        href={ROUTES.askDocument}
+                        href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}
                         className="ask-document-action"
                       >
                         <Bot size={16} />
-                        Hỏi AI
+                        {text("Hỏi AI", "Ask AI")}
                       </Link>
                     </div>
                   </td>
@@ -255,21 +273,24 @@ export function LibraryView() {
               <div className="document-actions">
                 <button
                   type="button"
-                  title="Xem trước"
+                  title={text("Xem trước", "Preview")}
                   onClick={() => setPreviewDocument(document)}
                 >
                   <Eye size={16} />
                 </button>
                 <button
                   type="button"
-                  title="Tải xuống"
+                  title={text("Tải xuống", "Download")}
                   onClick={() => downloadDemoDocument(document)}
                 >
                   <Download size={16} />
                 </button>
-                <Link href={ROUTES.askDocument} className="ask-document-action">
+                <Link
+                  href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}
+                  className="ask-document-action"
+                >
                   <Bot size={16} />
-                  Hỏi AI
+                  {text("Hỏi AI", "Ask AI")}
                 </Link>
               </div>
             </article>
@@ -287,7 +308,7 @@ export function LibraryView() {
             className="preview-dialog"
             role="dialog"
             aria-modal="true"
-            aria-label={`Xem trước ${previewDocument.title}`}
+            aria-label={`${text("Xem trước", "Preview")} ${previewDocument.title}`}
             onMouseDown={(event) => event.stopPropagation()}
           >
             <header>
@@ -313,8 +334,10 @@ export function LibraryView() {
               <h2>{previewDocument.title}</h2>
               <p>{previewDocument.description}</p>
               <blockquote>
-                Bản xem trước đã sẵn sàng. Mở mục Hỏi tài liệu này để khám phá
-                nguồn với các trích dẫn được đối chiếu.
+                {text(
+                  "Bản xem trước đã sẵn sàng. Mở AI Chatbot để đặt câu hỏi về tài liệu này.",
+                  "The preview is ready. Open AI Chatbot to ask questions about this document.",
+                )}
               </blockquote>
             </div>
             <footer>
@@ -324,11 +347,14 @@ export function LibraryView() {
                 onClick={() => downloadDemoDocument(previewDocument)}
               >
                 <Download size={16} />
-                Tải xuống
+                {text("Tải xuống", "Download")}
               </button>
-              <Link href={ROUTES.askDocument} className="primary-button">
+              <Link
+                href={`${ROUTES.aiChat}?scope=document&document=${previewDocument.id}`}
+                className="primary-button"
+              >
                 <Bot size={16} />
-                Hỏi AI
+                {text("Hỏi AI", "Ask AI")}
               </Link>
             </footer>
           </article>

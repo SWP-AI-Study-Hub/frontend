@@ -2,6 +2,8 @@
 
 import { FileText } from 'lucide-react'
 import type { Citation } from '../../types/chat'
+import { useLanguage } from '../../i18n/LanguageProvider'
+import { localize } from '../../i18n/localize'
 
 export function CitationList({
   citations,
@@ -12,10 +14,11 @@ export function CitationList({
   selected?: number
   onSelect?: (citation: Citation) => void
 }) {
+  const { locale } = useLanguage()
   if (citations.length === 0) return null
 
   return (
-    <div className="citation-list" aria-label="Nguồn của câu trả lời">
+    <div className="citation-list" aria-label={localize(locale, 'Nguồn của câu trả lời', 'Answer sources')}>
       {citations.map((citation) => (
         <button
           type="button"

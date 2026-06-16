@@ -11,6 +11,7 @@ export const ROUTES = {
   upload: "/tai-len",
   community: "/cong-dong",
   saved: "/da-luu",
+  aiChat: "/hoi-ai",
   askDocument: "/hoi-tai-lieu",
   askLibrary: "/hoi-thu-vien",
   subscription: "/goi-dich-vu",

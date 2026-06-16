@@ -1,14 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FileSearch, Filter, Library, Sparkles } from 'lucide-react'
 import { askLibrary } from '../api/chat.api'
 import { ChatComposer } from '../components/chat/ChatComposer'
 import { CitationList } from '../components/chat/CitationList'
 import { demoLibraryAnswer } from '../lib/chat-demo'
+import { useLanguage } from '../i18n/LanguageProvider'
+import { localize } from '../i18n/localize'
 import type { ChatMessage, Citation } from '../types/chat'
 
 export function AskLibraryView() {
+  const { locale } = useLanguage()
+  const text = (vi: string, en: string) => localize(locale, vi, en)
   const [question, setQuestion] = useState('')
   const [sessionId, setSessionId] = useState<string>()
   const [isLoading, setIsLoading] = useState(false)
@@ -18,12 +22,32 @@ export function AskLibraryView() {
     {
       id: 'welcome',
       sender: 'AI',
-      content:
+      content: localize(
+        locale,
         'Hãy đặt câu hỏi trên thư viện đã được lập chỉ mục. Tôi sẽ tìm các nguồn phù hợp nhất và cho biết vì sao chúng liên quan.',
+        'Ask a question across your indexed library. I will retrieve the strongest matching sources and show why they matter.',
+      ),
       sources: [],
     },
   ])
   const [sources, setSources] = useState<Citation[]>([])
+
+  useEffect(() => {
+    setMessages((current) =>
+      current.map((message) =>
+        message.id === 'welcome'
+          ? {
+              ...message,
+              content: localize(
+                locale,
+                'Hãy đặt câu hỏi trên thư viện đã được lập chỉ mục. Tôi sẽ tìm các nguồn phù hợp nhất và cho biết vì sao chúng liên quan.',
+                'Ask a question across your indexed library. I will retrieve the strongest matching sources and show why they matter.',
+              ),
+            }
+          : message,
+      ),
+    )
+  }, [locale])
 
   async function submitQuestion() {
     const trimmed = question.trim()
@@ -42,7 +66,7 @@ export function AskLibraryView() {
         question: trimmed,
         filters: fileType ? { fileType } : undefined,
         sessionId,
-      }).catch(() => demoLibraryAnswer(trimmed))
+      }).catch(() => demoLibraryAnswer(trimmed, locale))
       setSessionId(response.sessionId)
       setSources(response.sources)
       setMessages((current) => [
@@ -63,12 +87,12 @@ export function AskLibraryView() {
     <main id="main-content" className="ai-page ai-page--library">
       <header className="workspace-heading">
         <div>
-          <p className="eyebrow">HỎI THƯ VIỆN CỦA TÔI</p>
-          <h1>Kết nối ý tưởng từ mọi nguồn tài liệu.</h1>
+          <p className="eyebrow">{text('HỎI THƯ VIỆN CỦA TÔI', 'ASK MY LIBRARY')}</p>
+          <h1>{text('Kết nối ý tưởng từ mọi nguồn tài liệu.', 'Connect ideas across every source.')}</h1>
         </div>
         <span className="scope-chip">
           <Library size={15} />
-          Phạm vi: Toàn bộ thư viện
+          {text('Phạm vi: Toàn bộ thư viện', 'Scope: Entire library')}
         </span>
       </header>
 
@@ -80,14 +104,14 @@ export function AskLibraryView() {
                 <Sparkles size={17} />
               </span>
               <div>
-                <strong>Phiên nghiên cứu thư viện</strong>
-                <span>Truy xuất trên các tài liệu đã lập chỉ mục</span>
+                <strong>{text('Phiên nghiên cứu thư viện', 'Library research session')}</strong>
+                <span>{text('Truy xuất trên các tài liệu đã lập chỉ mục', 'Retrieval across indexed documents')}</span>
               </div>
             </div>
             <label className="compact-filter">
               <Filter size={15} />
               <select value={fileType} onChange={(event) => setFileType(event.target.value)}>
-                <option value="">Tất cả tệp</option>
+                <option value="">{text('Tất cả tệp', 'All files')}</option>
                 <option value="PDF">PDF</option>
                 <option value="DOCX">DOCX</option>
                 <option value="PPTX">PPTX</option>
@@ -129,18 +153,25 @@ export function AskLibraryView() {
                 <span />
                 <span />
                 <span />
-                <p>Đang tìm kiếm trong thư viện...</p>
+                <p>{text('Đang tìm kiếm trong thư viện...', 'Searching your library...')}</p>
               </div>
             ) : null}
           </div>
 
           <div className="chat-footer">
             <div className="prompt-chips">
-              {[
-                'So sánh ghi chú về hệ thống phân tán',
-                'Tìm bằng chứng về độ tin cậy của nghiên cứu',
-                'Lập kế hoạch học tập từ các tệp của tôi',
-              ].map((prompt) => (
+              {(locale === 'vi'
+                ? [
+                    'So sánh ghi chú về hệ thống phân tán',
+                    'Tìm tài liệu về độ tin cậy của nghiên cứu',
+                    'Lập kế hoạch học tập từ các tệp của tôi',
+                  ]
+                : [
+                    'Compare my notes on distributed systems',
+                    'Find sources about research validity',
+                    'Build a study plan from my files',
+                  ]
+              ).map((prompt) => (
                 <button type="button" key={prompt} onClick={() => setQuestion(prompt)}>
                   {prompt}
                 </button>
@@ -151,7 +182,7 @@ export function AskLibraryView() {
               onChange={setQuestion}
               onSubmit={() => void submitQuestion()}
               isLoading={isLoading}
-              placeholder="Đặt câu hỏi trên thư viện học tập..."
+              placeholder={text('Đặt câu hỏi trên thư viện học tập...', 'Ask across your study library...')}
             />
           </div>
         </article>
@@ -159,8 +190,8 @@ export function AskLibraryView() {
         <aside className="retrieved-panel">
           <header>
             <div>
-              <p className="eyebrow">NGUỒN ĐÃ TRUY XUẤT</p>
-              <h2>Bằng chứng được sử dụng</h2>
+              <p className="eyebrow">{text('TÀI LIỆU ĐÃ TÌM THẤY', 'RETRIEVED DOCUMENTS')}</p>
+              <h2>{text('Tài liệu tham khảo', 'Reference documents')}</h2>
             </div>
             <span>{sources.length || '—'}</span>
           </header>
@@ -179,8 +210,8 @@ export function AskLibraryView() {
           ) : (
             <div className="soft-empty-state">
               <FileSearch size={28} />
-              <strong>Bảng bằng chứng đã sẵn sàng</strong>
-              <p>Đặt câu hỏi để truy xuất các đoạn tài liệu phù hợp nhất.</p>
+              <strong>{text('Chưa có tài liệu tham khảo', 'No reference documents yet')}</strong>
+              <p>{text('Đặt câu hỏi để tìm các tài liệu liên quan trong thư viện.', 'Ask a question to find relevant documents in your library.')}</p>
             </div>
           )}
         </aside>

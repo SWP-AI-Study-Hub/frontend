@@ -1,4 +1,5 @@
 import type { LibraryDocument, UploadDocumentInput } from '../types/document'
+import type { Locale } from '../i18n/translations'
 
 const STORAGE_KEY = 'documind.demoDocuments'
 export const MAX_FILE_SIZE = 20 * 1024 * 1024
@@ -8,9 +9,9 @@ const seedDocuments: LibraryDocument[] = [
   {
     id: '79c555d8-b4ce-4d98-9f93-15f2fe1c9813',
     title: 'Distributed Systems Field Notes',
-    description: 'Đồng thuận, sao chép, mô hình lỗi và các đánh đổi trong thiết kế hệ thống.',
-    subject: 'Khoa học máy tính',
-    category: 'Hệ thống',
+    description: 'Consensus, replication, failure models, and practical system design tradeoffs.',
+    subject: 'Computer Science',
+    category: 'Systems',
     tags: ['consensus', 'replication'],
     visibility: 'PRIVATE',
     fileName: 'distributed-systems-notes.pdf',
@@ -23,9 +24,9 @@ const seedDocuments: LibraryDocument[] = [
   {
     id: '16f32b32-68da-43bf-86a3-c9ad003a8a39',
     title: 'Research Methods Handbook',
-    description: 'Câu hỏi nghiên cứu, tổng quan tài liệu, lấy mẫu và chất lượng bằng chứng.',
-    subject: 'Nghiên cứu',
-    category: 'Phương pháp luận',
+    description: 'Research questions, literature reviews, sampling, and evidence quality.',
+    subject: 'Research',
+    category: 'Methodology',
     tags: ['research', 'evidence'],
     visibility: 'PUBLIC',
     fileName: 'research-methods.docx',
@@ -38,9 +39,9 @@ const seedDocuments: LibraryDocument[] = [
   {
     id: '26ce9f92-23ad-4bba-b197-9196fb0c5ad6',
     title: 'Applied Machine Learning Review',
-    description: 'Lựa chọn mô hình, chỉ số đánh giá, rò rỉ dữ liệu và kiểm tra triển khai.',
-    subject: 'Trí tuệ nhân tạo',
-    category: 'Học máy',
+    description: 'Model selection, evaluation metrics, leakage, and deployment checks.',
+    subject: 'Artificial Intelligence',
+    category: 'Machine Learning',
     tags: ['ml', 'evaluation'],
     visibility: 'PRIVATE',
     fileName: 'applied-ml-review.pptx',
@@ -53,9 +54,9 @@ const seedDocuments: LibraryDocument[] = [
   {
     id: '9433ffbd-2fed-40b3-a7a3-16ef4153503e',
     title: 'Database Indexing Explained',
-    description: 'B-tree, chỉ mục kết hợp, kế hoạch truy vấn và các lỗi hiệu năng thường gặp.',
-    subject: 'Khoa học máy tính',
-    category: 'Cơ sở dữ liệu',
+    description: 'B-trees, composite indexes, query plans, and common performance pitfalls.',
+    subject: 'Computer Science',
+    category: 'Database',
     tags: ['database', 'performance'],
     visibility: 'PRIVATE',
     fileName: 'database-indexing.pdf',
@@ -82,13 +83,17 @@ export function getLibraryDocuments(): LibraryDocument[] {
   }
 }
 
-export function validateDocumentFile(file: File): string | null {
+export function validateDocumentFile(file: File, locale: Locale = 'vi'): string | null {
   const extension = file.name.split('.').pop()?.toLowerCase()
   if (!extension || !ACCEPTED_FILE_EXTENSIONS.includes(extension)) {
-    return 'Hãy sử dụng tệp PDF, DOCX, PPTX hoặc XLSX.'
+    return locale === 'vi'
+      ? 'Hãy sử dụng tệp PDF, DOCX, PPTX hoặc XLSX.'
+      : 'Use a PDF, DOCX, PPTX, or XLSX file.'
   }
   if (file.size > MAX_FILE_SIZE) {
-    return 'Kích thước tệp không được vượt quá 20 MB.'
+    return locale === 'vi'
+      ? 'Kích thước tệp không được vượt quá 20 MB.'
+      : 'File size must be 20 MB or smaller.'
   }
   return null
 }

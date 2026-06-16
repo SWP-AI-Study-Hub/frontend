@@ -1,16 +1,24 @@
+"use client";
+
 import { Bookmark, FileText, Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useLanguage } from "../i18n/LanguageProvider";
+import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
 
 export function SavedView() {
+  const { locale } = useLanguage();
+  const text = (vi: string, en: string) => localize(locale, vi, en);
   return (
     <main id="main-content" className="simple-workspace-page">
       <header>
-        <p className="eyebrow">ĐÃ LƯU</p>
-        <h1>Các nguồn học tập bạn đã đánh dấu.</h1>
+        <p className="eyebrow">{text("ĐÃ LƯU", "SAVED")}</p>
+        <h1>{text("Các nguồn học tập bạn đã đánh dấu.", "Your bookmarked study sources.")}</h1>
         <p>
-          Quay lại những tài liệu cộng đồng hữu ích và tiếp tục đặt câu hỏi có
-          căn cứ.
+          {text(
+            "Quay lại những tài liệu cộng đồng hữu ích và tiếp tục đặt câu hỏi có căn cứ.",
+            "Return to useful community material and continue asking grounded questions.",
+          )}
         </p>
       </header>
       <section className="saved-source-list">
@@ -20,11 +28,11 @@ export function SavedView() {
           </span>
           <div>
             <strong>Practical Retrieval-Augmented Generation</strong>
-            <p>Trí tuệ nhân tạo / Đã lưu từ cộng đồng</p>
+            <p>{text("Trí tuệ nhân tạo / Đã lưu từ cộng đồng", "Artificial Intelligence / Saved from Community")}</p>
           </div>
-          <Link href={ROUTES.askDocument}>
+          <Link href={`${ROUTES.aiChat}?scope=document`}>
             <Sparkles size={15} />
-            Hỏi AI
+            {text("Hỏi AI", "Ask AI")}
           </Link>
         </article>
         <article>
@@ -33,11 +41,11 @@ export function SavedView() {
           </span>
           <div>
             <strong>Database Indexing Explained</strong>
-            <p>Khoa học máy tính / Thư viện riêng tư</p>
+            <p>{text("Khoa học máy tính / Thư viện riêng tư", "Computer Science / Private library")}</p>
           </div>
-          <Link href={ROUTES.askDocument}>
+          <Link href={`${ROUTES.aiChat}?scope=document`}>
             <Sparkles size={15} />
-            Hỏi AI
+            {text("Hỏi AI", "Ask AI")}
           </Link>
         </article>
       </section>
