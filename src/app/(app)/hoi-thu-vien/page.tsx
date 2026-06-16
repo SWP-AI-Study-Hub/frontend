@@ -1,5 +1,6 @@
-import { AskLibraryView } from '../../../views/AskLibraryView'
+import { redirect } from "next/navigation";
+import { ROUTES } from "../../../lib/routes";
 
 export default function AskLibraryPage() {
-  return <AskLibraryView />
+  redirect(ROUTES.aiChat);
 }

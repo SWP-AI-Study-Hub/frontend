@@ -3,10 +3,9 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import {
-  BookOpen,
+  Bot,
   Bookmark,
   CreditCard,
-  FileText,
   FileUp,
   LayoutDashboard,
   LibraryBig,
@@ -24,6 +23,7 @@ import { Brand } from "../components/ui/Brand";
 import { LanguageSwitcher } from "../components/ui/LanguageSwitcher";
 import { useAuth } from "../features/auth/useAuth";
 import { useLanguage } from "../i18n/LanguageProvider";
+import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
 
 type NavItem = {
@@ -42,7 +42,8 @@ function isActivePath(pathname: string, href: string) {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user, logout } = useAuth();
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
+  const text = (vi: string, en: string) => localize(locale, vi, en);
   const pathname = usePathname() ?? ROUTES.dashboard;
   const router = useRouter();
   const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
@@ -63,15 +64,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   const aiNav: NavItem[] = [
     {
-      href: ROUTES.askDocument,
-      label: "Hỏi tài liệu này",
-      icon: FileText,
-      accent: true,
-    },
-    {
-      href: ROUTES.askLibrary,
-      label: "Hỏi thư viện của tôi",
-      icon: BookOpen,
+      href: ROUTES.aiChat,
+      label: text("AI Chatbot", "AI Chatbot"),
+      icon: Bot,
       accent: true,
     },
   ];
@@ -117,7 +112,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <button
           type="button"
           className="sidebar-backdrop"
-          aria-label="Đóng thanh điều hướng"
+          aria-label={text("Đóng điều hướng", "Close navigation")}
           onClick={() => setIsMobileNavOpen(false)}
         />
       ) : null}
@@ -128,31 +123,39 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <button
             type="button"
             className="sidebar-close-mobile"
-            aria-label="Đóng thanh điều hướng"
+            aria-label={text("Đóng điều hướng", "Close navigation")}
             onClick={() => setIsMobileNavOpen(false)}
           >
             <X size={19} />
           </button>
         </div>
 
-        <nav className="side-nav" aria-label="Điều hướng không gian học tập">
-          <span className="side-nav-label">Không gian học tập</span>
+        <nav
+          className="side-nav"
+          aria-label={text("Điều hướng không gian học tập", "Workspace navigation")}
+        >
+          <span className="side-nav-label">
+            {text("Không gian học tập", "Workspace")}
+          </span>
           {workspaceNav.map(renderLink)}
         </nav>
 
-        <nav className="side-nav side-nav--ai" aria-label="Điều hướng AI">
+        <nav
+          className="side-nav side-nav--ai"
+          aria-label={text("Điều hướng AI", "AI navigation")}
+        >
           <span className="side-nav-label">
             <Sparkles size={13} />
-            Hỏi AI
+            {text("Hỏi AI", "Ask AI")}
           </span>
           {aiNav.map(renderLink)}
         </nav>
 
         <nav
           className="side-nav side-nav--utility"
-          aria-label="Điều hướng tài khoản"
+          aria-label={text("Điều hướng tài khoản", "Account navigation")}
         >
-          <span className="side-nav-label">Tài khoản</span>
+          <span className="side-nav-label">{text("Tài khoản", "Account")}</span>
           {accountNav.map(renderLink)}
           {user?.role === "ADMIN"
             ? renderLink({
@@ -168,12 +171,18 @@ export function AppLayout({ children }: { children: ReactNode }) {
           className="sidebar-collapse"
           onClick={() => setIsSidebarCompact((current) => !current)}
           aria-label={
-            isSidebarCompact ? "Mở rộng thanh bên" : "Thu gọn thanh bên"
+            isSidebarCompact
+              ? text("Mở rộng", "Expand")
+              : text("Thu gọn", "Collapse")
           }
-          title={isSidebarCompact ? "Mở rộng thanh bên" : "Thu gọn thanh bên"}
+          title={
+            isSidebarCompact
+              ? text("Mở rộng", "Expand")
+              : text("Thu gọn", "Collapse")
+          }
         >
           <PanelLeftClose size={17} />
-          <span>Thu gọn thanh bên</span>
+          <span>{text("Thu gọn", "Collapse")}</span>
         </button>
       </aside>
 
@@ -182,7 +191,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <button
             type="button"
             className="mobile-menu-button"
-            aria-label="Mở thanh điều hướng"
+            aria-label={text("Mở điều hướng", "Open navigation")}
             aria-expanded={isMobileNavOpen}
             onClick={() => setIsMobileNavOpen(true)}
           >

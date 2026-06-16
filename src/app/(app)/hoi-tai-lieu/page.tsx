@@ -1,5 +1,6 @@
-import { AskDocumentView } from '../../../views/AskDocumentView'
+import { redirect } from "next/navigation";
+import { ROUTES } from "../../../lib/routes";
 
 export default function AskDocumentPage() {
-  return <AskDocumentView />
+  redirect(`${ROUTES.aiChat}?scope=document`);
 }
