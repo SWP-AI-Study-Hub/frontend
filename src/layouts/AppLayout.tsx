@@ -12,6 +12,7 @@ import {
   LogOut,
   Menu,
   PanelLeftClose,
+  PanelLeftOpen,
   Sparkles,
   UserRound,
   UsersRound,
@@ -122,6 +123,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <Brand compact={isSidebarCompact} />
           <button
             type="button"
+            className="sidebar-collapse"
+            onClick={() => setIsSidebarCompact((current) => !current)}
+            aria-label={isSidebarCompact ? "Expand sidebar" : "Collapse sidebar"}
+            title={isSidebarCompact ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isSidebarCompact ? (
+              <PanelLeftOpen size={18} />
+            ) : (
+              <PanelLeftClose size={18} />
+            )}
+          </button>
+          <button
+            type="button"
             className="sidebar-close-mobile"
             aria-label={text("Đóng điều hướng", "Close navigation")}
             onClick={() => setIsMobileNavOpen(false)}
@@ -166,24 +180,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             : null}
         </nav>
 
-        <button
-          type="button"
-          className="sidebar-collapse"
-          onClick={() => setIsSidebarCompact((current) => !current)}
-          aria-label={
-            isSidebarCompact
-              ? text("Mở rộng", "Expand")
-              : text("Thu gọn", "Collapse")
-          }
-          title={
-            isSidebarCompact
-              ? text("Mở rộng", "Expand")
-              : text("Thu gọn", "Collapse")
-          }
-        >
-          <PanelLeftClose size={17} />
-          <span>{text("Thu gọn", "Collapse")}</span>
-        </button>
       </aside>
 
       <div className="main-column">
