@@ -1286,12 +1286,17 @@
 
 .library-document-card {
   display: grid;
+  min-width: 0;
   gap: 18px;
   border: 1px solid var(--border);
   border-radius: 15px;
   padding: 18px;
   background: var(--surface);
   box-shadow: 0 1px 2px rgba(15, 23, 42, 0.03);
+}
+
+.library-document-card > * {
+  min-width: 0;
 }
 
 .library-card-top,
@@ -1303,6 +1308,9 @@
 }
 
 .library-document-card h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
   margin: 0 0 8px;
   font-family: var(--font-body), Arial, sans-serif;
   font-size: 1.05rem;
@@ -1317,11 +1325,18 @@
   font-size: 0.84rem;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 3;
+  overflow-wrap: anywhere;
 }
 
 .library-card-meta {
+  min-width: 0;
   color: var(--subtle);
   font-size: 0.75rem;
+}
+
+.library-card-meta span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .library-empty {
@@ -1783,7 +1798,7 @@
 
 /* UI-02 application shell */
 .app-shell { transition: grid-template-columns 160ms ease-out; }
-.app-shell--compact { grid-template-columns: 84px minmax(0, 1fr); }
+.app-shell--compact { grid-template-columns: 112px minmax(0, 1fr); }
 .sidebar {
   z-index: 40;
   gap: 1rem;
@@ -1795,6 +1810,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.45rem;
   min-height: 46px;
 }
 .side-nav { gap: 0.2rem; }
@@ -1846,12 +1862,10 @@
   background: var(--surface);
 }
 .sidebar-collapse {
-  justify-content: flex-start;
-  gap: 0.65rem;
-  min-height: 38px;
-  padding: 0.5rem 0.68rem;
-  font-size: 0.75rem;
-  font-weight: 700;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
 }
 .sidebar-close-mobile,
 .mobile-menu-button,
@@ -1861,12 +1875,10 @@
 .app-shell--compact .side-nav-label,
 .app-shell--compact .side-nav a span,
 .app-shell--compact .disabled-nav span,
-.app-shell--compact .disabled-nav small,
-.app-shell--compact .sidebar-collapse span { display: none; }
-.app-shell--compact .sidebar .brand { justify-content: center; }
+.app-shell--compact .disabled-nav small { display: none; }
+.app-shell--compact .sidebar .brand { justify-content: flex-start; }
 .app-shell--compact .side-nav a,
-.app-shell--compact .disabled-nav,
-.app-shell--compact .sidebar-collapse {
+.app-shell--compact .disabled-nav {
   display: flex;
   justify-content: center;
   padding-inline: 0;

@@ -19,6 +19,8 @@ import {
   X,
 } from "lucide-react";
 import { useLanguage } from "../../i18n/LanguageProvider";
+import { useAuth } from "../../features/auth/useAuth";
+import { localize } from "../../i18n/localize";
 import { ROUTES } from "../../lib/routes";
 import type { TranslationKey } from "../../i18n/translations";
 import { Brand } from "../ui/Brand";
@@ -87,9 +89,15 @@ const faqs = [
 ] as const;
 
 export function LandingPage() {
-  const { t } = useLanguage();
+  const { locale, t } = useLanguage();
+  const { user, isLoading } = useAuth();
+  const text = (vi: string, en: string) => localize(locale, vi, en);
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
+  const appRoute =
+    user?.role === "ADMIN" ? ROUTES.adminUsers : ROUTES.dashboard;
+  const isAuthenticated = !isLoading && user?.status === "ACTIVE";
+  const appEntryRoute = isAuthenticated ? appRoute : ROUTES.login;
 
   function closeMenu() {
     setMenuOpen(false);
@@ -109,14 +117,11 @@ export function LandingPage() {
           </nav>
           <div className="header-actions">
             <LanguageSwitcher />
-            <Link href={ROUTES.login} className="text-link">
-              {t("common.login")}
-            </Link>
             <Link
-              href={ROUTES.register}
+              href={appEntryRoute}
               className="button button--primary button--small"
             >
-              {t("common.register")}
+              {text("Vào ứng dụng", "Open app")}
             </Link>
           </div>
           <button
@@ -140,18 +145,11 @@ export function LandingPage() {
           <div className="mobile-nav-actions">
             <LanguageSwitcher />
             <Link
-              href={ROUTES.login}
-              className="button button--secondary"
-              onClick={closeMenu}
-            >
-              {t("common.login")}
-            </Link>
-            <Link
-              href={ROUTES.register}
+              href={appEntryRoute}
               className="button button--primary"
               onClick={closeMenu}
             >
-              {t("common.register")}
+              {text("Vào ứng dụng", "Open app")}
             </Link>
           </div>
         </div>
@@ -167,10 +165,12 @@ export function LandingPage() {
                 <p className="hero-lede">{t("landing.subtitle")}</p>
                 <div className="hero-ctas">
                   <Link
-                    href={ROUTES.register}
+                    href={isAuthenticated ? appRoute : ROUTES.register}
                     className="button button--primary button--large"
                   >
-                    {t("landing.primaryCta")}
+                    {isAuthenticated
+                      ? text("Vào ứng dụng", "Open app")
+                      : t("landing.primaryCta")}
                     <ArrowRight size={18} />
                   </Link>
                   <a
@@ -407,10 +407,12 @@ export function LandingPage() {
               <h2>{t("landing.finalTitle")}</h2>
               <p>{t("landing.finalBody")}</p>
               <Link
-                href={ROUTES.register}
+                href={isAuthenticated ? appRoute : ROUTES.register}
                 className="button button--amber button--large"
               >
-                {t("common.register")}
+                {isAuthenticated
+                  ? text("Vào ứng dụng", "Open app")
+                  : t("common.register")}
                 <ArrowRight size={18} />
               </Link>
             </Reveal>
@@ -424,7 +426,11 @@ export function LandingPage() {
           <p>{t("landing.footerCopy")}</p>
           <div>
             <a href="#features">{t("nav.features")}</a>
-            <Link href={ROUTES.login}>{t("common.login")}</Link>
+            <Link href={isAuthenticated ? appRoute : ROUTES.login}>
+              {isAuthenticated
+                ? text("Vào ứng dụng", "Open app")
+                : t("common.login")}
+            </Link>
           </div>
         </div>
       </footer>
