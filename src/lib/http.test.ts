@@ -123,7 +123,7 @@ describe('apiRequest', () => {
     )
 
     await expect(apiRequest('/auth/me')).rejects.toEqual(
-      expect.objectContaining<ApiError>({
+      expect.objectContaining({
         message: 'Invalid Firebase token',
         status: 401,
       }),
@@ -144,7 +144,7 @@ describe('apiRequest', () => {
     )
 
     await expect(apiRequest('/admin/users')).rejects.toEqual(
-      expect.objectContaining<ApiError>({
+      expect.objectContaining({
         message: 'Admin role required',
         status: 403,
       }),

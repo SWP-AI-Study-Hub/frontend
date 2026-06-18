@@ -12,15 +12,14 @@ type LanguageContextValue = {
 const STORAGE_KEY = 'documind-locale'
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState<Locale>('vi')
+function getInitialLocale(): Locale {
+  if (typeof window === 'undefined') return 'vi'
+  const stored = window.localStorage.getItem(STORAGE_KEY)
+  return stored === 'en' ? 'en' : 'vi'
+}
 
-  useEffect(() => {
-    const storedLocale = window.localStorage.getItem(STORAGE_KEY)
-    if (storedLocale === 'vi' || storedLocale === 'en') {
-      setLocale(storedLocale)
-    }
-  }, [])
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [locale, setLocale] = useState<Locale>(getInitialLocale)
 
   useEffect(() => {
     document.documentElement.lang = locale
