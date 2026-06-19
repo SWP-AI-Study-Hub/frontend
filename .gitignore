@@ -29,3 +29,4 @@ dist-ssr
 .codex-review/
 .agents/
 .superpowers/
+.mcp.json
