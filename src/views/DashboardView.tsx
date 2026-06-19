@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
   ArrowRight,
   BookOpen,
@@ -12,11 +12,11 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
-import { getLibraryDocuments } from "../api/documents.api";
+import { fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
-import { localizeLibraryDocument } from "../i18n/document-display";
 import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
+import type { LibraryDocument } from "../types/document";
 
 export function DashboardView() {
   const { locale } = useLanguage();
@@ -36,9 +36,20 @@ export function DashboardView() {
           "Explain this topic simply",
         ];
   const [question, setQuestion] = useState("");
-  const documents = getLibraryDocuments().map((document) =>
-    localizeLibraryDocument(document, locale),
-  );
+  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
+  useEffect(() => {
+    let active = true;
+    fetchLibraryDocuments({ limit: 100 })
+      .then((result) => {
+        if (active) setDocuments(result.items);
+      })
+      .catch(() => {
+        if (active) setDocuments([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const readyDocuments = documents.filter(
     (document) => document.indexStatus === "READY",
   );

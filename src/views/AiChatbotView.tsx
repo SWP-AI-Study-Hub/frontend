@@ -26,13 +26,13 @@ import {
   ArrowDownToLine,
 } from "lucide-react";
 import { askDocument, askLibrary } from "../api/chat.api";
-import { getLibraryDocuments, downloadDemoDocument } from "../api/documents.api";
-import { localizeLibraryDocument } from "../i18n/document-display";
+import { createDownloadUrl, fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
 import { demoDocumentAnswer, demoLibraryAnswer } from "../lib/chat-demo";
 import type { ChatMessage, Citation } from "../types/chat";
 import { ROUTES } from "../lib/routes";
+import type { LibraryDocument } from "../types/document";
 
 type ActiveMode = "CURRENT_DOCUMENT" | "SELECTED_SOURCES" | "MY_LIBRARY";
 
@@ -42,13 +42,21 @@ export function AiChatbotView() {
   const text = (vi: string, en: string) => localize(locale, vi, en);
 
   // 1. Fetch Library Documents
-  const documents = useMemo(
-    () =>
-      getLibraryDocuments().map((document) =>
-        localizeLibraryDocument(document, locale),
-      ),
-    [locale],
-  );
+  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    fetchLibraryDocuments({ limit: 100 })
+      .then((result) => {
+        if (active) setDocuments(result.items);
+      })
+      .catch(() => {
+        if (active) setDocuments([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // 2. React State
   const [activeMode, setActiveMode] = useState<ActiveMode>("MY_LIBRARY");
@@ -602,10 +610,13 @@ export function AiChatbotView() {
           <div className="ws-drawer-footer">
             <button
               className="ws-drawer-footer-btn"
-              onClick={() => {
+              onClick={async () => {
                 if (previewCitation) {
                   const doc = documents.find((d) => d.id === previewCitation.documentId);
-                  if (doc) downloadDemoDocument(doc);
+                  if (doc) {
+                    const result = await createDownloadUrl(doc.id);
+                    window.open(result.url, "_blank", "noopener,noreferrer");
+                  }
                 }
               }}
             >
