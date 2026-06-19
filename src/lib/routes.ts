@@ -17,6 +17,8 @@ export const ROUTES = {
   subscription: "/subscription",
   profile: "/profile",
   adminUsers: "/admin/users",
+  adminDashboard: "/admin/dashboard",
+  adminDocuments: "/admin/documents",
   terms: "/terms",
   privacy: "/privacy",
 } as const;

@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { ClipboardCheck, FileWarning, Search, ShieldCheck, UserCheck, UsersRound, UserX } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ClipboardCheck, FileWarning, Search, ShieldCheck, UserCheck, UsersRound, UserX } from 'lucide-react'
 import { getUsers, updateUserStatus, type UserQuery } from '../api/users.api'
 import type { AdminMutableUserStatus, CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 import { useAuth } from '../features/auth/useAuth'
@@ -14,10 +14,11 @@ const DEFAULT_QUERY: UserQuery = { page: 1, limit: 10 }
 
 export function AdminUsersView() {
   const { user: currentUser } = useAuth()
-  const { t } = useLanguage()
+  const { locale, t } = useLanguage()
   const [keyword, setKeyword] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
   const [status, setStatus] = useState<UserStatus | ''>('')
+  const [page, setPage] = useState(1)
   const [data, setData] = useState<UserListResponse | null>(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -42,12 +43,14 @@ export function AdminUsersView() {
   }, [t])
 
   useEffect(() => {
-    void loadUsers()
-  }, [loadUsers])
+    void loadUsers({ ...DEFAULT_QUERY, page, keyword, role, status })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadUsers, page, role, status])
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault()
-    await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
+    setPage(1)
+    await loadUsers({ ...DEFAULT_QUERY, page: 1, keyword, role, status })
   }
 
   async function handleStatusChange(targetUser: CurrentUser, nextStatus: AdminMutableUserStatus) {
@@ -62,7 +65,7 @@ export function AdminUsersView() {
 
     try {
       await updateUserStatus(targetUser.id, nextStatus)
-      await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
+      await loadUsers({ ...DEFAULT_QUERY, page, keyword, role, status })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.statusFailed'))
     } finally {
@@ -160,53 +163,91 @@ export function AdminUsersView() {
         {isLoading ? <div className="loading-state"><span className="loading-line" /><p>{t('admin.loadingUsers')}</p></div> : null}
         {!isLoading && users.length === 0 ? <div className="empty-state"><UsersRound size={28} /><p>{t('admin.noUsers')}</p></div> : null}
         {!isLoading && users.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{t('admin.user')}</th>
-                  <th>{t('admin.role')}</th>
-                  <th>{t('admin.status')}</th>
-                  <th>{t('admin.lastLogin')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.fullName}</strong>
-                      <span>{item.email}</span>
-                    </td>
-                    <td>
-                      <span className="status-pill role">{item.role}</span>
-                    </td>
-                    <td>
-                      {item.status === 'INACTIVE' ? (
-                        <span className="status-pill">INACTIVE</span>
-                      ) : (
-                        <select
-                          value={item.status}
-                          disabled={isLoading || updatingUserId === item.id}
-                          onChange={(event) => void handleStatusChange(item, event.target.value as AdminMutableUserStatus)}
-                        >
-                          {mutableStatuses.map((statusItem) => (
-                            <option key={statusItem} value={statusItem}>
-                              {statusItem}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>
-                        {item.lastLogin ?? t('profile.noData')}
-                      </span>
-                    </td>
+          <>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t('admin.user')}</th>
+                    <th>{t('admin.role')}</th>
+                    <th>{t('admin.status')}</th>
+                    <th>{t('admin.lastLogin')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {users.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>{item.fullName}</strong>
+                        <span>{item.email}</span>
+                      </td>
+                      <td>
+                        <span className="status-pill role">{item.role}</span>
+                      </td>
+                      <td>
+                        {item.status === 'INACTIVE' ? (
+                          <span className="status-pill">INACTIVE</span>
+                        ) : (
+                          <select
+                            value={item.status}
+                            disabled={isLoading || updatingUserId === item.id}
+                            onChange={(event) => void handleStatusChange(item, event.target.value as AdminMutableUserStatus)}
+                          >
+                            {mutableStatuses.map((statusItem) => (
+                              <option key={statusItem} value={statusItem}>
+                                {statusItem}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>
+                          {item.lastLogin ?? t('profile.noData')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {data?.meta && data.meta.totalPages > 1 ? (
+              <div className="pagination-wrap">
+                <span className="pagination-info">
+                  {locale === 'vi' ? 'Trang' : 'Page'} {data.meta.page} {locale === 'vi' ? 'trên' : 'of'} {data.meta.totalPages} ({data.meta.totalItems} {locale === 'vi' ? 'người dùng' : 'users'})
+                </span>
+                <div className="pagination-buttons">
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    disabled={!data.meta.hasPrevious}
+                    onClick={() => setPage(data.meta.page - 1)}
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  {Array.from({ length: data.meta.totalPages }, (_, i) => i + 1).map((pNum) => (
+                    <button
+                      key={pNum}
+                      type="button"
+                      className={`pagination-btn ${data.meta.page === pNum ? 'active' : ''}`}
+                      onClick={() => setPage(pNum)}
+                    >
+                      {pNum}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className="pagination-btn"
+                    disabled={!data.meta.hasNext}
+                    onClick={() => setPage(data.meta.page + 1)}
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            ) : null}
+          </>
         ) : null}
       </section>
     </main>
