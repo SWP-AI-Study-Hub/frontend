@@ -39,31 +39,63 @@ function toQueryString(query: Record<string, unknown>) {
 // Dashboard Service Functions
 // ----------------------------------------------------
 
-export function getDashboardSummary(): Promise<mock.AdminDashboardSummary> {
+export async function getDashboardSummary(): Promise<mock.AdminDashboardSummary> {
   if (USE_MOCKS) {
     return mock.mockGetDashboardSummary()
   }
-  return apiRequest<mock.AdminDashboardSummary>('/admin/dashboard/summary')
+  const res = await apiRequest<{
+    totalUsers: number
+    totalDocuments: number
+    totalPublicDocuments: number
+    totalPrivateDocuments: number
+    totalChats: number
+    totalDownloads: number
+  }>('/admin/dashboard/summary')
+
+  return {
+    totalUsers: res.totalUsers,
+    totalDocuments: res.totalDocuments,
+    publicDocuments: res.totalPublicDocuments,
+    privateDocuments: res.totalPrivateDocuments,
+    totalChats: res.totalChats,
+    totalDownloads: res.totalDownloads,
+  }
 }
 
-export function getDashboardStatistics(): Promise<{
+export async function getDashboardStatistics(): Promise<{
   bySubject: mock.SubjectStat[]
   byCategory: mock.CategoryStat[]
 }> {
   if (USE_MOCKS) {
     return mock.mockGetDashboardStatistics()
   }
-  return apiRequest<{
-    bySubject: mock.SubjectStat[]
-    byCategory: mock.CategoryStat[]
+  const res = await apiRequest<{
+    documents: {
+      bySubject: { id: string; code: string; name: string; count: number }[]
+      byCategory: { id: string; name: string; count: number }[]
+    }
   }>('/admin/dashboard/statistics')
+
+  return {
+    bySubject: res.documents.bySubject.map((s) => ({
+      subject: s.name,
+      count: s.count,
+    })),
+    byCategory: res.documents.byCategory.map((c) => ({
+      category: c.name,
+      count: c.count,
+    })),
+  }
 }
 
-export function getUploadStatistics(): Promise<mock.UploadStatItem[]> {
+export async function getUploadStatistics(): Promise<mock.UploadStatItem[]> {
   if (USE_MOCKS) {
     return mock.mockGetUploadStatistics()
   }
-  return apiRequest<mock.UploadStatItem[]>('/admin/dashboard/upload-statistics')
+  const res = await apiRequest<{
+    data: mock.UploadStatItem[]
+  }>('/admin/dashboard/upload-statistics')
+  return res.data
 }
 
 // ----------------------------------------------------
