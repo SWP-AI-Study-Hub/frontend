@@ -2,364 +2,565 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   Bot,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Eye,
   FileSpreadsheet,
   FileText,
+  Folder,
+  FolderOpen,
   Grid2X2,
   List,
+  Menu,
+  Plus,
   Search,
   Upload,
   X,
+  Check,
+  MoreVertical,
+  Edit2,
+  Trash2,
 } from "lucide-react";
 import {
-  downloadDemoDocument,
+  createCategory,
+  createDownloadUrl,
+  createPreviewUrl,
+  createSubject,
+  fetchCategories,
+  fetchDocument,
+  fetchLibraryDocuments,
+  fetchSubjects,
   formatFileSize,
-  getLibraryDocuments,
+  updateSubject,
+  deleteSubject,
+  updateCategory,
+  deleteCategory,
+  type ApiExtractionStatus,
+  type CategoryItem,
+  type SubjectItem,
 } from "../api/documents.api";
 import type { LibraryDocument } from "../types/document";
 import { useLanguage } from "../i18n/LanguageProvider";
-import { localizeLibraryDocument } from "../i18n/document-display";
 import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
 
+const PAGE_SIZE = 12;
+
 function DocumentIcon({ type }: { type: string }) {
-  return type === "XLSX" ? (
-    <FileSpreadsheet size={20} />
-  ) : (
-    <FileText size={20} />
-  );
+  return type === "XLSX" ? <FileSpreadsheet size={20} /> : <FileText size={20} />;
 }
 
 export function LibraryView() {
   const { locale } = useLanguage();
   const text = (vi: string, en: string) => localize(locale, vi, en);
-  const getIndexStatusLabel = (status: LibraryDocument["indexStatus"]) => {
-    if (status === "READY") return text("AI sẵn sàng", "AI ready");
-    if (status === "PROCESSING") return text("Đang xử lý", "Processing");
-    return text("Thất bại", "Failed");
-  };
-  const getVisibilityLabel = (visibility: LibraryDocument["visibility"]) =>
-    visibility === "PRIVATE"
-      ? text("riêng tư", "private")
-      : text("công khai", "public");
+  const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
-  const [subject, setSubject] = useState("");
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const [subjectId, setSubjectId] = useState("");
+  const [categoryId, setCategoryId] = useState("");
   const [fileType, setFileType] = useState("");
   const [status, setStatus] = useState("");
+  const [visibility, setVisibility] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
+  const [page, setPage] = useState(1);
   const [view, setView] = useState<"table" | "grid">("table");
+  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
+  const [subjects, setSubjects] = useState<SubjectItem[]>([]);
+  const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
   const [previewDocument, setPreviewDocument] = useState<LibraryDocument>();
-  const documents = useMemo(
-    () =>
-      getLibraryDocuments().map((document) =>
-        localizeLibraryDocument(document, locale),
-      ),
-    [locale],
-  );
-  const subjects = [...new Set(documents.map((document) => document.subject))];
+  const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [folderOpen, setFolderOpen] = useState(false);
+  const [addingSubject, setAddingSubject] = useState(false);
+  const [addingCategory, setAddingCategory] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [newSubjectCode, setNewSubjectCode] = useState("");
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
+  // Subject & Category CRUD
+  const [activeMenu, setActiveMenu] = useState<{ type: "subject" | "category"; id: string } | null>(null);
+  const [editingSubjectId, setEditingSubjectId] = useState<string | null>(null);
+  const [editingCategoryId, setEditingCategoryId] = useState<string | null>(null);
+  const [editSubjectName, setEditSubjectName] = useState("");
+  const [editSubjectCode, setEditSubjectCode] = useState("");
+  const [editCategoryName, setEditCategoryName] = useState("");
 
   useEffect(() => {
-    setSubject("");
+    const timeout = window.setTimeout(() => {
+      setDebouncedQuery(query.trim());
+      setPage(1);
+    }, 300);
+    return () => window.clearTimeout(timeout);
+  }, [query]);
+
+  useEffect(() => {
+    Promise.all([fetchSubjects(), fetchCategories()])
+      .then(([subjectItems, categoryItems]) => {
+        setSubjects(subjectItems);
+        setCategories(categoryItems);
+      })
+      .catch((error: unknown) => setErrorMessage(error instanceof Error ? error.message : text("Không thể tải cấu trúc Library.", "Could not load the Library structure.")));
   }, [locale]);
 
-  const filteredDocuments = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    return documents.filter((document) => {
-      const matchesQuery =
-        !normalized ||
-        [document.title, document.description, ...document.tags].some((value) =>
-          value.toLowerCase().includes(normalized),
-        );
-      return (
-        matchesQuery &&
-        (!subject || document.subject === subject) &&
-        (!fileType || document.fileType === fileType) &&
-        (!status || document.indexStatus === status)
+  const sort = useMemo(() => {
+    if (sortBy === "oldest") return { sortBy: "createdAt" as const, sortOrder: "asc" as const };
+    if (sortBy === "name-asc") return { sortBy: "title" as const, sortOrder: "asc" as const };
+    if (sortBy === "size-desc") return { sortBy: "fileSize" as const, sortOrder: "desc" as const };
+    return { sortBy: "createdAt" as const, sortOrder: "desc" as const };
+  }, [sortBy]);
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    setErrorMessage("");
+    fetchLibraryDocuments({
+      search: debouncedQuery || undefined,
+      subjectId: subjectId || undefined,
+      categoryId: categoryId || undefined,
+      fileType: fileType || undefined,
+      aiStatus: (status || undefined) as ApiExtractionStatus | undefined,
+      visibility: visibility as "PRIVATE" | "PUBLIC" | "",
+      ...sort,
+      page,
+      limit: PAGE_SIZE,
+    })
+      .then((result) => {
+        if (!active) return;
+        setDocuments(result.items);
+        setPagination(result.pagination);
+      })
+      .catch((error: unknown) => {
+        if (active) setErrorMessage(error instanceof Error ? error.message : text("Không thể tải tài liệu.", "Could not load documents."));
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [categoryId, debouncedQuery, fileType, locale, page, sort, status, subjectId, visibility]);
+
+  useEffect(() => {
+    const documentId = searchParams.get("document");
+    if (!documentId) return;
+    fetchDocument(documentId).then(setPreviewDocument).catch(() => undefined);
+  }, [searchParams]);
+
+  const selectedSubject = subjects.find((item) => item.id === subjectId);
+  const selectedCategory = categories.find((item) => item.id === categoryId);
+  const activeFilters = Boolean(query || subjectId || categoryId || fileType || status || visibility || sortBy !== "newest");
+
+  // Close active dropdown menu when clicking anywhere
+  useEffect(() => {
+    function handleGlobalClick() {
+      setActiveMenu(null);
+    }
+    window.addEventListener("click", handleGlobalClick);
+    return () => window.removeEventListener("click", handleGlobalClick);
+  }, []);
+
+  function handleMenuToggle(event: React.MouseEvent, type: "subject" | "category", id: string) {
+    event.stopPropagation();
+    setActiveMenu((prev) => (prev?.type === type && prev?.id === id ? null : { type, id }));
+  }
+
+  async function handleUpdateSubject(id: string, event: React.FormEvent) {
+    event.preventDefault();
+    const name = editSubjectName.trim();
+    const code = editSubjectCode.trim();
+    if (!name || !code) return;
+    setIsCreating(true);
+    setErrorMessage("");
+    try {
+      const updated = await updateSubject(id, name, code.toUpperCase());
+      setSubjects((current) =>
+        current.map((s) => (s.id === id ? updated : s)).sort((a, b) => a.name.localeCompare(b.name))
       );
+      setEditingSubjectId(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể cập nhật môn học.", "Could not update subject."));
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function handleDeleteSubject(id: string, event: React.MouseEvent) {
+    event.stopPropagation();
+    if (!window.confirm(text("Bạn có chắc chắn muốn xóa môn học này không? Tất cả tài liệu liên quan sẽ có thể bị lỗi liên kết.", "Are you sure you want to delete this subject? Associated documents might have broken links."))) {
+      return;
+    }
+    setIsCreating(true);
+    setErrorMessage("");
+    try {
+      await deleteSubject(id);
+      setSubjects((current) => current.filter((s) => s.id !== id));
+      if (subjectId === id) {
+        selectFolder("", "");
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể xóa môn học.", "Could not delete subject."));
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function handleUpdateCategory(id: string, event: React.FormEvent) {
+    event.preventDefault();
+    const name = editCategoryName.trim();
+    if (!name) return;
+    setIsCreating(true);
+    setErrorMessage("");
+    try {
+      const updated = await updateCategory(id, name);
+      setCategories((current) =>
+        current.map((c) => (c.id === id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
+      );
+      setEditingCategoryId(null);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể cập nhật danh mục.", "Could not update category."));
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function handleDeleteCategory(id: string, event: React.MouseEvent) {
+    event.stopPropagation();
+    if (!window.confirm(text("Bạn có chắc chắn muốn xóa danh mục này không?", "Are you sure you want to delete this category?"))) {
+      return;
+    }
+    setIsCreating(true);
+    setErrorMessage("");
+    try {
+      await deleteCategory(id);
+      setCategories((current) => current.filter((c) => c.id !== id));
+      if (categoryId === id) {
+        selectFolder(subjectId, "");
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể xóa danh mục.", "Could not delete category."));
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  function startEditSubject(subject: SubjectItem, event: React.MouseEvent) {
+    event.stopPropagation();
+    setEditingSubjectId(subject.id);
+    setEditSubjectName(subject.name);
+    setEditSubjectCode(subject.code);
+    setActiveMenu(null);
+  }
+
+  function startEditCategory(category: CategoryItem, event: React.MouseEvent) {
+    event.stopPropagation();
+    setEditingCategoryId(category.id);
+    setEditCategoryName(category.name);
+    setActiveMenu(null);
+  }
+
+  function cancelEdit(event: React.MouseEvent) {
+    event.stopPropagation();
+    setEditingSubjectId(null);
+    setEditingCategoryId(null);
+  }
+
+  function selectFolder(nextSubjectId = "", nextCategoryId = "") {
+    setSubjectId(nextSubjectId);
+    setCategoryId(nextCategoryId);
+    setPage(1);
+    setFolderOpen(false);
+  }
+
+  function toggleSubject(id: string) {
+    setExpandedSubjects((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
     });
-  }, [documents, fileType, query, status, subject]);
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setSubjectId("");
+    setCategoryId("");
+    setFileType("");
+    setStatus("");
+    setVisibility("");
+    setSortBy("newest");
+    setPage(1);
+  }
+
+  async function handleCreateSubject() {
+    const name = newSubjectName.trim();
+    if (!name) return;
+    setIsCreating(true);
+    setErrorMessage("");
+    try {
+      const item = await createSubject(name, (newSubjectCode.trim() || name.slice(0, 3)).toUpperCase());
+      setSubjects((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
+      setExpandedSubjects((current) => new Set(current).add(item.id));
+      selectFolder(item.id);
+      setAddingSubject(false);
+      setNewSubjectName("");
+      setNewSubjectCode("");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể tạo môn học.", "Could not create subject."));
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function handleCreateCategory() {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setIsCreating(true);
+    setErrorMessage("");
+    try {
+      const item = await createCategory(name);
+      setCategories((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
+      const targetSubject = subjectId || subjects[0]?.id || "";
+      if (targetSubject) {
+        setExpandedSubjects((current) => new Set(current).add(targetSubject));
+        selectFolder(targetSubject, item.id);
+      }
+      setAddingCategory(false);
+      setNewCategoryName("");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể tạo danh mục.", "Could not create category."));
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  async function openObject(document: LibraryDocument, mode: "preview" | "download") {
+    try {
+      const result = mode === "preview" ? await createPreviewUrl(document.id) : await createDownloadUrl(document.id);
+      window.open(result.url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể mở tài liệu.", "Could not open the document."));
+    }
+  }
+
+  const getIndexStatusLabel = (indexStatus: LibraryDocument["indexStatus"]) => {
+    if (indexStatus === "READY") return text("AI sẵn sàng", "AI ready");
+    if (indexStatus === "PROCESSING") return text("Đang xử lý", "Processing");
+    if (indexStatus === "FAILED") return text("Thất bại", "Failed");
+    return text("Đang chờ", "Pending");
+  };
 
   return (
     <main id="main-content" className="library-page">
       <header className="library-page-heading">
-        <div>
-          <p className="eyebrow">{text("THƯ VIỆN CỦA TÔI", "MY LIBRARY")}</p>
-          <h1>{text("Tài liệu của bạn, sẵn sàng để khám phá.", "Your documents, ready to think with.")}</h1>
-          <p>
-            {text(
-              "Tìm kiếm nội dung và metadata, kiểm tra trạng thái lập chỉ mục hoặc tiếp tục với AI.",
-              "Search metadata and content, inspect indexing status, or continue with AI.",
-            )}
-          </p>
-        </div>
-        <Link href={ROUTES.upload} className="primary-button">
-          <Upload size={17} />
-          {text("Tải tài liệu lên", "Upload document")}
-        </Link>
+        <div><p className="eyebrow">{text("THƯ VIỆN CỦA TÔI", "MY LIBRARY")}</p><h1>{text("Kiến thức của bạn, được sắp xếp rõ ràng.", "Your knowledge, organized for deeper work.")}</h1><p>{text("Duyệt theo môn học và danh mục, theo dõi trạng thái AI hoặc tiếp tục đặt câu hỏi.", "Browse by subject and category, track AI readiness, or continue asking questions.")}</p></div>
       </header>
 
-      <section className="library-controls">
-        <label className="library-search">
-          <Search size={18} />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={text("Tìm theo nội dung, tiêu đề hoặc thẻ...", "Search by content, title, or tag...")}
-          />
-        </label>
-        <div className="library-filters">
-          <select
-            value={subject}
-            onChange={(event) => setSubject(event.target.value)}
-          >
-            <option value="">{text("Tất cả môn học", "All subjects")}</option>
-            {subjects.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-          <select
-            value={fileType}
-            onChange={(event) => setFileType(event.target.value)}
-          >
-            <option value="">{text("Tất cả loại tệp", "All file types")}</option>
-            {["PDF", "DOCX", "PPTX", "XLSX"].map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option value="">{text("Tất cả trạng thái", "All statuses")}</option>
-            <option value="READY">{text("AI sẵn sàng", "AI ready")}</option>
-            <option value="PROCESSING">{text("Đang xử lý", "Processing")}</option>
-            <option value="FAILED">{text("Thất bại", "Failed")}</option>
-          </select>
-          <div className="view-toggle" aria-label={text("Kiểu hiển thị thư viện", "Library view")}>
-            <button
-              type="button"
-              className={view === "table" ? "active" : undefined}
-              onClick={() => setView("table")}
-              title={text("Dạng danh sách", "List view")}
-            >
-              <List size={17} />
-            </button>
-            <button
-              type="button"
-              className={view === "grid" ? "active" : undefined}
-              onClick={() => setView("grid")}
-              title={text("Dạng lưới", "Grid view")}
-            >
-              <Grid2X2 size={17} />
-            </button>
-          </div>
-        </div>
-      </section>
+      <div className="library-shell">
+        <button type="button" className="library-folder-mobile-toggle" onClick={() => setFolderOpen(true)}><Menu size={17} />{text("Thư mục", "Folders")}{selectedSubject ? <span>{selectedSubject.name}</span> : null}</button>
+        <aside className={`library-folder-panel${folderOpen ? " open" : ""}`}>
+          <div className="library-folder-header"><div><p className="eyebrow">{text("CẤU TRÚC LIBRARY", "LIBRARY STRUCTURE")}</p><strong>{text("Thư mục học tập", "Study folders")}</strong></div><button type="button" className="icon-button library-folder-close" onClick={() => setFolderOpen(false)}><X size={18} /></button></div>
+          <button type="button" className={`library-folder-root${!subjectId ? " active" : ""}`} onClick={() => selectFolder()}><FolderOpen size={18} /><span>{text("Tất cả tài liệu", "All documents")}</span></button>
 
-      <div className="library-result-count">
-        <strong>{filteredDocuments.length} {text("tài liệu", "documents")}</strong>
-        <span>
-          {
-            documents.filter((document) => document.indexStatus === "READY")
-              .length
-          }{" "}
-          {text("AI sẵn sàng", "AI ready")}
-        </span>
+          <div className="folder-group-heading"><span>{text("Môn học", "Subjects")}</span><button type="button" onClick={() => setAddingSubject((value) => !value)}><Plus size={14} />{text("Thêm nhanh", "Quick add")}</button></div>
+          {addingSubject ? <div className="folder-quick-add"><input value={newSubjectName} onChange={(event) => setNewSubjectName(event.target.value)} placeholder={text("Tên môn học", "Subject name")} /><input value={newSubjectCode} onChange={(event) => setNewSubjectCode(event.target.value)} placeholder={text("Mã", "Code")} /><button type="button" onClick={handleCreateSubject} disabled={isCreating || !newSubjectName.trim()}>{text("Lưu", "Save")}</button></div> : null}
+
+          <nav className="library-folder-tree" aria-label={text("Thư mục theo môn học và danh mục", "Subject and category folders")}>
+            {subjects.map((subject) => {
+              const expanded = expandedSubjects.has(subject.id);
+              const active = subjectId === subject.id && !categoryId;
+              const isEditingSubject = editingSubjectId === subject.id;
+
+              return (
+                <div className="folder-subject" key={subject.id}>
+                  {isEditingSubject ? (
+                    <form
+                      onSubmit={(e) => handleUpdateSubject(subject.id, e)}
+                      className="folder-rename-form"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <input
+                        type="text"
+                        value={editSubjectName}
+                        onChange={(e) => setEditSubjectName(e.target.value)}
+                        autoFocus
+                        className="rename-input"
+                        placeholder={text("Tên môn học", "Subject name")}
+                      />
+                      <input
+                        type="text"
+                        value={editSubjectCode}
+                        onChange={(e) => setEditSubjectCode(e.target.value)}
+                        className="rename-code-input"
+                        placeholder={text("Mã", "Code")}
+                      />
+                      <button type="submit" className="folder-action-confirm-btn" title={text("Lưu", "Save")}>
+                        <Check size={14} />
+                      </button>
+                      <button type="button" onClick={cancelEdit} className="folder-action-cancel-btn" title={text("Hủy", "Cancel")}>
+                        <X size={14} />
+                      </button>
+                    </form>
+                  ) : (
+                    <div className={`folder-subject-row${active ? " active" : ""}`}>
+                      <button
+                        type="button"
+                        className="folder-expand"
+                        onClick={() => toggleSubject(subject.id)}
+                        aria-expanded={expanded}
+                      >
+                        {expanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                      </button>
+                      <button type="button" className="folder-select" onClick={() => selectFolder(subject.id)}>
+                        <Folder size={17} />
+                        <span>{subject.name}</span>
+                        <small>{subject.code}</small>
+                      </button>
+                      <div className="folder-action-container" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          className={`folder-actions-trigger${
+                            activeMenu?.type === "subject" && activeMenu?.id === subject.id ? " active" : ""
+                          }`}
+                          onClick={(e) => handleMenuToggle(e, "subject", subject.id)}
+                          title={text("Thao tác", "Actions")}
+                        >
+                          <MoreVertical size={14} />
+                        </button>
+                        {activeMenu?.type === "subject" && activeMenu?.id === subject.id && (
+                          <div className="folder-dropdown-menu">
+                            <button type="button" className="folder-dropdown-item" onClick={(e) => startEditSubject(subject, e)}>
+                              <Edit2 size={13} />
+                              {text("Sửa tên", "Rename")}
+                            </button>
+                            <button type="button" className="folder-dropdown-item danger" onClick={(e) => handleDeleteSubject(subject.id, e)}>
+                              <Trash2 size={13} />
+                              {text("Xóa", "Delete")}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {expanded ? (
+                    <div className="folder-categories">
+                      {categories.map((category) => {
+                        const isEditingCategory = editingCategoryId === category.id;
+                        const isCategoryActive = subjectId === subject.id && categoryId === category.id;
+
+                        return isEditingCategory ? (
+                          <form
+                            key={category.id}
+                            onSubmit={(e) => handleUpdateCategory(category.id, e)}
+                            className="folder-rename-form folder-rename-form--category"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <input
+                              type="text"
+                              value={editCategoryName}
+                              onChange={(e) => setEditCategoryName(e.target.value)}
+                              autoFocus
+                              className="rename-input"
+                              placeholder={text("Tên danh mục", "Category name")}
+                            />
+                            <button type="submit" className="folder-action-confirm-btn" title={text("Lưu", "Save")}>
+                              <Check size={14} />
+                            </button>
+                            <button type="button" onClick={cancelEdit} className="folder-action-cancel-btn" title={text("Hủy", "Cancel")}>
+                              <X size={14} />
+                            </button>
+                          </form>
+                        ) : (
+                          <div
+                            key={category.id}
+                            className={`folder-category-row${isCategoryActive ? " active" : ""}`}
+                          >
+                            <button
+                              type="button"
+                              className={`folder-category-select${isCategoryActive ? " active" : ""}`}
+                              onClick={() => selectFolder(subject.id, category.id)}
+                            >
+                              <FileText size={14} />
+                              <span>{category.name}</span>
+                            </button>
+                            <div className="folder-action-container" onClick={(e) => e.stopPropagation()}>
+                              <button
+                                type="button"
+                                className={`folder-actions-trigger${
+                                  activeMenu?.type === "category" && activeMenu?.id === category.id ? " active" : ""
+                                }`}
+                                onClick={(e) => handleMenuToggle(e, "category", category.id)}
+                                title={text("Thao tác", "Actions")}
+                              >
+                                <MoreVertical size={14} />
+                              </button>
+                              {activeMenu?.type === "category" && activeMenu?.id === category.id && (
+                                <div className="folder-dropdown-menu">
+                                  <button type="button" className="folder-dropdown-item" onClick={(e) => startEditCategory(category, e)}>
+                                    <Edit2 size={13} />
+                                    {text("Sửa tên", "Rename")}
+                                  </button>
+                                  <button type="button" className="folder-dropdown-item danger" onClick={(e) => handleDeleteCategory(category.id, e)}>
+                                    <Trash2 size={13} />
+                                    {text("Xóa", "Delete")}
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </nav>
+
+          <div className="folder-group-heading"><span>{text("Danh mục dùng chung", "Shared categories")}</span><button type="button" onClick={() => setAddingCategory((value) => !value)}><Plus size={14} />{text("Thêm nhanh", "Quick add")}</button></div>
+          {addingCategory ? <div className="folder-quick-add folder-quick-add--category"><input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder={text("Tên danh mục", "Category name")} /><button type="button" onClick={handleCreateCategory} disabled={isCreating || !newCategoryName.trim()}>{text("Lưu", "Save")}</button></div> : null}
+        </aside>
+
+        <section className="library-content">
+          <section className="library-controls">
+            <div className="library-controls-row-1"><label className="library-search"><Search size={18} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={text("Tìm theo tiêu đề, mô tả hoặc tên tệp...", "Search title, description, or file name...")} /></label><Link href={ROUTES.upload} className="primary-button upload-btn-cta"><Upload size={17} />{text("Tải tài liệu lên", "Upload document")}</Link></div>
+            <div className="library-breadcrumb"><button type="button" onClick={() => selectFolder()}>{text("Tất cả tài liệu", "All documents")}</button>{selectedSubject ? <><ChevronRight size={14} /><button type="button" onClick={() => selectFolder(selectedSubject.id)}>{selectedSubject.name}</button></> : null}{selectedCategory ? <><ChevronRight size={14} /><strong>{selectedCategory.name}</strong></> : null}</div>
+            <div className="library-controls-row-2"><div className="library-filters-scroll-container"><div className="library-filters">
+              <select value={fileType} onChange={(event) => { setFileType(event.target.value); setPage(1); }} className={fileType ? "filter-active" : ""}><option value="">{text("Tất cả loại tệp", "All file types")}</option>{["PDF", "DOCX", "PPTX", "XLSX"].map((item) => <option key={item}>{item}</option>)}</select>
+              <select value={status} onChange={(event) => { setStatus(event.target.value); setPage(1); }} className={status ? "filter-active" : ""}><option value="">{text("Tất cả trạng thái AI", "All AI statuses")}</option><option value="COMPLETED">{text("AI sẵn sàng", "AI ready")}</option><option value="PROCESSING">{text("Đang xử lý", "Processing")}</option><option value="PENDING">{text("Đang chờ", "Pending")}</option><option value="FAILED">{text("Thất bại", "Failed")}</option></select>
+              <select value={visibility} onChange={(event) => { setVisibility(event.target.value); setPage(1); }} className={visibility ? "filter-active" : ""}><option value="">{text("Tất cả quyền hiển thị", "All visibility")}</option><option value="PUBLIC">{text("Công khai", "Public")}</option><option value="PRIVATE">{text("Riêng tư", "Private")}</option></select>
+              <select value={sortBy} onChange={(event) => { setSortBy(event.target.value); setPage(1); }} className={sortBy !== "newest" ? "filter-active" : ""}><option value="newest">{text("Mới nhất", "Newest")}</option><option value="oldest">{text("Cũ nhất", "Oldest")}</option><option value="name-asc">{text("Tên A-Z", "Name A-Z")}</option><option value="size-desc">{text("Dung lượng", "File size")}</option></select>
+              {activeFilters ? <button type="button" className="clear-filters-btn" onClick={clearFilters}><X size={14} />{text("Xóa bộ lọc", "Clear filters")}</button> : null}
+            </div></div><div className="view-toggle"><button type="button" className={view === "table" ? "active" : ""} onClick={() => setView("table")}><List size={17} /></button><button type="button" className={view === "grid" ? "active" : ""} onClick={() => setView("grid")}><Grid2X2 size={17} /></button></div></div>
+          </section>
+
+          {errorMessage ? <div className="library-api-error" role="alert"><strong>{text("Không thể hoàn tất yêu cầu", "The request could not be completed")}</strong><p>{errorMessage}</p><button type="button" onClick={() => window.location.reload()}>{text("Thử lại", "Retry")}</button></div> : null}
+
+          <div className="library-result-count"><strong>{pagination.total} {text("tài liệu", "documents")}</strong><span>{selectedCategory?.name || selectedSubject?.name || text("Toàn bộ Library", "Entire Library")}</span></div>
+
+          {isLoading ? <div className="library-loading" aria-live="polite"><span className="spinner" />{text("Đang tải tài liệu...", "Loading documents...")}</div> : documents.length === 0 ? <div className="soft-empty-state library-empty"><Search size={28} /><strong>{text("Không có tài liệu phù hợp", "No matching documents")}</strong><p>{text("Thử thư mục khác, xóa bộ lọc hoặc tải tài liệu mới.", "Try another folder, clear filters, or upload a new document.")}</p></div> : view === "table" ? (
+            <div className="library-table-wrap"><table className="library-table"><thead><tr><th>{text("Tài liệu", "Document")}</th><th>{text("Môn học / Danh mục", "Subject / Category")}</th><th>{text("Ngày tải", "Uploaded")}</th><th>{text("AI", "AI status")}</th><th>{text("Thao tác", "Actions")}</th></tr></thead><tbody>{documents.map((document) => <tr key={document.id}><td><div className="library-document-cell"><span className="document-type-icon"><DocumentIcon type={document.fileType} /></span><span><strong>{document.title}</strong><small>{document.fileType} · {formatFileSize(document.fileSize)} · {document.visibility === "PRIVATE" ? text("riêng tư", "private") : text("công khai", "public")}</small></span></div></td><td><span className="library-taxonomy-cell"><strong>{document.subject}</strong><small>{document.category}</small></span></td><td>{new Date(document.uploadedAt).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US")}</td><td><span className={`index-status index-status--${document.indexStatus.toLowerCase()}`}>{getIndexStatusLabel(document.indexStatus)}</span></td><td><DocumentActions document={document} text={text} onPreview={() => setPreviewDocument(document)} onDownload={() => void openObject(document, "download")} /></td></tr>)}</tbody></table></div>
+          ) : (
+            <section className="library-card-grid">{documents.map((document) => <article className="library-document-card" key={document.id}><div className="library-card-top"><span className="document-type-icon"><DocumentIcon type={document.fileType} /></span><span className={`index-status index-status--${document.indexStatus.toLowerCase()}`}>{getIndexStatusLabel(document.indexStatus)}</span></div><div><h2>{document.title}</h2><p>{document.description || text("Chưa có mô tả.", "No description yet.")}</p></div><div className="library-card-meta"><span>{document.subject}</span><span>{document.category}</span><span>{formatFileSize(document.fileSize)}</span></div><DocumentActions document={document} text={text} onPreview={() => setPreviewDocument(document)} onDownload={() => void openObject(document, "download")} /></article>)}</section>
+          )}
+
+          {pagination.totalPages > 1 ? <nav className="library-pagination" aria-label={text("Phân trang tài liệu", "Document pagination")}><button type="button" onClick={() => setPage((value) => value - 1)} disabled={page <= 1}><ChevronLeft size={16} />{text("Trước", "Previous")}</button><span>{text(`Trang ${page} / ${pagination.totalPages}`, `Page ${page} of ${pagination.totalPages}`)}</span><button type="button" onClick={() => setPage((value) => value + 1)} disabled={page >= pagination.totalPages}>{text("Sau", "Next")}<ChevronRight size={16} /></button></nav> : null}
+        </section>
       </div>
 
-      {filteredDocuments.length === 0 ? (
-        <div className="soft-empty-state library-empty">
-          <Search size={28} />
-          <strong>{text("Không có tài liệu phù hợp", "No matching documents")}</strong>
-          <p>{text("Xóa bộ lọc hoặc tải nguồn tài liệu mới lên thư viện.", "Clear a filter or upload a new source to your library.")}</p>
-        </div>
-      ) : view === "table" ? (
-        <div className="library-table-wrap">
-          <table className="library-table">
-            <thead>
-              <tr>
-                <th>{text("Tiêu đề tài liệu", "Document title")}</th>
-                <th>{text("Môn học", "Subject")}</th>
-                <th>{text("Ngày tải lên", "Upload date")}</th>
-                <th>{text("Chỉ mục AI", "AI index")}</th>
-                <th>{text("Thao tác", "Actions")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDocuments.map((document) => (
-                <tr key={document.id}>
-                  <td>
-                    <div className="library-document-cell">
-                      <span className="document-type-icon">
-                        <DocumentIcon type={document.fileType} />
-                      </span>
-                      <span>
-                        <strong>{document.title}</strong>
-                        <small>
-                          {document.fileType} /{" "}
-                          {formatFileSize(document.fileSize)} /{" "}
-                          {getVisibilityLabel(document.visibility)}
-                        </small>
-                      </span>
-                    </div>
-                  </td>
-                  <td>{document.subject}</td>
-                  <td>
-                    {new Date(document.uploadedAt).toLocaleDateString(
-                      locale === "vi" ? "vi-VN" : "en-US",
-                    )}
-                  </td>
-                  <td>
-                    <span
-                      className={`index-status index-status--${document.indexStatus.toLowerCase()}`}
-                    >
-                      {getIndexStatusLabel(document.indexStatus)}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="document-actions">
-                      <button
-                        type="button"
-                        title={text("Xem trước", "Preview")}
-                        onClick={() => setPreviewDocument(document)}
-                      >
-                        <Eye size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        title={text("Tải xuống", "Download")}
-                        onClick={() => downloadDemoDocument(document)}
-                      >
-                        <Download size={16} />
-                      </button>
-                      <Link
-                        href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}
-                        className="ask-document-action"
-                      >
-                        <Bot size={16} />
-                        {text("Hỏi AI", "Ask AI")}
-                      </Link>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <section className="library-card-grid">
-          {filteredDocuments.map((document) => (
-            <article className="library-document-card" key={document.id}>
-              <div className="library-card-top">
-                <span className="document-type-icon">
-                  <DocumentIcon type={document.fileType} />
-                </span>
-                <span
-                  className={`index-status index-status--${document.indexStatus.toLowerCase()}`}
-                >
-                  {getIndexStatusLabel(document.indexStatus)}
-                </span>
-              </div>
-              <div>
-                <h2>{document.title}</h2>
-                <p>{document.description}</p>
-              </div>
-              <div className="library-card-meta">
-                <span>{document.subject}</span>
-                <span>{formatFileSize(document.fileSize)}</span>
-              </div>
-              <div className="document-actions">
-                <button
-                  type="button"
-                  title={text("Xem trước", "Preview")}
-                  onClick={() => setPreviewDocument(document)}
-                >
-                  <Eye size={16} />
-                </button>
-                <button
-                  type="button"
-                  title={text("Tải xuống", "Download")}
-                  onClick={() => downloadDemoDocument(document)}
-                >
-                  <Download size={16} />
-                </button>
-                <Link
-                  href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}
-                  className="ask-document-action"
-                >
-                  <Bot size={16} />
-                  {text("Hỏi AI", "Ask AI")}
-                </Link>
-              </div>
-            </article>
-          ))}
-        </section>
-      )}
-
-      {previewDocument ? (
-        <div
-          className="preview-overlay"
-          role="presentation"
-          onMouseDown={() => setPreviewDocument(undefined)}
-        >
-          <article
-            className="preview-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`${text("Xem trước", "Preview")} ${previewDocument.title}`}
-            onMouseDown={(event) => event.stopPropagation()}
-          >
-            <header>
-              <div>
-                <span className="document-type-icon">
-                  <DocumentIcon type={previewDocument.fileType} />
-                </span>
-                <span>
-                  <strong>{previewDocument.title}</strong>
-                  <small>{previewDocument.fileName}</small>
-                </span>
-              </div>
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setPreviewDocument(undefined)}
-              >
-                <X size={18} />
-              </button>
-            </header>
-            <div className="preview-document-sheet">
-              <p className="eyebrow">{previewDocument.subject}</p>
-              <h2>{previewDocument.title}</h2>
-              <p>{previewDocument.description}</p>
-              <blockquote>
-                {text(
-                  "Bản xem trước đã sẵn sàng. Mở AI Chatbot để đặt câu hỏi về tài liệu này.",
-                  "The preview is ready. Open AI Chatbot to ask questions about this document.",
-                )}
-              </blockquote>
-            </div>
-            <footer>
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={() => downloadDemoDocument(previewDocument)}
-              >
-                <Download size={16} />
-                {text("Tải xuống", "Download")}
-              </button>
-              <Link
-                href={`${ROUTES.aiChat}?scope=document&document=${previewDocument.id}`}
-                className="primary-button"
-              >
-                <Bot size={16} />
-                {text("Hỏi AI", "Ask AI")}
-              </Link>
-            </footer>
-          </article>
-        </div>
-      ) : null}
+      {previewDocument ? <div className="preview-overlay" role="presentation" onMouseDown={() => setPreviewDocument(undefined)}><article className="preview-dialog" role="dialog" aria-modal="true" aria-label={`${text("Xem tài liệu", "View document")} ${previewDocument.title}`} onMouseDown={(event) => event.stopPropagation()}><header><div><span className="document-type-icon"><DocumentIcon type={previewDocument.fileType} /></span><span><strong>{previewDocument.title}</strong><small>{previewDocument.fileName}</small></span></div><button type="button" className="icon-button" onClick={() => setPreviewDocument(undefined)}><X size={18} /></button></header><div className="preview-document-sheet"><p className="eyebrow">{previewDocument.subject} / {previewDocument.category}</p><h2>{previewDocument.title}</h2><p>{previewDocument.description || text("Chưa có mô tả.", "No description yet.")}</p><div className="preview-tag-list">{previewDocument.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><footer><button type="button" className="secondary-button" onClick={() => void openObject(previewDocument, "preview")}><Eye size={16} />{text("Mở bản gốc", "Open original")}</button><button type="button" className="secondary-button" onClick={() => void openObject(previewDocument, "download")}><Download size={16} />{text("Tải xuống", "Download")}</button>{previewDocument.indexStatus === "READY" ? <Link href={`${ROUTES.aiChat}?scope=document&document=${previewDocument.id}`} className="primary-button"><Bot size={16} />{text("Hỏi AI", "Ask AI")}</Link> : <button type="button" className="primary-button" disabled><Bot size={16} />{text("AI chưa sẵn sàng", "AI not ready")}</button>}</footer></article></div> : null}
     </main>
   );
+}
+
+function DocumentActions({ document, text, onPreview, onDownload }: { document: LibraryDocument; text: (vi: string, en: string) => string; onPreview: () => void; onDownload: () => void }) {
+  return <div className="document-actions"><button type="button" title={text("Xem", "View")} onClick={onPreview}><Eye size={16} /></button><button type="button" title={text("Tải xuống", "Download")} onClick={onDownload}><Download size={16} /></button>{document.indexStatus === "READY" ? <Link href={`${ROUTES.aiChat}?scope=document&document=${document.id}`} className="ask-document-action"><Bot size={16} />{text("Hỏi AI", "Ask AI")}</Link> : <button type="button" className="ask-document-action disabled" disabled><Bot size={16} />{text("Hỏi AI", "Ask AI")}</button>}</div>;
 }

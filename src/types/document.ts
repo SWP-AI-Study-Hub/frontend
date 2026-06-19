@@ -1,11 +1,13 @@
 export type DocumentVisibility = 'PRIVATE' | 'PUBLIC'
-export type DocumentIndexStatus = 'READY' | 'PROCESSING' | 'FAILED'
+export type DocumentIndexStatus = 'READY' | 'PROCESSING' | 'FAILED' | 'PENDING'
 
 export type LibraryDocument = {
   id: string
   title: string
   description: string
+  subjectId: string
   subject: string
+  categoryId: string
   category: string
   tags: string[]
   visibility: DocumentVisibility
@@ -20,8 +22,8 @@ export type LibraryDocument = {
 export type UploadDocumentInput = {
   title: string
   description: string
-  subject: string
-  category: string
+  subjectId: string
+  categoryId: string
   tags: string[]
   visibility: DocumentVisibility
   file: File

@@ -6,9 +6,19 @@ export function normalizeApiBaseUrl(value: string) {
   return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`
 }
 
-const API_BASE_URL = normalizeApiBaseUrl(
+export const API_BASE_URL = normalizeApiBaseUrl(
   process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api',
 )
+
+export async function getApiAuthorizationToken() {
+  const firebaseAuth = getFirebaseAuth()
+  if (firebaseAuth.currentUser) {
+    const token = await firebaseAuth.currentUser.getIdToken()
+    setStoredAuthToken(token)
+    return token
+  }
+  return getStoredAuthToken()
+}
 
 type RequestOptions = Omit<RequestInit, 'body'> & {
   body?: BodyInit | Record<string, unknown> | null
@@ -48,19 +58,10 @@ export class ApiError extends Error {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const headers = new Headers(options.headers)
   let body = options.body
-  const firebaseAuth = getFirebaseAuth()
-
-  if (!headers.has('Authorization') && firebaseAuth.currentUser) {
-    const idToken = await firebaseAuth.currentUser.getIdToken()
-    setStoredAuthToken(idToken)
-    headers.set('Authorization', `Bearer ${idToken}`)
-  }
-
   if (!headers.has('Authorization')) {
-    const storedToken = getStoredAuthToken()
-
-    if (storedToken) {
-      headers.set('Authorization', `Bearer ${storedToken}`)
+    const token = await getApiAuthorizationToken()
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`)
     }
   }
 
