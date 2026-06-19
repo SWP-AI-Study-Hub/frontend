@@ -36,6 +36,95 @@ import type { LibraryDocument } from "../types/document";
 
 type ActiveMode = "CURRENT_DOCUMENT" | "SELECTED_SOURCES" | "MY_LIBRARY";
 
+function renderMessageContent(content: string) {
+  const lines = content.split("\n");
+  const elements: React.ReactNode[] = [];
+  let currentList: { type: "ul" | "ol"; items: string[] } | null = null;
+
+  const parseInline = (text: string) => {
+    // Basic bold parsing: **text**
+    const parts = text.split(/(\*\*.*?\*\*)/g);
+    return parts.map((part, idx) => {
+      if (part.startsWith("**") && part.endsWith("**")) {
+        return <strong key={idx}>{part.slice(2, -2)}</strong>;
+      }
+      return part;
+    });
+  };
+
+  const flushList = (key: string | number) => {
+    if (!currentList) return null;
+    const listItems = currentList.items.map((item, idx) => (
+      <li key={idx}>{parseInline(item)}</li>
+    ));
+    const listNode =
+      currentList.type === "ul" ? (
+        <ul key={key} className="ws-chat-ul">{listItems}</ul>
+      ) : (
+        <ol key={key} className="ws-chat-ol">{listItems}</ol>
+      );
+    currentList = null;
+    return listNode;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      if (currentList) {
+        elements.push(flushList(i));
+      }
+      continue;
+    }
+
+    // Unordered list item: starts with * or -
+    const ulMatch = line.match(/^(\s*)[*-]\s+(.*)$/);
+    if (ulMatch) {
+      const itemContent = ulMatch[2];
+      if (currentList && currentList.type !== "ul") {
+        elements.push(flushList(i));
+      }
+      if (!currentList) {
+        currentList = { type: "ul", items: [] };
+      }
+      currentList.items.push(itemContent);
+      continue;
+    }
+
+    // Ordered list item: starts with 1. 2. etc
+    const olMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
+    if (olMatch) {
+      const itemContent = olMatch[2];
+      if (currentList && currentList.type !== "ol") {
+        elements.push(flushList(i));
+      }
+      if (!currentList) {
+        currentList = { type: "ol", items: [] };
+      }
+      currentList.items.push(itemContent);
+      continue;
+    }
+
+    // Normal line: if we had a list, flush it
+    if (currentList) {
+      elements.push(flushList(i));
+    }
+
+    elements.push(
+      <p key={i} className="ws-chat-p">
+        {parseInline(line)}
+      </p>
+    );
+  }
+
+  if (currentList) {
+    elements.push(flushList("end"));
+  }
+
+  return elements;
+}
+
 export function AiChatbotView() {
   const router = useRouter();
   const { locale } = useLanguage();
@@ -420,7 +509,7 @@ export function AiChatbotView() {
               </div>
               <div className="ws-message-bubble">
                 <div className="ws-message-text">
-                  <p>{msg.content}</p>
+                  {renderMessageContent(msg.content)}
                 </div>
                 {msg.sources.length > 0 && (
                   <div className="ws-message-citations">

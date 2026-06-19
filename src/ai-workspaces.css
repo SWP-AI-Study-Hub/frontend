@@ -3310,8 +3310,31 @@
   font-size: 0.9rem;
   line-height: 1.6;
 }
-.ws-message-text p { margin: 0; }
-.ws-message-text p + p { margin-top: 7px; }
+.ws-chat-p {
+  margin: 0 0 10px 0;
+}
+.ws-chat-p:last-child {
+  margin-bottom: 0;
+}
+.ws-chat-ul,
+.ws-chat-ol {
+  margin: 8px 0;
+  padding-left: 20px;
+}
+.ws-chat-ul {
+  list-style-type: disc;
+}
+.ws-chat-ol {
+  list-style-type: decimal;
+}
+.ws-chat-ul li,
+.ws-chat-ol li {
+  margin-bottom: 6px;
+}
+.ws-chat-ul li:last-child,
+.ws-chat-ol li:last-child {
+  margin-bottom: 0;
+}
 
 /* Inline citation tags */
 .ws-message-citations {
