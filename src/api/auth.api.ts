@@ -5,7 +5,6 @@ import {
   createUserWithEmailAndPassword,
   EmailAuthProvider,
   linkWithCredential,
-  reload,
   sendEmailVerification,
   sendPasswordResetEmail,
   signOut,
@@ -69,7 +68,6 @@ export async function register(payload: RegisterPayload) {
     },
   });
 
-  await reload(credential.user);
   await sendEmailVerification(credential.user, {
     url: `${window.location.origin}${ROUTES.verifyEmail}`,
     handleCodeInApp: true,
@@ -85,12 +83,15 @@ export async function login(payload: LoginPayload) {
       payload.email,
       payload.password,
     );
-    await reload(credential.user);
-    if (!credential.user.emailVerified) {
+    // Reload user from Firebase server to get latest emailVerified state (not cached)
+    await credential.user.reload();
+    const refreshedUser = firebaseAuth.currentUser;
+    if (!refreshedUser?.emailVerified) {
       await signOut(firebaseAuth);
       throw new Error("Vui lòng xác thực email trước khi đăng nhập.");
     }
-    const idToken = await credential.user.getIdToken();
+    // Get fresh token after reload to ensure it reflects current emailVerified
+    const idToken = await refreshedUser.getIdToken(true);
 
     return loginWithFirebaseToken({ idToken });
   } catch (error) {
