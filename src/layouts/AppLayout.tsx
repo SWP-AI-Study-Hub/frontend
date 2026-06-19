@@ -171,14 +171,32 @@ export function AppLayout({ children }: { children: ReactNode }) {
         >
           <span className="side-nav-label">{text("Tài khoản", "Account")}</span>
           {accountNav.map(renderLink)}
-          {user?.role === "ADMIN"
-            ? renderLink({
-                href: ROUTES.adminUsers,
-                label: t("common.admin"),
-                icon: UsersRound,
-              })
-            : null}
         </nav>
+
+        {user?.role === "ADMIN" ? (
+          <nav
+            className="side-nav side-nav--admin"
+            aria-label={text("Điều hướng quản trị", "Admin navigation")}
+            style={{ borderTop: "1px solid var(--border)", paddingTop: "1rem", marginTop: "1rem" }}
+          >
+            <span className="side-nav-label">{text("Quản trị", "Admin")}</span>
+            {renderLink({
+              href: ROUTES.adminDashboard,
+              label: text("Tổng quan", "Dashboard"),
+              icon: LayoutDashboard,
+            })}
+            {renderLink({
+              href: ROUTES.adminUsers,
+              label: text("Người dùng", "Users"),
+              icon: UsersRound,
+            })}
+            {renderLink({
+              href: ROUTES.adminDocuments,
+              label: text("Tài liệu", "Documents"),
+              icon: LibraryBig,
+            })}
+          </nav>
+        ) : null}
 
       </aside>
 
