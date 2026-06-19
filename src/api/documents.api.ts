@@ -1,5 +1,6 @@
 import type { LibraryDocument, UploadDocumentInput } from '../types/document'
 import type { Locale } from '../i18n/translations'
+import { apiRequest } from '../lib/http'
 
 const STORAGE_KEY = 'documind.demoDocuments'
 export const MAX_FILE_SIZE = 20 * 1024 * 1024
@@ -139,4 +140,121 @@ export function downloadDemoDocument(document: LibraryDocument) {
 export function formatFileSize(bytes: number) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// ----------------------------------------------------
+// Subject & Category Helpers
+// ----------------------------------------------------
+
+export type SubjectItem = {
+  id: string
+  code: string
+  name: string
+  description?: string
+}
+
+export type CategoryItem = {
+  id: string
+  name: string
+  description?: string
+}
+
+const SUBJECTS_KEY = 'documind.subjects'
+const CATEGORIES_KEY = 'documind.categories'
+
+const defaultSubjects: SubjectItem[] = [
+  { id: '1', code: 'CS', name: 'Computer Science' },
+  { id: '2', code: 'AI', name: 'Artificial Intelligence' },
+  { id: '3', code: 'RES', name: 'Research' },
+  { id: '4', code: 'BUS', name: 'Business' },
+]
+
+const defaultCategories: CategoryItem[] = [
+  { id: '1', name: 'Lecture Notes' },
+  { id: '2', name: 'Research Paper' },
+  { id: '3', name: 'Methodology' },
+  { id: '4', name: 'Reference' },
+]
+
+export async function fetchSubjects(): Promise<SubjectItem[]> {
+  try {
+    const res = await apiRequest<SubjectItem[]>('/subjects')
+    if (Array.isArray(res)) return res
+  } catch (err) {
+    console.warn('Backend subjects API failed, falling back to LocalStorage:', err)
+  }
+
+  if (canUseStorage()) {
+    try {
+      const stored = window.localStorage.getItem(SUBJECTS_KEY)
+      if (stored) return JSON.parse(stored) as SubjectItem[]
+    } catch {}
+  }
+  return defaultSubjects
+}
+
+export async function createSubject(name: string, code: string): Promise<SubjectItem> {
+  const payload = { name, code, description: '' }
+  try {
+    const res = await apiRequest<SubjectItem>('/subjects', {
+      method: 'POST',
+      body: payload,
+    })
+    if (res && res.id) return res
+  } catch (err) {
+    console.warn('Backend subject creation failed, falling back to LocalStorage:', err)
+  }
+
+  const newItem: SubjectItem = {
+    id: crypto.randomUUID(),
+    code: code.toUpperCase(),
+    name,
+  }
+  if (canUseStorage()) {
+    const current = await fetchSubjects()
+    const updated = [...current, newItem]
+    window.localStorage.setItem(SUBJECTS_KEY, JSON.stringify(updated))
+  }
+  return newItem
+}
+
+export async function fetchCategories(): Promise<CategoryItem[]> {
+  try {
+    const res = await apiRequest<CategoryItem[]>('/categories')
+    if (Array.isArray(res)) return res
+  } catch (err) {
+    console.warn('Backend categories API failed, falling back to LocalStorage:', err)
+  }
+
+  if (canUseStorage()) {
+    try {
+      const stored = window.localStorage.getItem(CATEGORIES_KEY)
+      if (stored) return JSON.parse(stored) as CategoryItem[]
+    } catch {}
+  }
+  return defaultCategories
+}
+
+export async function createCategory(name: string): Promise<CategoryItem> {
+  const payload = { name, description: '' }
+  try {
+    const res = await apiRequest<CategoryItem>('/categories', {
+      method: 'POST',
+      body: payload,
+    })
+    if (res && res.id) return res
+  } catch (err) {
+    console.warn('Backend category creation failed, falling back to LocalStorage:', err)
+  }
+
+  const newItem: CategoryItem = {
+    id: crypto.randomUUID(),
+    name,
+  }
+  if (canUseStorage()) {
+    const current = await fetchCategories()
+    const updated = [...current, newItem]
+    window.localStorage.setItem(CATEGORIES_KEY, JSON.stringify(updated))
+  }
+  return newItem
 }

@@ -16,8 +16,15 @@ import {
   createDemoDocument,
   formatFileSize,
   validateDocumentFile,
+  fetchSubjects,
+  createSubject,
+  fetchCategories,
+  createCategory,
+  type SubjectItem,
+  type CategoryItem,
 } from "../api/documents.api";
 import type { DocumentVisibility, LibraryDocument } from "../types/document";
+import { useEffect } from "react";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
@@ -38,6 +45,66 @@ export function UploadDocumentView() {
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [createdDocument, setCreatedDocument] = useState<LibraryDocument>();
+
+  const [subjectsList, setSubjectsList] = useState<SubjectItem[]>([]);
+  const [categoriesList, setCategoriesList] = useState<CategoryItem[]>([]);
+
+  const [isAddingSubject, setIsAddingSubject] = useState(false);
+  const [newSubjectName, setNewSubjectName] = useState("");
+  const [newSubjectCode, setNewSubjectCode] = useState("");
+  const [isCreatingSubject, setIsCreatingSubject] = useState(false);
+
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+
+  useEffect(() => {
+    async function loadData() {
+      const [subs, cats] = await Promise.all([
+        fetchSubjects(),
+        fetchCategories(),
+      ]);
+      setSubjectsList(subs);
+      setCategoriesList(cats);
+    }
+    void loadData();
+  }, []);
+
+  const handleCreateSubject = async () => {
+    const name = newSubjectName.trim();
+    if (!name) return;
+    const code = newSubjectCode.trim() || name.substring(0, 3).toUpperCase();
+    setIsCreatingSubject(true);
+    try {
+      const newSub = await createSubject(name, code);
+      setSubjectsList((prev) => [...prev, newSub]);
+      setSubject(newSub.name);
+      setIsAddingSubject(false);
+      setNewSubjectName("");
+      setNewSubjectCode("");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsCreatingSubject(false);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    const name = newCategoryName.trim();
+    if (!name) return;
+    setIsCreatingCategory(true);
+    try {
+      const newCat = await createCategory(name);
+      setCategoriesList((prev) => [...prev, newCat]);
+      setCategory(newCat.name);
+      setIsAddingCategory(false);
+      setNewCategoryName("");
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
 
   function selectFile(nextFile?: File) {
     if (!nextFile) return;
@@ -227,34 +294,102 @@ export function UploadDocumentView() {
                     rows={3}
                   />
                 </label>
-                <label>
-                  {text("Môn học", "Subject")}
-                  <select
-                    value={subject}
-                    onChange={(event) => setSubject(event.target.value)}
-                    required
-                  >
-                    <option value="">{text("Chọn môn học", "Select subject")}</option>
-                    <option value="Computer Science">{text("Khoa học máy tính", "Computer Science")}</option>
-                    <option value="Artificial Intelligence">{text("Trí tuệ nhân tạo", "Artificial Intelligence")}</option>
-                    <option value="Research">{text("Nghiên cứu", "Research")}</option>
-                    <option value="Business">{text("Kinh doanh", "Business")}</option>
-                  </select>
-                </label>
-                <label>
-                  {text("Danh mục", "Category")}
-                  <select
-                    value={category}
-                    onChange={(event) => setCategory(event.target.value)}
-                    required
-                  >
-                    <option value="">{text("Chọn danh mục", "Select category")}</option>
-                    <option value="Lecture Notes">{text("Ghi chú bài giảng", "Lecture Notes")}</option>
-                    <option value="Research Paper">{text("Bài báo nghiên cứu", "Research Paper")}</option>
-                    <option value="Methodology">{text("Phương pháp luận", "Methodology")}</option>
-                    <option value="Reference">{text("Tài liệu tham khảo", "Reference")}</option>
-                  </select>
-                </label>
+                <div className="upload-field-container">
+                  <div className="field-header">
+                    <span>{text("Môn học", "Subject")}</span>
+                    <button
+                      type="button"
+                      className="quick-add-toggle-btn"
+                      onClick={() => setIsAddingSubject(!isAddingSubject)}
+                    >
+                      {isAddingSubject ? text("Hủy", "Cancel") : text("+ Thêm nhanh", "+ Quick Add")}
+                    </button>
+                  </div>
+                  {isAddingSubject ? (
+                    <div className="quick-add-form">
+                      <input
+                        type="text"
+                        placeholder={text("Tên môn học...", "Subject name...")}
+                        value={newSubjectName}
+                        onChange={(e) => setNewSubjectName(e.target.value)}
+                        required
+                      />
+                      <input
+                        type="text"
+                        placeholder={text("Mã môn học...", "Subject code...")}
+                        value={newSubjectCode}
+                        onChange={(e) => setNewSubjectCode(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="quick-add-submit-btn"
+                        onClick={handleCreateSubject}
+                        disabled={isCreatingSubject || !newSubjectName.trim()}
+                      >
+                        {isCreatingSubject ? text("...", "...") : text("Lưu", "Save")}
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={subject}
+                      onChange={(event) => setSubject(event.target.value)}
+                      required
+                    >
+                      <option value="">{text("Chọn môn học", "Select subject")}</option>
+                      {subjectsList.map((item) => (
+                        <option key={item.id} value={item.name}>
+                          {item.name} ({item.code})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+
+                <div className="upload-field-container">
+                  <div className="field-header">
+                    <span>{text("Danh mục", "Category")}</span>
+                    <button
+                      type="button"
+                      className="quick-add-toggle-btn"
+                      onClick={() => setIsAddingCategory(!isAddingCategory)}
+                    >
+                      {isAddingCategory ? text("Hủy", "Cancel") : text("+ Thêm nhanh", "+ Quick Add")}
+                    </button>
+                  </div>
+                  {isAddingCategory ? (
+                    <div className="quick-add-form">
+                      <input
+                        type="text"
+                        placeholder={text("Tên danh mục...", "Category name...")}
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="quick-add-submit-btn"
+                        onClick={handleCreateCategory}
+                        disabled={isCreatingCategory || !newCategoryName.trim()}
+                      >
+                        {isCreatingCategory ? text("...", "...") : text("Lưu", "Save")}
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={category}
+                      onChange={(event) => setCategory(event.target.value)}
+                      required
+                    >
+                      <option value="">{text("Chọn danh mục", "Select category")}</option>
+                      {categoriesList.map((item) => (
+                        <option key={item.id} value={item.name}>
+                          {item.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
                 <label className="full-field">
                   {text("Thẻ", "Tags")}
                   <div className="tag-input">

@@ -18,6 +18,7 @@ import {
   downloadDemoDocument,
   formatFileSize,
   getLibraryDocuments,
+  fetchSubjects,
 } from "../api/documents.api";
 import type { LibraryDocument } from "../types/document";
 import { useLanguage } from "../i18n/LanguageProvider";
@@ -36,10 +37,11 @@ function DocumentIcon({ type }: { type: string }) {
 export function LibraryView() {
   const { locale } = useLanguage();
   const text = (vi: string, en: string) => localize(locale, vi, en);
-  const getIndexStatusLabel = (status: LibraryDocument["indexStatus"]) => {
+  const getIndexStatusLabel = (status: LibraryDocument["indexStatus"] | null | undefined) => {
     if (status === "READY") return text("AI sẵn sàng", "AI ready");
     if (status === "PROCESSING") return text("Đang xử lý", "Processing");
-    return text("Thất bại", "Failed");
+    if (status === "FAILED") return text("Thất bại", "Failed");
+    return text("Chưa lập chỉ mục", "Not Indexed");
   };
   const getVisibilityLabel = (visibility: LibraryDocument["visibility"]) =>
     visibility === "PRIVATE"
@@ -49,6 +51,8 @@ export function LibraryView() {
   const [subject, setSubject] = useState("");
   const [fileType, setFileType] = useState("");
   const [status, setStatus] = useState("");
+  const [visibility, setVisibility] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
   const [view, setView] = useState<"table" | "grid">("table");
   const [previewDocument, setPreviewDocument] = useState<LibraryDocument>();
   const documents = useMemo(
@@ -58,7 +62,20 @@ export function LibraryView() {
       ),
     [locale],
   );
-  const subjects = [...new Set(documents.map((document) => document.subject))];
+
+  const [dbSubjects, setDbSubjects] = useState<string[]>([]);
+  useEffect(() => {
+    async function load() {
+      const list = await fetchSubjects();
+      setDbSubjects(list.map((s) => s.name));
+    }
+    void load();
+  }, []);
+
+  const subjects = useMemo(() => {
+    const docSubjects = documents.map((document) => document.subject);
+    return [...new Set([...dbSubjects, ...docSubjects])];
+  }, [documents, dbSubjects]);
 
   useEffect(() => {
     setSubject("");
@@ -72,14 +89,60 @@ export function LibraryView() {
         [document.title, document.description, ...document.tags].some((value) =>
           value.toLowerCase().includes(normalized),
         );
+
+      let mappedStatus = "NOT_INDEXED";
+      if (document.indexStatus === "READY") mappedStatus = "READY";
+      else if (document.indexStatus === "PROCESSING") mappedStatus = "PROCESSING";
+      else if (document.indexStatus === "FAILED") mappedStatus = "FAILED";
+
       return (
         matchesQuery &&
         (!subject || document.subject === subject) &&
         (!fileType || document.fileType === fileType) &&
-        (!status || document.indexStatus === status)
+        (!status || mappedStatus === status) &&
+        (!visibility || document.visibility === visibility)
       );
     });
-  }, [documents, fileType, query, status, subject]);
+  }, [documents, fileType, query, status, subject, visibility]);
+
+  const sortedDocuments = useMemo(() => {
+    const docs = [...filteredDocuments];
+    if (sortBy === "oldest") {
+      docs.sort(
+        (a, b) =>
+          new Date(a.uploadedAt).getTime() - new Date(b.uploadedAt).getTime()
+      );
+    } else if (sortBy === "name-asc") {
+      docs.sort((a, b) =>
+        a.title.localeCompare(b.title, locale === "vi" ? "vi" : "en")
+      );
+    } else if (sortBy === "size-desc") {
+      docs.sort((a, b) => b.fileSize - a.fileSize);
+    } else {
+      docs.sort(
+        (a, b) =>
+          new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+      );
+    }
+    return docs;
+  }, [filteredDocuments, sortBy, locale]);
+
+  const isFilterActive =
+    query !== "" ||
+    subject !== "" ||
+    fileType !== "" ||
+    status !== "" ||
+    visibility !== "" ||
+    sortBy !== "newest";
+
+  const clearFilters = () => {
+    setQuery("");
+    setSubject("");
+    setFileType("");
+    setStatus("");
+    setVisibility("");
+    setSortBy("newest");
+  };
 
   return (
     <main id="main-content" className="library-page">
@@ -94,49 +157,89 @@ export function LibraryView() {
             )}
           </p>
         </div>
-        <Link href={ROUTES.upload} className="primary-button">
-          <Upload size={17} />
-          {text("Tải tài liệu lên", "Upload document")}
-        </Link>
       </header>
 
       <section className="library-controls">
-        <label className="library-search">
-          <Search size={18} />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder={text("Tìm theo nội dung, tiêu đề hoặc thẻ...", "Search by content, title, or tag...")}
-          />
-        </label>
-        <div className="library-filters">
-          <select
-            value={subject}
-            onChange={(event) => setSubject(event.target.value)}
-          >
-            <option value="">{text("Tất cả môn học", "All subjects")}</option>
-            {subjects.map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-          <select
-            value={fileType}
-            onChange={(event) => setFileType(event.target.value)}
-          >
-            <option value="">{text("Tất cả loại tệp", "All file types")}</option>
-            {["PDF", "DOCX", "PPTX", "XLSX"].map((item) => (
-              <option key={item}>{item}</option>
-            ))}
-          </select>
-          <select
-            value={status}
-            onChange={(event) => setStatus(event.target.value)}
-          >
-            <option value="">{text("Tất cả trạng thái", "All statuses")}</option>
-            <option value="READY">{text("AI sẵn sàng", "AI ready")}</option>
-            <option value="PROCESSING">{text("Đang xử lý", "Processing")}</option>
-            <option value="FAILED">{text("Thất bại", "Failed")}</option>
-          </select>
+        <div className="library-controls-row-1">
+          <label className="library-search">
+            <Search size={18} />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder={text("Tìm theo nội dung, tiêu đề hoặc thẻ...", "Search by content, title, or tag...")}
+            />
+          </label>
+          <Link href={ROUTES.upload} className="primary-button upload-btn-cta">
+            <Upload size={17} />
+            {text("Tải tài liệu lên", "Upload document")}
+          </Link>
+        </div>
+
+        <div className="library-controls-row-2">
+          <div className="library-filters-scroll-container">
+            <div className="library-filters">
+              <select
+                value={subject}
+                onChange={(event) => setSubject(event.target.value)}
+                className={subject ? "filter-active" : undefined}
+              >
+                <option value="">{text("Tất cả môn học", "All subjects")}</option>
+                {subjects.map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+              <select
+                value={fileType}
+                onChange={(event) => setFileType(event.target.value)}
+                className={fileType ? "filter-active" : undefined}
+              >
+                <option value="">{text("Tất cả loại tệp", "All file types")}</option>
+                {["PDF", "DOCX", "PPTX", "XLSX"].map((item) => (
+                  <option key={item} value={item}>{item}</option>
+                ))}
+              </select>
+              <select
+                value={status}
+                onChange={(event) => setStatus(event.target.value)}
+                className={status ? "filter-active" : undefined}
+              >
+                <option value="">{text("Tất cả trạng thái", "All AI statuses")}</option>
+                <option value="READY">{text("AI sẵn sàng", "AI Ready")}</option>
+                <option value="PROCESSING">{text("Đang xử lý", "Processing")}</option>
+                <option value="FAILED">{text("Thất bại", "Failed")}</option>
+                <option value="NOT_INDEXED">{text("Chưa lập chỉ mục", "Not Indexed")}</option>
+              </select>
+              <select
+                value={visibility}
+                onChange={(event) => setVisibility(event.target.value)}
+                className={visibility ? "filter-active" : undefined}
+              >
+                <option value="">{text("Tất cả chế độ", "All visibility")}</option>
+                <option value="PUBLIC">{text("Công khai", "Public")}</option>
+                <option value="PRIVATE">{text("Riêng tư", "Private")}</option>
+              </select>
+              <select
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                className={sortBy !== "newest" ? "filter-active" : undefined}
+              >
+                <option value="newest">{text("Mới nhất", "Newest")}</option>
+                <option value="oldest">{text("Cũ nhất", "Oldest")}</option>
+                <option value="name-asc">{text("Tên A-Z", "Name A-Z")}</option>
+                <option value="size-desc">{text("Dung lượng", "File size")}</option>
+              </select>
+              {isFilterActive && (
+                <button
+                  type="button"
+                  className="clear-filters-btn"
+                  onClick={clearFilters}
+                >
+                  <X size={14} />
+                  {text("Xóa bộ lọc", "Clear filters")}
+                </button>
+              )}
+            </div>
+          </div>
           <div className="view-toggle" aria-label={text("Kiểu hiển thị thư viện", "Library view")}>
             <button
               type="button"
@@ -188,7 +291,7 @@ export function LibraryView() {
               </tr>
             </thead>
             <tbody>
-              {filteredDocuments.map((document) => (
+              {sortedDocuments.map((document) => (
                 <tr key={document.id}>
                   <td>
                     <div className="library-document-cell">
@@ -213,7 +316,7 @@ export function LibraryView() {
                   </td>
                   <td>
                     <span
-                      className={`index-status index-status--${document.indexStatus.toLowerCase()}`}
+                      className={`index-status index-status--${(document.indexStatus ?? "NOT_INDEXED").toLowerCase()}`}
                     >
                       {getIndexStatusLabel(document.indexStatus)}
                     </span>
@@ -234,13 +337,35 @@ export function LibraryView() {
                       >
                         <Download size={16} />
                       </button>
-                      <Link
-                        href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}
-                        className="ask-document-action"
-                      >
-                        <Bot size={16} />
-                        {text("Hỏi AI", "Ask AI")}
-                      </Link>
+                      {document.indexStatus === "READY" ? (
+                        <Link
+                          href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}
+                          className="ask-document-action"
+                        >
+                          <Bot size={16} />
+                          {text("Hỏi AI", "Ask AI")}
+                        </Link>
+                      ) : (
+                        <button
+                          type="button"
+                          className="ask-document-action disabled"
+                          disabled
+                          title={text(
+                            "Không thể hỏi AI khi tài liệu đang xử lý hoặc thất bại",
+                            "Cannot ask AI while document is processing or failed"
+                          )}
+                          style={{
+                            opacity: 0.5,
+                            cursor: "not-allowed",
+                            pointerEvents: "none",
+                            backgroundColor: "var(--border)",
+                            color: "var(--muted)",
+                          }}
+                        >
+                          <Bot size={16} />
+                          {text("Hỏi AI", "Ask AI")}
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -250,14 +375,14 @@ export function LibraryView() {
         </div>
       ) : (
         <section className="library-card-grid">
-          {filteredDocuments.map((document) => (
+          {sortedDocuments.map((document) => (
             <article className="library-document-card" key={document.id}>
               <div className="library-card-top">
                 <span className="document-type-icon">
                   <DocumentIcon type={document.fileType} />
                 </span>
                 <span
-                  className={`index-status index-status--${document.indexStatus.toLowerCase()}`}
+                  className={`index-status index-status--${(document.indexStatus ?? "NOT_INDEXED").toLowerCase()}`}
                 >
                   {getIndexStatusLabel(document.indexStatus)}
                 </span>
@@ -285,13 +410,35 @@ export function LibraryView() {
                 >
                   <Download size={16} />
                 </button>
-                <Link
-                  href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}
-                  className="ask-document-action"
-                >
-                  <Bot size={16} />
-                  {text("Hỏi AI", "Ask AI")}
-                </Link>
+                {document.indexStatus === "READY" ? (
+                  <Link
+                    href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}
+                    className="ask-document-action"
+                  >
+                    <Bot size={16} />
+                    {text("Hỏi AI", "Ask AI")}
+                  </Link>
+                ) : (
+                  <button
+                    type="button"
+                    className="ask-document-action disabled"
+                    disabled
+                    title={text(
+                      "Không thể hỏi AI khi tài liệu đang xử lý hoặc thất bại",
+                      "Cannot ask AI while document is processing or failed"
+                    )}
+                    style={{
+                      opacity: 0.5,
+                      cursor: "not-allowed",
+                      pointerEvents: "none",
+                      backgroundColor: "var(--border)",
+                      color: "var(--muted)",
+                    }}
+                  >
+                    <Bot size={16} />
+                    {text("Hỏi AI", "Ask AI")}
+                  </button>
+                )}
               </div>
             </article>
           ))}
@@ -349,13 +496,35 @@ export function LibraryView() {
                 <Download size={16} />
                 {text("Tải xuống", "Download")}
               </button>
-              <Link
-                href={`${ROUTES.aiChat}?scope=document&document=${previewDocument.id}`}
-                className="primary-button"
-              >
-                <Bot size={16} />
-                {text("Hỏi AI", "Ask AI")}
-              </Link>
+              {previewDocument.indexStatus === "READY" ? (
+                <Link
+                  href={`${ROUTES.aiChat}?scope=document&document=${previewDocument.id}`}
+                  className="primary-button"
+                >
+                  <Bot size={16} />
+                  {text("Hỏi AI", "Ask AI")}
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  className="primary-button disabled"
+                  disabled
+                  title={text(
+                    "Không thể hỏi AI khi tài liệu đang xử lý hoặc thất bại",
+                    "Cannot ask AI while document is processing or failed"
+                  )}
+                  style={{
+                    opacity: 0.5,
+                    cursor: "not-allowed",
+                    pointerEvents: "none",
+                    backgroundColor: "var(--border)",
+                    color: "var(--muted)",
+                  }}
+                >
+                  <Bot size={16} />
+                  {text("Hỏi AI", "Ask AI")}
+                </button>
+              )}
             </footer>
           </article>
         </div>
