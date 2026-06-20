@@ -149,7 +149,7 @@ export function LibraryView() {
   }, [categoryId, debouncedQuery, fileType, locale, page, sort, status, subjectId, visibility]);
 
   useEffect(() => {
-    const documentId = searchParams.get("document");
+    const documentId = searchParams?.get("document");
     if (!documentId) return;
     fetchDocument(documentId).then(setPreviewDocument).catch(() => undefined);
   }, [searchParams]);

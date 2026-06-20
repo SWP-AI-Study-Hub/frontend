@@ -1,35 +1,42 @@
 'use client'
 
-import { FormEvent, useEffect, useState } from 'react'
+import { ChangeEvent, FormEvent, useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import {
-  CalendarDays,
-  Camera,
   Check,
-  Fingerprint,
-  KeyRound,
   Link2,
   LoaderCircle,
   Mail,
+  Pencil,
   Save,
   ShieldCheck,
-  Trash2,
+  Upload,
   UserRound,
+  X,
 } from 'lucide-react'
 import { getProfile } from '../api/profile.api'
 import { useAuth } from '../features/auth/useAuth'
 import type { UserProfile } from '../types/auth'
 import { useLanguage } from '../i18n/LanguageProvider'
 import { localize } from '../i18n/localize'
+import {
+  AVATAR_ACCEPT,
+  uploadProfileAvatar,
+  validateAvatarFile,
+} from '../lib/profile-avatar'
 
 export function ProfileView() {
   const { locale } = useLanguage()
   const text = (vi: string, en: string) => localize(locale, vi, en)
   const { user, updateProfile } = useAuth()
+  const avatarInputRef = useRef<HTMLInputElement>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [fullName, setFullName] = useState(user?.fullName ?? '')
   const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl ?? '')
+  const [avatarUrlDraft, setAvatarUrlDraft] = useState(user?.avatarUrl ?? '')
   const [avatarFailed, setAvatarFailed] = useState(false)
+  const [isAvatarEditorOpen, setIsAvatarEditorOpen] = useState(false)
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
   const [error, setError] = useState('')
@@ -44,6 +51,7 @@ export function ProfileView() {
         setProfile(nextProfile)
         setFullName(nextProfile.fullName)
         setAvatarUrl(nextProfile.avatarUrl ?? '')
+        setAvatarUrlDraft(nextProfile.avatarUrl ?? '')
       })
       .catch((loadError: unknown) => {
         if (!active) return
@@ -72,6 +80,64 @@ export function ProfileView() {
     fullName.trim() !== (profile?.fullName ?? user?.fullName ?? '') ||
     currentAvatar !== (profile?.avatarUrl ?? user?.avatarUrl ?? '')
 
+  function openAvatarEditor() {
+    setAvatarUrlDraft(avatarUrl)
+    setIsAvatarEditorOpen(true)
+  }
+
+  function applyAvatarUrl() {
+    setAvatarUrl(avatarUrlDraft.trim())
+    setAvatarFailed(false)
+    setError('')
+    setSuccess('')
+    setIsAvatarEditorOpen(false)
+  }
+
+  function removeAvatar() {
+    setAvatarUrl('')
+    setAvatarUrlDraft('')
+    setAvatarFailed(false)
+    setError('')
+    setSuccess('')
+    setIsAvatarEditorOpen(false)
+  }
+
+  async function handleAvatarFile(event: ChangeEvent<HTMLInputElement>) {
+    const nextFile = event.target.files?.[0]
+    event.target.value = ''
+    if (!nextFile || !user?.id) return
+
+    const validationError = validateAvatarFile(nextFile)
+    if (validationError) {
+      setError(
+        validationError === 'size'
+          ? text('Ảnh đại diện không được vượt quá 5 MB.', 'Avatar images must be 5 MB or smaller.')
+          : text('Chỉ hỗ trợ ảnh JPG, PNG, WEBP hoặc GIF.', 'Only JPG, PNG, WEBP, or GIF images are supported.'),
+      )
+      return
+    }
+
+    setError('')
+    setSuccess('')
+    setIsUploadingAvatar(true)
+
+    try {
+      const downloadUrl = await uploadProfileAvatar(user.id, nextFile)
+      setAvatarUrl(downloadUrl)
+      setAvatarUrlDraft(downloadUrl)
+      setAvatarFailed(false)
+      setIsAvatarEditorOpen(false)
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : text('Không thể tải ảnh đại diện lên.', 'Could not upload the avatar image.'),
+      )
+    } finally {
+      setIsUploadingAvatar(false)
+    }
+  }
+
   async function submit(event: FormEvent) {
     event.preventDefault()
     const trimmedName = fullName.trim()
@@ -99,6 +165,7 @@ export function ProfileView() {
       setProfile(nextProfile)
       setFullName(nextProfile.fullName)
       setAvatarUrl(nextProfile.avatarUrl ?? '')
+      setAvatarUrlDraft(nextProfile.avatarUrl ?? '')
       setAvatarFailed(false)
       setSuccess(text('Đã lưu hồ sơ thành công.', 'Profile saved successfully.'))
     } catch (saveError) {
@@ -124,19 +191,82 @@ export function ProfileView() {
 
       <section className="profile-layout">
         <aside className="profile-identity-panel">
-          <div className="profile-avatar-frame">
-            {currentAvatar && !avatarFailed ? (
-              <Image
-                src={currentAvatar}
-                alt={`${displayName} ${text('ảnh đại diện', 'avatar')}`}
-                width={128}
-                height={128}
-                unoptimized
-                onError={() => setAvatarFailed(true)}
-              />
-            ) : (
-              <span>{initial}</span>
-            )}
+          <div className="profile-avatar-control">
+            <button
+              type="button"
+              className="profile-avatar-frame"
+              onClick={openAvatarEditor}
+              aria-label={text('Chỉnh sửa ảnh đại diện', 'Edit avatar')}
+              aria-expanded={isAvatarEditorOpen}
+              disabled={isLoading || isSaving || isUploadingAvatar}
+            >
+              {currentAvatar && !avatarFailed ? (
+                <Image
+                  src={currentAvatar}
+                  alt={`${displayName} ${text('ảnh đại diện', 'avatar')}`}
+                  width={128}
+                  height={128}
+                  unoptimized
+                  onError={() => setAvatarFailed(true)}
+                />
+              ) : (
+                <span>{initial}</span>
+              )}
+              <span className="profile-avatar-edit-icon" aria-hidden="true">
+                {isUploadingAvatar ? <LoaderCircle className="spin" size={22} /> : <Pencil size={22} />}
+              </span>
+            </button>
+
+            {isAvatarEditorOpen ? (
+              <div className="profile-avatar-editor">
+                <header>
+                  <strong>{text('Ảnh đại diện', 'Profile picture')}</strong>
+                  <button
+                    type="button"
+                    onClick={() => setIsAvatarEditorOpen(false)}
+                    aria-label={text('Đóng', 'Close')}
+                  >
+                    <X size={16} />
+                  </button>
+                </header>
+                <input
+                  ref={avatarInputRef}
+                  type="file"
+                  accept={AVATAR_ACCEPT}
+                  hidden
+                  onChange={handleAvatarFile}
+                />
+                <button
+                  type="button"
+                  className="profile-avatar-upload"
+                  onClick={() => avatarInputRef.current?.click()}
+                >
+                  <Upload size={17} />
+                  {text('Tải ảnh lên', 'Upload image')}
+                </button>
+                <span className="profile-avatar-divider">{text('hoặc dán URL', 'or paste a URL')}</span>
+                <label>
+                  <Link2 size={16} />
+                  <input
+                    value={avatarUrlDraft}
+                    onChange={(event) => setAvatarUrlDraft(event.target.value)}
+                    type="url"
+                    maxLength={2048}
+                    placeholder="https://example.com/avatar.jpg"
+                  />
+                </label>
+                <div className="profile-avatar-editor-actions">
+                  {avatarUrl ? (
+                    <button type="button" className="profile-avatar-remove" onClick={removeAvatar}>
+                      {text('Xóa ảnh', 'Remove')}
+                    </button>
+                  ) : <span />}
+                  <button type="button" className="profile-avatar-apply" onClick={applyAvatarUrl}>
+                    {text('Áp dụng', 'Apply')}
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
           <div>
             <p className="eyebrow">{text('THÀNH VIÊN DOCUMIND', 'DOCUMIND MEMBER')}</p>
@@ -146,10 +276,6 @@ export function ProfileView() {
           <div className="profile-badges">
             <span className="status-pill role">{profile?.role ?? user?.role}</span>
             <span className="status-pill success">{profile?.status ?? user?.status}</span>
-          </div>
-          <div className="profile-identity-note">
-            <Camera size={18} />
-            <p>{text('Sử dụng URL ảnh HTTPS an toàn. Để trống trường này để xóa ảnh đại diện.', 'Use a secure HTTPS image URL for your avatar. Empty the field to remove it.')}</p>
           </div>
         </aside>
 
@@ -186,28 +312,6 @@ export function ProfileView() {
                 </div>
                 <small>{text('Email được quản lý bởi nhà cung cấp xác thực.', 'Email is managed by your authentication provider.')}</small>
               </label>
-              <label className="profile-avatar-url-field">
-                {text('URL ảnh đại diện', 'Avatar URL')}
-                <div className="profile-input">
-                  <Link2 size={17} />
-                  <input
-                    value={avatarUrl}
-                    onChange={(event) => {
-                      setAvatarUrl(event.target.value)
-                      setAvatarFailed(false)
-                    }}
-                    type="url"
-                    maxLength={2048}
-                    placeholder="https://example.com/avatar.jpg"
-                    disabled={isLoading || isSaving}
-                  />
-                  {avatarUrl ? (
-                    <button type="button" title={text('Xóa ảnh đại diện', 'Remove avatar')} onClick={() => setAvatarUrl('')}>
-                      <Trash2 size={16} />
-                    </button>
-                  ) : null}
-                </div>
-              </label>
             </div>
 
             {error ? <p className="form-error">{error}</p> : null}
@@ -226,29 +330,8 @@ export function ProfileView() {
             </footer>
           </form>
 
-          <section className="profile-account-panel">
-            <header>
-              <div><p className="eyebrow">{text('TÀI KHOẢN', 'ACCOUNT')}</p><h2>{text('Thông tin truy cập', 'Access information')}</h2></div>
-              <KeyRound size={20} />
-            </header>
-            <div className="profile-account-grid">
-              <article><KeyRound size={17} /><span>{text('Phương thức xác thực', 'Authentication')}</span><strong>{user?.authProvider ?? 'Firebase'}</strong></article>
-              <article><ShieldCheck size={17} /><span>{text('Vai trò truy cập', 'Role access')}</span><strong>{profile?.role ?? user?.role}</strong></article>
-              <article><CalendarDays size={17} /><span>{text('Thành viên từ', 'Member since')}</span><strong>{formatDate(profile?.createdAt ?? user?.createdAt, locale)}</strong></article>
-              <article><Fingerprint size={17} /><span>{text('ID tài khoản', 'Account ID')}</span><strong>{profile?.id ?? user?.id}</strong></article>
-            </div>
-          </section>
         </div>
       </section>
     </main>
   )
-}
-
-function formatDate(value: string | undefined, locale: 'vi' | 'en') {
-  if (!value) return locale === 'vi' ? 'Không có dữ liệu' : 'Not available'
-  return new Intl.DateTimeFormat(locale === 'vi' ? 'vi-VN' : 'en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-  }).format(new Date(value))
 }
