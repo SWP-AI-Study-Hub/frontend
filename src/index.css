@@ -1751,13 +1751,18 @@ select:focus {
 
 .search-box:focus-within {
   border-color: var(--amber);
-  box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.13);
+  box-shadow: none;
 }
 
 .search-box input {
   border: 0;
   border-radius: var(--radius-ai);
+  outline: 0;
   box-shadow: none;
+}
+
+.search-box input:focus-visible {
+  outline: 0;
 }
 
 table {
@@ -1820,6 +1825,54 @@ td select {
 .table-wrap {
   overflow-x: auto;
   border-radius: 12px;
+}
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--border);
+  margin-top: 1rem;
+  padding-top: 1rem;
+}
+
+.admin-pagination > span {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.admin-pagination > div {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.4rem;
+}
+
+.admin-pagination button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 0 0.55rem;
+  color: var(--muted);
+  background: var(--surface);
+  font-weight: 750;
+}
+
+.admin-pagination button:hover:not(:disabled),
+.admin-pagination button.active {
+  border-color: #fbbf24;
+  color: #92400e;
+  background: #fffbeb;
+}
+
+.admin-pagination button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .detail-link {
@@ -2127,6 +2180,15 @@ td select {
 }
 
 @media (max-width: 580px) {
+  .admin-pagination {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-pagination > div {
+    justify-content: flex-start;
+  }
+
   .landing-container {
     width: min(calc(100% - 28px), var(--container));
   }

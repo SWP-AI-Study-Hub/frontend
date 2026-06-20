@@ -1091,6 +1091,10 @@
   background: transparent;
 }
 
+.library-search input:focus-visible {
+  outline: 0;
+}
+
 .library-filters {
   display: flex;
   flex-wrap: wrap;
@@ -1713,7 +1717,14 @@
   padding: 28px;
 }
 
+.upload-success > div {
+  flex: 1;
+  min-width: 0;
+}
+
 .upload-success h2 {
+  max-width: 100%;
+  overflow-wrap: anywhere;
   font-size: 2rem;
   letter-spacing: 0;
 }

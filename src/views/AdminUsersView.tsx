@@ -1,7 +1,7 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
-import { ClipboardCheck, FileWarning, Search, ShieldCheck, UserCheck, UsersRound, UserX } from 'lucide-react'
+import { ChevronLeft, ChevronRight, ClipboardCheck, FileWarning, Search, ShieldCheck, UserCheck, UsersRound, UserX } from 'lucide-react'
 import { getUsers, updateUserStatus, type UserQuery } from '../api/users.api'
 import type { AdminMutableUserStatus, CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
 import { useAuth } from '../features/auth/useAuth'
@@ -11,6 +11,7 @@ const roles: UserRole[] = ['ADMIN', 'USER']
 const statuses: UserStatus[] = ['ACTIVE', 'BLOCKED', 'INACTIVE']
 const mutableStatuses: AdminMutableUserStatus[] = ['ACTIVE', 'BLOCKED']
 const DEFAULT_QUERY: UserQuery = { page: 1, limit: 10 }
+type UserFilters = Pick<UserQuery, 'keyword' | 'role' | 'status'>
 
 export function AdminUsersView() {
   const { user: currentUser } = useAuth()
@@ -18,6 +19,7 @@ export function AdminUsersView() {
   const [keyword, setKeyword] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
   const [status, setStatus] = useState<UserStatus | ''>('')
+  const [appliedFilters, setAppliedFilters] = useState<UserFilters>({})
   const [data, setData] = useState<UserListResponse | null>(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -47,7 +49,17 @@ export function AdminUsersView() {
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault()
-    await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
+    const filters = { keyword, role, status }
+    setAppliedFilters(filters)
+    await loadUsers({ ...DEFAULT_QUERY, ...filters })
+  }
+
+  async function handlePageChange(page: number) {
+    if (isLoading || page === data?.meta.page || page < 1 || page > (data?.meta.totalPages ?? 1)) {
+      return
+    }
+
+    await loadUsers({ ...DEFAULT_QUERY, ...appliedFilters, page })
   }
 
   async function handleStatusChange(targetUser: CurrentUser, nextStatus: AdminMutableUserStatus) {
@@ -62,7 +74,7 @@ export function AdminUsersView() {
 
     try {
       await updateUserStatus(targetUser.id, nextStatus)
-      await loadUsers({ ...DEFAULT_QUERY, keyword, role, status })
+      await loadUsers({ ...DEFAULT_QUERY, ...appliedFilters, page: data?.meta.page ?? 1 })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.statusFailed'))
     } finally {
@@ -160,53 +172,93 @@ export function AdminUsersView() {
         {isLoading ? <div className="loading-state"><span className="loading-line" /><p>{t('admin.loadingUsers')}</p></div> : null}
         {!isLoading && users.length === 0 ? <div className="empty-state"><UsersRound size={28} /><p>{t('admin.noUsers')}</p></div> : null}
         {!isLoading && users.length ? (
-          <div className="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>{t('admin.user')}</th>
-                  <th>{t('admin.role')}</th>
-                  <th>{t('admin.status')}</th>
-                  <th>{t('admin.lastLogin')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((item) => (
-                  <tr key={item.id}>
-                    <td>
-                      <strong>{item.fullName}</strong>
-                      <span>{item.email}</span>
-                    </td>
-                    <td>
-                      <span className="status-pill role">{item.role}</span>
-                    </td>
-                    <td>
-                      {item.status === 'INACTIVE' ? (
-                        <span className="status-pill">INACTIVE</span>
-                      ) : (
-                        <select
-                          value={item.status}
-                          disabled={isLoading || updatingUserId === item.id}
-                          onChange={(event) => void handleStatusChange(item, event.target.value as AdminMutableUserStatus)}
-                        >
-                          {mutableStatuses.map((statusItem) => (
-                            <option key={statusItem} value={statusItem}>
-                              {statusItem}
-                            </option>
-                          ))}
-                        </select>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>
-                        {item.lastLogin ?? t('profile.noData')}
-                      </span>
-                    </td>
+          <>
+            <div className="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>{t('admin.user')}</th>
+                    <th>{t('admin.role')}</th>
+                    <th>{t('admin.status')}</th>
+                    <th>{t('admin.lastLogin')}</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {users.map((item) => (
+                    <tr key={item.id}>
+                      <td>
+                        <strong>{item.fullName}</strong>
+                        <span>{item.email}</span>
+                      </td>
+                      <td>
+                        <span className="status-pill role">{item.role}</span>
+                      </td>
+                      <td>
+                        {item.status === 'INACTIVE' ? (
+                          <span className="status-pill">INACTIVE</span>
+                        ) : (
+                          <select
+                            value={item.status}
+                            disabled={isLoading || updatingUserId === item.id}
+                            onChange={(event) => void handleStatusChange(item, event.target.value as AdminMutableUserStatus)}
+                          >
+                            {mutableStatuses.map((statusItem) => (
+                              <option key={statusItem} value={statusItem}>
+                                {statusItem}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>
+                          {item.lastLogin ?? t('profile.noData')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {data && data.meta.totalPages > 1 ? (
+              <nav className="admin-pagination" aria-label="User pagination">
+                <span>
+                  {data.meta.totalItems} {t('admin.totalUsers').toLowerCase()}
+                </span>
+                <div>
+                  <button
+                    type="button"
+                    aria-label="Previous page"
+                    disabled={!data.meta.hasPrevious || isLoading}
+                    onClick={() => void handlePageChange(data.meta.page - 1)}
+                  >
+                    <ChevronLeft size={17} />
+                  </button>
+                  {Array.from({ length: data.meta.totalPages }, (_, index) => index + 1).map((page) => (
+                    <button
+                      type="button"
+                      key={page}
+                      className={page === data.meta.page ? 'active' : undefined}
+                      aria-current={page === data.meta.page ? 'page' : undefined}
+                      aria-label={`Page ${page}`}
+                      disabled={isLoading}
+                      onClick={() => void handlePageChange(page)}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    aria-label="Next page"
+                    disabled={!data.meta.hasNext || isLoading}
+                    onClick={() => void handlePageChange(data.meta.page + 1)}
+                  >
+                    <ChevronRight size={17} />
+                  </button>
+                </div>
+              </nav>
+            ) : null}
+          </>
         ) : null}
       </section>
     </main>
