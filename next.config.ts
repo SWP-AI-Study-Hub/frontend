@@ -24,6 +24,8 @@ const nextConfig: NextConfig = {
       { source: "/subscription", destination: "/goi-dich-vu" },
       { source: "/profile", destination: "/ho-so" },
       { source: "/admin/users", destination: "/quan-tri/nguoi-dung" },
+      { source: "/admin/dashboard", destination: "/quan-tri/tong-quan" },
+      { source: "/admin/documents", destination: "/quan-tri/tai-lieu" },
       { source: "/unauthorized", destination: "/khong-co-quyen" },
       { source: "/terms", destination: "/dieu-khoan-dich-vu" },
       { source: "/privacy", destination: "/chinh-sach-bao-mat" },

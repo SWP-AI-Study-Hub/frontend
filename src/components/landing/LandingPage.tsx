@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   ArrowRight,
@@ -8,6 +8,8 @@ import {
   Check,
   ChevronDown,
   FileSearch,
+  FileType,
+  Files,
   FileUp,
   Library,
   Menu,
@@ -28,8 +30,8 @@ import { LanguageSwitcher } from "../ui/LanguageSwitcher";
 import { Reveal } from "../ui/Reveal";
 
 const navItems: Array<{ href: string; label: TranslationKey }> = [
-  { href: "#features", label: "nav.features" },
   { href: "#workflow", label: "nav.workflow" },
+  { href: "#features", label: "nav.features" },
   { href: "#security", label: "nav.security" },
   { href: "#faq", label: "nav.faq" },
 ];
@@ -63,22 +65,28 @@ const features = [
     index: "01",
   },
   {
-    icon: Library,
+    icon: Files,
     title: "landing.feature2Title",
     body: "landing.feature2Body",
     index: "02",
   },
   {
-    icon: Search,
+    icon: Library,
     title: "landing.feature3Title",
     body: "landing.feature3Body",
     index: "03",
   },
   {
-    icon: UsersRound,
+    icon: Search,
     title: "landing.feature4Title",
     body: "landing.feature4Body",
     index: "04",
+  },
+  {
+    icon: UsersRound,
+    title: "landing.feature5Title",
+    body: "landing.feature5Body",
+    index: "05",
   },
 ] as const;
 
@@ -86,6 +94,8 @@ const faqs = [
   { question: "landing.faq1Q", answer: "landing.faq1A" },
   { question: "landing.faq2Q", answer: "landing.faq2A" },
   { question: "landing.faq3Q", answer: "landing.faq3A" },
+  { question: "landing.faq4Q", answer: "landing.faq4A" },
+  { question: "landing.faq5Q", answer: "landing.faq5A" },
 ] as const;
 
 export function LandingPage() {
@@ -99,6 +109,44 @@ export function LandingPage() {
   const isAuthenticated = !isLoading && user?.status === "ACTIVE";
   const appEntryRoute = isAuthenticated ? appRoute : ROUTES.login;
 
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [activeSection, setActiveSection] = useState("");
+
+  useEffect(() => {
+    const handleScroll = () => {
+      // 1. Calculate scroll progress
+      const totalHeight = document.documentElement.scrollHeight - window.innerHeight;
+      if (totalHeight > 0) {
+        setScrollProgress((window.scrollY / totalHeight) * 100);
+      }
+
+      // 2. Active tab detection
+      const scrollPos = window.scrollY + 120; // offset for sticky header
+      if (window.scrollY < 80) {
+        setActiveSection("");
+        return;
+      }
+      
+      let currentActive = "";
+      for (const item of navItems) {
+        const section = document.querySelector(item.href);
+        if (section) {
+          const top = (section as HTMLElement).offsetTop;
+          const height = (section as HTMLElement).offsetHeight;
+          if (scrollPos >= top && scrollPos < top + height) {
+            currentActive = item.href;
+            break;
+          }
+        }
+      }
+      setActiveSection(currentActive);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    handleScroll(); // initial call
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   function closeMenu() {
     setMenuOpen(false);
   }
@@ -110,7 +158,11 @@ export function LandingPage() {
           <Brand />
           <nav className="desktop-nav" aria-label="Primary navigation">
             {navItems.map((item) => (
-              <a key={item.href} href={item.href}>
+              <a
+                key={item.href}
+                href={item.href}
+                className={activeSection === item.href ? "active" : ""}
+              >
                 {t(item.label)}
               </a>
             ))}
@@ -134,10 +186,20 @@ export function LandingPage() {
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
+        <div
+          className="scroll-progress-bar"
+          style={{ width: `${scrollProgress}%` }}
+          aria-hidden="true"
+        />
         <div className={`mobile-nav${menuOpen ? " is-open" : ""}`}>
           <nav aria-label="Mobile navigation">
             {navItems.map((item) => (
-              <a key={item.href} href={item.href} onClick={closeMenu}>
+              <a
+                key={item.href}
+                href={item.href}
+                onClick={closeMenu}
+                className={activeSection === item.href ? "active" : ""}
+              >
                 {t(item.label)}
               </a>
             ))}
@@ -219,16 +281,35 @@ export function LandingPage() {
                     <span className="ai-mark">
                       <Sparkles size={16} />
                     </span>
-                    <p>
-                      {t("landing.answer")}{" "}
-                      <span className="citation" tabIndex={0}>
-                        [1]
-                        <span className="citation-tooltip" role="tooltip">
-                          <strong>{t("landing.source")}</strong>
-                          <span>{t("landing.citationHint")}</span>
+                    <div className="message-content">
+                      <p>
+                        {t("landing.answer")}{" "}
+                        <span className="citation" tabIndex={0}>
+                          [1]
+                          <span className="citation-tooltip" role="tooltip">
+                            <strong>{t("landing.source")}</strong>
+                            <span>{t("landing.citationHint")}</span>
+                          </span>
                         </span>
-                      </span>
-                    </p>
+                        {" "}
+                        <span className="citation" tabIndex={0}>
+                          [2]
+                          <span className="citation-tooltip" role="tooltip">
+                            <strong>{t("landing.source")}</strong>
+                            <span>{t("landing.citationHint")}</span>
+                          </span>
+                        </span>
+                      </p>
+                      <div className="preview-sources-list">
+                        <div className="preview-sources-title">{t("landing.sources")}</div>
+                        <div className="preview-source-item">
+                          <span className="source-number">[1]</span> {t("landing.source1")}
+                        </div>
+                        <div className="preview-source-item">
+                          <span className="source-number">[2]</span> {t("landing.source2")}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
                 <div className="preview-input">
@@ -275,6 +356,12 @@ export function LandingPage() {
                 );
               })}
             </div>
+            <Reveal delay={350}>
+              <div className="workflow-note">
+                <Sparkles size={15} />
+                <span>{t("landing.workflowNote")}</span>
+              </div>
+            </Reveal>
           </div>
         </section>
 
@@ -346,6 +433,7 @@ export function LandingPage() {
                       "landing.security1",
                       "landing.security2",
                       "landing.security3",
+                      "landing.security4",
                     ] as const
                   ).map((key) => (
                     <li key={key}>
@@ -421,17 +509,42 @@ export function LandingPage() {
       </main>
 
       <footer className="landing-footer">
-        <div className="landing-container footer-inner">
-          <Brand compact />
-          <p>{t("landing.footerCopy")}</p>
-          <div>
-            <a href="#features">{t("nav.features")}</a>
-            <Link href={isAuthenticated ? appRoute : ROUTES.login}>
-              {isAuthenticated
-                ? text("Vào ứng dụng", "Open app")
-                : t("common.login")}
-            </Link>
+        <div className="landing-container footer-grid">
+          <div className="footer-brand-col">
+            <Brand compact />
+            <p className="footer-tagline">{t("landing.footerTagline")}</p>
           </div>
+          <div className="footer-links-col">
+            <h4>{t("landing.footerProduct")}</h4>
+            <ul>
+              <li><a href="#features">{t("nav.features")}</a></li>
+              <li><a href="#workflow">{t("nav.workflow")}</a></li>
+              <li><a href="#security">{t("nav.security")}</a></li>
+              <li><a href="#faq">{t("nav.faq")}</a></li>
+            </ul>
+          </div>
+          <div className="footer-links-col">
+            <h4>{t("landing.footerApp")}</h4>
+            <ul>
+              {isAuthenticated ? (
+                <li>
+                  <Link href={appRoute}>
+                    {text("Vào ứng dụng", "Open app")}
+                  </Link>
+                </li>
+              ) : (
+                <>
+                  <li><Link href={ROUTES.login}>{t("common.login")}</Link></li>
+                  <li><Link href={ROUTES.register}>{t("common.register")}</Link></li>
+                </>
+              )}
+              <li><Link href={isAuthenticated ? ROUTES.library : ROUTES.login}>{t("nav.library")}</Link></li>
+              <li><Link href={isAuthenticated ? ROUTES.community : ROUTES.login}>{t("nav.community")}</Link></li>
+            </ul>
+          </div>
+        </div>
+        <div className="landing-container footer-bottom">
+          <p>{t("landing.footerCopy")}</p>
         </div>
       </footer>
     </div>

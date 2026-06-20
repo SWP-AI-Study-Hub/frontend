@@ -15,11 +15,11 @@ type UserFilters = Pick<UserQuery, 'keyword' | 'role' | 'status'>
 
 export function AdminUsersView() {
   const { user: currentUser } = useAuth()
-  const { t } = useLanguage()
+  const { locale, t } = useLanguage()
   const [keyword, setKeyword] = useState('')
   const [role, setRole] = useState<UserRole | ''>('')
   const [status, setStatus] = useState<UserStatus | ''>('')
-  const [appliedFilters, setAppliedFilters] = useState<UserFilters>({})
+  const [page, setPage] = useState(1)
   const [data, setData] = useState<UserListResponse | null>(null)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(true)
@@ -44,22 +44,14 @@ export function AdminUsersView() {
   }, [t])
 
   useEffect(() => {
-    void loadUsers()
-  }, [loadUsers])
+    void loadUsers({ ...DEFAULT_QUERY, page, keyword, role, status })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadUsers, page, role, status])
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault()
-    const filters = { keyword, role, status }
-    setAppliedFilters(filters)
-    await loadUsers({ ...DEFAULT_QUERY, ...filters })
-  }
-
-  async function handlePageChange(page: number) {
-    if (isLoading || page === data?.meta.page || page < 1 || page > (data?.meta.totalPages ?? 1)) {
-      return
-    }
-
-    await loadUsers({ ...DEFAULT_QUERY, ...appliedFilters, page })
+    setPage(1)
+    await loadUsers({ ...DEFAULT_QUERY, page: 1, keyword, role, status })
   }
 
   async function handleStatusChange(targetUser: CurrentUser, nextStatus: AdminMutableUserStatus) {
@@ -74,7 +66,7 @@ export function AdminUsersView() {
 
     try {
       await updateUserStatus(targetUser.id, nextStatus)
-      await loadUsers({ ...DEFAULT_QUERY, ...appliedFilters, page: data?.meta.page ?? 1 })
+      await loadUsers({ ...DEFAULT_QUERY, page, keyword, role, status })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.statusFailed'))
     } finally {
@@ -220,43 +212,41 @@ export function AdminUsersView() {
                 </tbody>
               </table>
             </div>
-            {data && data.meta.totalPages > 1 ? (
-              <nav className="admin-pagination" aria-label="User pagination">
-                <span>
-                  {data.meta.totalItems} {t('admin.totalUsers').toLowerCase()}
+
+            {data?.meta && data.meta.totalPages > 1 ? (
+              <div className="pagination-wrap">
+                <span className="pagination-info">
+                  {locale === 'vi' ? 'Trang' : 'Page'} {data.meta.page} {locale === 'vi' ? 'trên' : 'of'} {data.meta.totalPages} ({data.meta.totalItems} {locale === 'vi' ? 'người dùng' : 'users'})
                 </span>
-                <div>
+                <div className="pagination-buttons">
                   <button
                     type="button"
-                    aria-label="Previous page"
-                    disabled={!data.meta.hasPrevious || isLoading}
-                    onClick={() => void handlePageChange(data.meta.page - 1)}
+                    className="pagination-btn"
+                    disabled={!data.meta.hasPrevious}
+                    onClick={() => setPage(data.meta.page - 1)}
                   >
-                    <ChevronLeft size={17} />
+                    <ChevronLeft size={16} />
                   </button>
-                  {Array.from({ length: data.meta.totalPages }, (_, index) => index + 1).map((page) => (
+                  {Array.from({ length: data.meta.totalPages }, (_, i) => i + 1).map((pNum) => (
                     <button
+                      key={pNum}
                       type="button"
-                      key={page}
-                      className={page === data.meta.page ? 'active' : undefined}
-                      aria-current={page === data.meta.page ? 'page' : undefined}
-                      aria-label={`Page ${page}`}
-                      disabled={isLoading}
-                      onClick={() => void handlePageChange(page)}
+                      className={`pagination-btn ${data.meta.page === pNum ? 'active' : ''}`}
+                      onClick={() => setPage(pNum)}
                     >
-                      {page}
+                      {pNum}
                     </button>
                   ))}
                   <button
                     type="button"
-                    aria-label="Next page"
-                    disabled={!data.meta.hasNext || isLoading}
-                    onClick={() => void handlePageChange(data.meta.page + 1)}
+                    className="pagination-btn"
+                    disabled={!data.meta.hasNext}
+                    onClick={() => setPage(data.meta.page + 1)}
                   >
-                    <ChevronRight size={17} />
+                    <ChevronRight size={16} />
                   </button>
                 </div>
-              </nav>
+              </div>
             ) : null}
           </>
         ) : null}

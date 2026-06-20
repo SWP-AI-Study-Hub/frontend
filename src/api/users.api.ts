@@ -1,7 +1,9 @@
 import { apiRequest } from '../lib/http'
 import type { AdminMutableUserStatus, CurrentUser, UserListResponse, UserRole, UserStatus } from '../types/auth'
+import { mockGetUsers, mockUpdateUserStatus } from './admin.mock'
 
 const ADMIN_USERS_PATH = '/admin/users'
+const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true'
 
 export type UserQuery = {
   page?: number
@@ -25,10 +27,16 @@ function toQueryString(query: UserQuery) {
 }
 
 export function getUsers(query: UserQuery = {}) {
+  if (USE_MOCKS) {
+    return mockGetUsers(query)
+  }
   return apiRequest<UserListResponse>(`${ADMIN_USERS_PATH}${toQueryString(query)}`)
 }
 
 export function updateUserStatus(id: string, status: AdminMutableUserStatus) {
+  if (USE_MOCKS) {
+    return mockUpdateUserStatus(id, status)
+  }
   return apiRequest<CurrentUser>(`${ADMIN_USERS_PATH}/${id}/status`, {
     method: 'PATCH',
     body: { status },
