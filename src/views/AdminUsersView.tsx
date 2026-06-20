@@ -11,6 +11,7 @@ const roles: UserRole[] = ['ADMIN', 'USER']
 const statuses: UserStatus[] = ['ACTIVE', 'BLOCKED', 'INACTIVE']
 const mutableStatuses: AdminMutableUserStatus[] = ['ACTIVE', 'BLOCKED']
 const DEFAULT_QUERY: UserQuery = { page: 1, limit: 10 }
+type UserFilters = Pick<UserQuery, 'keyword' | 'role' | 'status'>
 
 export function AdminUsersView() {
   const { user: currentUser } = useAuth()

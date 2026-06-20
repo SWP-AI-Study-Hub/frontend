@@ -23,6 +23,7 @@ export type ChatMessage = {
 
 export type LibraryFilters = {
   subjectId?: string
+  subjectIds?: string[]
   categoryId?: string
   fileType?: string
 }
