@@ -24,6 +24,8 @@ import {
   FileSpreadsheet,
   FileArchive,
   ArrowDownToLine,
+  Check,
+  ChevronDown,
 } from "lucide-react";
 import { askDocument, askLibrary } from "../api/chat.api";
 import { createDownloadUrl, fetchLibraryDocuments } from "../api/documents.api";
@@ -185,6 +187,8 @@ export function AiChatbotView() {
 
   const [searchQuery, setSearchQuery] = useState("");
   const [fileTypeFilter, setFileTypeFilter] = useState<"ALL" | "PDF" | "DOCX" | "PPTX" | "XLSX">("ALL");
+  const [selectedSubjectIds, setSelectedSubjectIds] = useState<string[]>([]);
+  const [subjectDropdownOpen, setSubjectDropdownOpen] = useState(false);
 
   const [question, setQuestion] = useState("");
   const [sessionId, setSessionId] = useState<string>();
@@ -204,11 +208,66 @@ export function AiChatbotView() {
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
+  const subjectDropdownRef = useRef<HTMLDivElement>(null);
+
+  const subjects = useMemo(() => {
+    const uniqueSubjects = new Map<string, { id: string; name: string }>();
+    documents.forEach((document) => {
+      uniqueSubjects.set(document.subjectId, {
+        id: document.subjectId,
+        name: document.subject,
+      });
+    });
+    return [...uniqueSubjects.values()].sort((a, b) =>
+      a.name.localeCompare(b.name, locale === "vi" ? "vi" : "en"),
+    );
+  }, [documents, locale]);
+
+  const selectedSubjectNames = useMemo(
+    () =>
+      subjects
+        .filter((subject) => selectedSubjectIds.includes(subject.id))
+        .map((subject) => subject.name),
+    [selectedSubjectIds, subjects],
+  );
+
+  const subjectFilterLabel =
+    selectedSubjectIds.length === 0
+      ? text("Tất cả môn học", "All subjects")
+      : selectedSubjectIds.length === 1
+        ? selectedSubjectNames[0]
+        : text(
+            `${selectedSubjectIds.length} môn học`,
+            `${selectedSubjectIds.length} subjects`,
+          );
+
+  useEffect(() => {
+    function closeSubjectDropdown(event: MouseEvent) {
+      if (
+        subjectDropdownRef.current &&
+        !subjectDropdownRef.current.contains(event.target as Node)
+      ) {
+        setSubjectDropdownOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", closeSubjectDropdown);
+    return () => document.removeEventListener("mousedown", closeSubjectDropdown);
+  }, []);
 
   // 3. Currently active document
   const currentDocument = useMemo(() => {
-    return documents.find((doc) => doc.id === currentDocumentId) || documents[0];
-  }, [documents, currentDocumentId]);
+    const subjectDocuments =
+      selectedSubjectIds.length === 0
+        ? documents
+        : documents.filter((document) =>
+            selectedSubjectIds.includes(document.subjectId),
+          );
+    return (
+      subjectDocuments.find((doc) => doc.id === currentDocumentId) ||
+      subjectDocuments[0]
+    );
+  }, [documents, currentDocumentId, selectedSubjectIds]);
 
   // Welcome message per mode
   const welcomeMessage = useMemo(() => {
@@ -224,11 +283,17 @@ export function AiChatbotView() {
         "Select documents from the list on the left to ask questions based on them.",
       );
     }
+    if (selectedSubjectIds.length > 0) {
+      return text(
+        `Chào mừng! Bạn đang đặt câu hỏi trong các môn: ${selectedSubjectNames.join(", ")}.`,
+        `Welcome! You are asking questions across: ${selectedSubjectNames.join(", ")}.`,
+      );
+    }
     return text(
       "Chào mừng! Bạn đang đặt câu hỏi trên toàn bộ thư viện của mình.",
       "Welcome! You are asking questions across your entire library.",
     );
-  }, [locale, activeMode, currentDocument]);
+  }, [locale, activeMode, currentDocument, selectedSubjectIds.length, selectedSubjectNames]);
 
   // 4. Load sessionStorage on mount (hydration-safe)
   useEffect(() => {
@@ -243,6 +308,11 @@ export function AiChatbotView() {
     const savedSelected = sessionStorage.getItem("documind.workspace.selectedDocumentIds");
     if (savedSelected) {
       try { setSelectedDocumentIds(JSON.parse(savedSelected)); } catch { /* ignore */ }
+    }
+
+    const savedSubjects = sessionStorage.getItem("documind.workspace.selectedSubjectIds");
+    if (savedSubjects) {
+      try { setSelectedSubjectIds(JSON.parse(savedSubjects)); } catch { /* ignore */ }
     }
 
     const savedCurrent = sessionStorage.getItem("documind.workspace.currentDocumentId");
@@ -262,6 +332,7 @@ export function AiChatbotView() {
   // 5. Persist state to sessionStorage
   useEffect(() => { sessionStorage.setItem("documind.workspace.activeMode", activeMode); }, [activeMode]);
   useEffect(() => { sessionStorage.setItem("documind.workspace.selectedDocumentIds", JSON.stringify(selectedDocumentIds)); }, [selectedDocumentIds]);
+  useEffect(() => { sessionStorage.setItem("documind.workspace.selectedSubjectIds", JSON.stringify(selectedSubjectIds)); }, [selectedSubjectIds]);
   useEffect(() => { if (currentDocumentId) sessionStorage.setItem("documind.workspace.currentDocumentId", currentDocumentId); }, [currentDocumentId]);
 
   // 6. Reset chat on mode / document change
@@ -283,9 +354,33 @@ export function AiChatbotView() {
         (doc.subject || "").toLowerCase().includes(q) ||
         (doc.category || "").toLowerCase().includes(q);
       const matchesType = fileTypeFilter === "ALL" || doc.fileType === fileTypeFilter;
-      return matchesSearch && matchesType;
+      const matchesSubject =
+        selectedSubjectIds.length === 0 ||
+        selectedSubjectIds.includes(doc.subjectId);
+      return matchesSearch && matchesType && matchesSubject;
     });
-  }, [documents, searchQuery, fileTypeFilter]);
+  }, [documents, searchQuery, fileTypeFilter, selectedSubjectIds]);
+
+  useEffect(() => {
+    if (filteredDocuments.length === 0) {
+      if (currentDocumentId) setCurrentDocumentId("");
+      return;
+    }
+    if (
+      !currentDocumentId ||
+      !filteredDocuments.some((document) => document.id === currentDocumentId)
+    ) {
+      setCurrentDocumentId(filteredDocuments[0].id);
+    }
+  }, [currentDocumentId, filteredDocuments]);
+
+  const toggleSubject = (subjectId: string) => {
+    setSelectedSubjectIds((current) =>
+      current.includes(subjectId)
+        ? current.filter((id) => id !== subjectId)
+        : [...current, subjectId],
+    );
+  };
 
   const handleCheckboxToggle = (docId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -354,7 +449,9 @@ export function AiChatbotView() {
             sessionId,
             filters: activeMode === "SELECTED_SOURCES"
               ? { documentIds: selectedDocumentIds }
-              : undefined,
+              : selectedSubjectIds.length > 0
+                ? { subjectIds: selectedSubjectIds }
+                : undefined,
           })
             .catch(() => demoLibraryAnswer(trimmed, locale));
 
@@ -413,6 +510,92 @@ export function AiChatbotView() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
+          </div>
+
+          <div className="ws-subject-filter" ref={subjectDropdownRef}>
+            <button
+              type="button"
+              className={`ws-subject-filter-trigger${selectedSubjectIds.length ? " active" : ""}`}
+              onClick={() => setSubjectDropdownOpen((open) => !open)}
+              aria-expanded={subjectDropdownOpen}
+            >
+              <span>
+                <small>{text("Lọc theo môn học", "Filter by subject")}</small>
+                <strong title={selectedSubjectNames.join(", ")}>
+                  {subjectFilterLabel}
+                </strong>
+              </span>
+              <ChevronDown size={16} />
+            </button>
+
+            {subjectDropdownOpen ? (
+              <div className="ws-subject-dropdown">
+                <div className="ws-subject-dropdown-heading">
+                  <strong>{text("Chọn môn học", "Choose subjects")}</strong>
+                  <span>
+                    {selectedSubjectIds.length || text("Tất cả", "All")}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className={`ws-subject-option${selectedSubjectIds.length === 0 ? " selected" : ""}`}
+                  onClick={() => setSelectedSubjectIds([])}
+                >
+                  <span className="ws-subject-check">
+                    {selectedSubjectIds.length === 0 ? <Check size={13} /> : null}
+                  </span>
+                  <span>
+                    <strong>{text("Tất cả môn học", "All subjects")}</strong>
+                    <small>
+                      {text(
+                        `${documents.length} tài liệu trong thư viện`,
+                        `${documents.length} library documents`,
+                      )}
+                    </small>
+                  </span>
+                </button>
+                <div className="ws-subject-options">
+                  {subjects.map((subject) => {
+                    const checked = selectedSubjectIds.includes(subject.id);
+                    const count = documents.filter(
+                      (document) => document.subjectId === subject.id,
+                    ).length;
+                    return (
+                      <button
+                        type="button"
+                        key={subject.id}
+                        className={`ws-subject-option${checked ? " selected" : ""}`}
+                        onClick={() => toggleSubject(subject.id)}
+                      >
+                        <span className="ws-subject-check">
+                          {checked ? <Check size={13} /> : null}
+                        </span>
+                        <span>
+                          <strong>{subject.name}</strong>
+                          <small>
+                            {count} {text("tài liệu", "documents")}
+                          </small>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <footer>
+                  <span>
+                    {text(
+                      "Có thể chọn nhiều môn",
+                      "Multiple selection supported",
+                    )}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setSubjectDropdownOpen(false)}
+                  >
+                    {text("Xong", "Done")}
+                  </button>
+                </footer>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -648,7 +831,12 @@ export function AiChatbotView() {
                 ? text(`Nguồn tham chiếu: ${currentDocument?.title || "Tài liệu hiện tại"}`, `Grounded in: ${currentDocument?.title || "Current document"}`)
                 : activeMode === "SELECTED_SOURCES"
                 ? text(`Nguồn tham chiếu: ${selectedDocumentIds.length} tài liệu đã chọn`, `Grounded in: ${selectedDocumentIds.length} selected sources`)
-                : text("Nguồn tham chiếu: Toàn bộ thư viện", "Grounded in: Entire library")}
+                : selectedSubjectIds.length > 0
+                  ? text(
+                      `Nguồn tham chiếu: ${selectedSubjectNames.join(", ")}`,
+                      `Grounded in: ${selectedSubjectNames.join(", ")}`,
+                    )
+                  : text("Nguồn tham chiếu: Toàn bộ thư viện", "Grounded in: Entire library")}
             </span>
           </div>
         </div>

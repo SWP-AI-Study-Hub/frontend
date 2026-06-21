@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { translations, type Locale, type TranslationKey } from './translations'
 
 type LanguageContextValue = {
@@ -12,19 +12,24 @@ type LanguageContextValue = {
 const STORAGE_KEY = 'documind-locale'
 const LanguageContext = createContext<LanguageContextValue | null>(null)
 
-function getInitialLocale(): Locale {
-  if (typeof window === 'undefined') return 'vi'
-  const stored = window.localStorage.getItem(STORAGE_KEY)
-  return stored === 'en' ? 'en' : 'vi'
-}
-
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocale] = useState<Locale>(getInitialLocale)
+  // Keep the server render and the client's first render identical. The saved
+  // browser preference is restored only after React has hydrated the page.
+  const [locale, setLocaleState] = useState<Locale>('vi')
 
   useEffect(() => {
-    document.documentElement.lang = locale
-    window.localStorage.setItem(STORAGE_KEY, locale)
-  }, [locale])
+    const storedLocale = window.localStorage.getItem(STORAGE_KEY)
+    const nextLocale: Locale = storedLocale === 'en' ? 'en' : 'vi'
+
+    setLocaleState(nextLocale)
+    document.documentElement.lang = nextLocale
+  }, [])
+
+  const setLocale = useCallback((nextLocale: Locale) => {
+    setLocaleState(nextLocale)
+    document.documentElement.lang = nextLocale
+    window.localStorage.setItem(STORAGE_KEY, nextLocale)
+  }, [])
 
   const value = useMemo<LanguageContextValue>(
     () => ({
@@ -32,7 +37,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
       setLocale,
       t: (key) => translations[locale][key],
     }),
-    [locale],
+    [locale, setLocale],
   )
 
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>
