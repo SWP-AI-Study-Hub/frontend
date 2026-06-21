@@ -38,19 +38,50 @@ import type { LibraryDocument } from "../types/document";
 
 type ActiveMode = "CURRENT_DOCUMENT" | "SELECTED_SOURCES" | "MY_LIBRARY";
 
-function renderMessageContent(content: string) {
+function renderMessageContent(
+  content: string,
+  citations: Citation[] = [],
+  onCitationClick?: (citation: Citation) => void
+) {
   const lines = content.split("\n");
   const elements: React.ReactNode[] = [];
   let currentList: { type: "ul" | "ol"; items: string[] } | null = null;
 
   const parseInline = (text: string) => {
     // Basic bold parsing: **text**
-    const parts = text.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, idx) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={idx}>{part.slice(2, -2)}</strong>;
+    const boldParts = text.split(/(\*\*.*?\*\*)/g);
+    return boldParts.flatMap((boldPart, boldIdx) => {
+      if (boldPart.startsWith("**") && boldPart.endsWith("**")) {
+        return <strong key={`b-${boldIdx}`}>{boldPart.slice(2, -2)}</strong>;
       }
-      return part;
+
+      // Parse citations: e.g. [Source 1], [Source 2], [1], [2] inside normal text
+      const citationRegex = /(\[Source\s+\d+\]|\[\d+\])/gi;
+      const citationParts = boldPart.split(citationRegex);
+
+      return citationParts.map((part, citeIdx) => {
+        if (/^(\[Source\s+\d+\]|\[\d+\])$/i.test(part)) {
+          const match = part.match(/\d+/);
+          if (match) {
+            const sourceNumber = parseInt(match[0], 10);
+            const citation = citations.find((c) => c.sourceNumber === sourceNumber);
+            if (citation && onCitationClick) {
+              return (
+                <button
+                  key={`cite-${boldIdx}-${citeIdx}`}
+                  type="button"
+                  className="ws-inline-citation"
+                  onClick={() => onCitationClick(citation)}
+                  title={citation.title}
+                >
+                  {part}
+                </button>
+              );
+            }
+          }
+        }
+        return part;
+      });
     });
   };
 
@@ -393,16 +424,19 @@ export function AiChatbotView() {
     setIsLoading(true);
     setSources([]);
 
-    if (activeMode === "SELECTED_SOURCES") {
+    if (activeMode === "SELECTED_SOURCES" && selectedDocumentIds.length === 0) {
       setTimeout(() => {
         setMessages((prev) => [...prev, {
           id: crypto.randomUUID(),
           sender: "AI",
-          content: text("Chế độ Nguồn đã Chọn hiện tại chưa được hỗ trợ bởi backend.", "Selected Sources mode is pending backend support."),
+          content: text(
+            "Vui lòng chọn ít nhất một tài liệu nguồn ở danh sách bên trái để đặt câu hỏi.",
+            "Please select at least one source document from the left list to ask questions.",
+          ),
           sources: [],
         }]);
         setIsLoading(false);
-      }, 700);
+      }, 500);
       return;
     }
 
@@ -413,8 +447,9 @@ export function AiChatbotView() {
         : await askLibrary({
             question: trimmed,
             sessionId,
-            filters:
-              selectedSubjectIds.length > 0
+            filters: activeMode === "SELECTED_SOURCES"
+              ? { documentIds: selectedDocumentIds }
+              : selectedSubjectIds.length > 0
                 ? { subjectIds: selectedSubjectIds }
                 : undefined,
           })
@@ -697,7 +732,7 @@ export function AiChatbotView() {
               </div>
               <div className="ws-message-bubble">
                 <div className="ws-message-text">
-                  {renderMessageContent(msg.content)}
+                  {renderMessageContent(msg.content, msg.sources, openCitationDrawer)}
                 </div>
                 {msg.sources.length > 0 && (
                   <div className="ws-message-citations">

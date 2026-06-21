@@ -26,4 +26,5 @@ export type LibraryFilters = {
   subjectIds?: string[]
   categoryId?: string
   fileType?: string
+  documentIds?: string[]
 }
