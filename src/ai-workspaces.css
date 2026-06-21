@@ -3069,6 +3069,30 @@
   color: var(--ws-subtle);
 }
 
+/* Inline citation inside message text */
+.ws-inline-citation {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ws-accent-soft);
+  border: 1px solid var(--ws-accent-light);
+  border-radius: 4px;
+  padding: 0px 5px;
+  margin: 0 3px;
+  font-size: 0.72rem;
+  font-weight: 750;
+  color: var(--ws-accent);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  vertical-align: baseline;
+  font-family: inherit;
+}
+.ws-inline-citation:hover {
+  background: var(--ws-accent);
+  border-color: var(--ws-accent);
+  color: #fff;
+}
+
 /* Sources footer */
 .ws-sources-footer {
   display: flex;

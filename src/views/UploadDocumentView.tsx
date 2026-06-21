@@ -209,7 +209,7 @@ export function UploadDocumentView() {
   async function pollExtraction(document: LibraryDocument) {
     setPhase("extracting");
     setExtractionProgress(0);
-    for (;;) {
+    for (; ;) {
       const status = await fetchExtractionStatus(document.id);
       setExtractionProgress(status.progress ?? 0);
       if (status.extractionStatus === "COMPLETED" || status.extractionStatus === "MOCKED") {
@@ -314,7 +314,7 @@ export function UploadDocumentView() {
       <form className="upload-workspace" onSubmit={submit}>
         <section className="upload-main">
           <div className="upload-form-section upload-section-card">
-            <SectionHeading number="01" title={text("Chọn tài liệu", "Choose document")} description={text("PDF, DOCX, PPTX hoặc XLSX · Tối đa 20 MB", "PDF, DOCX, PPTX, or XLSX · Maximum 20 MB")} />
+            <SectionHeading number="01" title={text("Chọn tài liệu", "Choose document")} description={text("PDF, DOCX, PPTX hoặc XLSX · Tối đa 80 MB", "PDF, DOCX, PPTX, or XLSX · Maximum 80 MB")} />
             <div
               className={`upload-dropzone${fileError ? " error" : file ? " selected" : ""}`}
               onDragOver={(event) => event.preventDefault()}
