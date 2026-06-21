@@ -7,7 +7,7 @@ import type {
   UploadDocumentInput,
 } from '../types/document'
 
-export const MAX_FILE_SIZE = 20 * 1024 * 1024
+export const MAX_FILE_SIZE = 80 * 1024 * 1024
 export const ACCEPTED_FILE_EXTENSIONS = ['pdf', 'docx', 'pptx', 'xlsx'] as const
 
 export type SubjectItem = {
@@ -89,8 +89,8 @@ export function validateDocumentFile(file: File, locale: Locale = 'vi'): string 
   }
   if (file.size > MAX_FILE_SIZE) {
     return locale === 'vi'
-      ? 'Kích thước tệp không được vượt quá 20 MB.'
-      : 'File size must be 20 MB or smaller.'
+      ? 'Kích thước tệp không được vượt quá 80 MB.'
+      : 'File size must be 80 MB or smaller.'
   }
   if (file.size === 0) {
     return locale === 'vi' ? 'Tệp không được để trống.' : 'The file cannot be empty.'
