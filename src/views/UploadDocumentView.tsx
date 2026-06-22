@@ -5,6 +5,7 @@ import {
   DragEvent,
   FormEvent,
   KeyboardEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -51,7 +52,10 @@ const wait = (milliseconds: number) =>
 
 export function UploadDocumentView() {
   const { locale } = useLanguage();
-  const text = (vi: string, en: string) => localize(locale, vi, en);
+  const text = useCallback(
+    (vi: string, en: string) => localize(locale, vi, en),
+    [locale],
+  );
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File>();
   const [invalidFileName, setInvalidFileName] = useState("");
@@ -98,11 +102,14 @@ export function UploadDocumentView() {
     return () => {
       active = false;
     };
-  }, [locale]);
+  }, [text]);
 
   const selectedSubject = subjects.find((item) => item.id === subjectId);
   const selectedCategory = categories.find((item) => item.id === categoryId);
-  const missingFields = getMissingUploadFields({ file, title, subjectId, categoryId });
+  const missingFields = useMemo(
+    () => getMissingUploadFields({ file, title, subjectId, categoryId }),
+    [categoryId, file, subjectId, title],
+  );
   const isBusy = phase === "uploading" || phase === "extracting";
   const canSubmit = missingFields.length === 0 && !fileError && !isBusy;
 
@@ -118,7 +125,7 @@ export function UploadDocumentView() {
       `Vui lòng bổ sung: ${labels.join(", ")}.`,
       `Add ${labels.join(", ")} to continue.`,
     );
-  }, [canSubmit, locale, missingFields]);
+  }, [canSubmit, missingFields, text]);
 
   function selectFile(nextFile?: File) {
     if (!nextFile) return;

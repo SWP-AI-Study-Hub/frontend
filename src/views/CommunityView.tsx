@@ -29,7 +29,11 @@ export function CommunityView() {
     () => communityDocuments.map((item) => localizeCommunityDocument(item, locale)),
     [locale],
   )
-  const categories = ['All', ...new Set(displayedDocuments.map((item) => item.category))]
+  const categories = useMemo(
+    () => ['All', ...new Set(displayedDocuments.map((item) => item.category))],
+    [displayedDocuments],
+  )
+  const savedIdSet = useMemo(() => new Set(savedIds), [savedIds])
 
   useEffect(() => {
     setCategory('All')
@@ -107,7 +111,7 @@ export function CommunityView() {
       {filteredDocuments.length > 0 ? (
         <section className="community-grid">
           {filteredDocuments.map((document) => {
-            const isSaved = savedIds.includes(document.id)
+            const isSaved = savedIdSet.has(document.id)
             return (
               <article className="community-card" key={document.id}>
                 <div className={`community-cover community-cover--${document.accent}`}>
