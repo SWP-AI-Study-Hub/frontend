@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
@@ -57,7 +57,10 @@ function DocumentIcon({ type }: { type: string }) {
 
 export function LibraryView() {
   const { locale } = useLanguage();
-  const text = (vi: string, en: string) => localize(locale, vi, en);
+  const text = useCallback(
+    (vi: string, en: string) => localize(locale, vi, en),
+    [locale],
+  );
   const searchParams = useSearchParams();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -108,7 +111,7 @@ export function LibraryView() {
         setCategories(categoryItems);
       })
       .catch((error: unknown) => setErrorMessage(error instanceof Error ? error.message : text("Không thể tải cấu trúc Library.", "Could not load the Library structure.")));
-  }, [locale]);
+  }, [text]);
 
   const sort = useMemo(() => {
     if (sortBy === "oldest") return { sortBy: "createdAt" as const, sortOrder: "asc" as const };
@@ -146,7 +149,7 @@ export function LibraryView() {
     return () => {
       active = false;
     };
-  }, [categoryId, debouncedQuery, fileType, locale, page, sort, status, subjectId, visibility]);
+  }, [categoryId, debouncedQuery, fileType, page, sort, status, subjectId, text, visibility]);
 
   useEffect(() => {
     const documentId = searchParams?.get("document");

@@ -1,63 +1,429 @@
 "use client";
 
-import { Check, Sparkles } from "lucide-react";
+import {
+  BarChart3,
+  Check,
+  Cloud,
+  CreditCard,
+  Download,
+  FileText,
+  Landmark,
+  LoaderCircle,
+  MessageSquare,
+  ShieldCheck,
+  Sparkles,
+  X,
+} from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createCheckout,
+  fetchCurrentSubscription,
+  fetchPayment,
+  fetchPaymentHistory,
+  fetchSubscriptionPlans,
+  submitSePayCheckout,
+  switchToFreePlan,
+  updatePaymentStatus,
+} from "../api/payments.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
+import type {
+  CurrentSubscription,
+  PaymentMethodCode,
+  PaymentOrder,
+  SubscriptionPlan,
+  SubscriptionPlanCode,
+} from "../types/payment";
+
+const FALLBACK_PLANS: SubscriptionPlan[] = [
+  { code: "FREE", name: "Free", amount: 0, currency: "VND", billingPeriod: "NONE" },
+  { code: "STUDENT", name: "Student", amount: 149000, currency: "VND", billingPeriod: "MONTHLY" },
+  { code: "PRO", name: "Pro", amount: 349000, currency: "VND", billingPeriod: "MONTHLY" },
+];
+
+const PLAN_FEATURES: Record<SubscriptionPlanCode, {
+  bestFor: [string, string];
+  storage: string;
+  uploads: number;
+  chats: string;
+  offline: "NO" | "LIMITED" | "YES";
+  reporting: "N/A" | "BASIC" | "MANAGED";
+}> = {
+  FREE: {
+    bestFor: ["Phù hợp nhất cho người dùng không thường xuyên.", "Best for casual users."],
+    storage: "100 MB",
+    uploads: 10,
+    chats: "20",
+    offline: "NO",
+    reporting: "N/A",
+  },
+  STUDENT: {
+    bestFor: ["Phù hợp nhất cho học sinh, sinh viên học tập tích cực.", "Best for active students."],
+    storage: "1 GB",
+    uploads: 100,
+    chats: "300",
+    offline: "LIMITED",
+    reporting: "BASIC",
+  },
+  PRO: {
+    bestFor: ["Phù hợp nhất cho người dùng chuyên sâu.", "Best for power users."],
+    storage: "5 GB",
+    uploads: 500,
+    chats: "UNLIMITED",
+    offline: "YES",
+    reporting: "MANAGED",
+  },
+};
 
 export function SubscriptionView() {
   const { locale } = useLanguage();
-  const text = (vi: string, en: string) => localize(locale, vi, en);
+  const text = useCallback(
+    (vi: string, en: string) => localize(locale, vi, en),
+    [locale],
+  );
+  const searchParams = useSearchParams();
+  const [plans, setPlans] = useState(FALLBACK_PLANS);
+  const [currentSubscription, setCurrentSubscription] =
+    useState<CurrentSubscription>();
+  const [history, setHistory] = useState<PaymentOrder[]>([]);
+  const [selectedPlan, setSelectedPlan] =
+    useState<Exclude<SubscriptionPlanCode, "FREE">>();
+  const [paymentMethod, setPaymentMethod] =
+    useState<PaymentMethodCode>("BANK_TRANSFER");
+  const [isLoading, setIsLoading] = useState(true);
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isSwitchingFree, setIsSwitchingFree] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [error, setError] = useState("");
+
+  const loadSubscriptionData = useCallback(async () => {
+    const [planItems, subscription, paymentItems] = await Promise.all([
+      fetchSubscriptionPlans(),
+      fetchCurrentSubscription(),
+      fetchPaymentHistory(),
+    ]);
+    setPlans(planItems);
+    setCurrentSubscription(subscription);
+    setHistory(paymentItems);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    loadSubscriptionData()
+      .catch((loadError: unknown) => {
+        if (active) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : text("Không thể tải thông tin thanh toán.", "Could not load payment information."),
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setIsLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [loadSubscriptionData, text]);
+
+  useEffect(() => {
+    const paymentResult = searchParams?.get("payment");
+    const invoiceNumber = searchParams?.get("invoice");
+    if (!paymentResult) return;
+
+    if (paymentResult === "cancel") {
+      setNotice(text("Bạn đã hủy thanh toán.", "Payment was cancelled."));
+      if (invoiceNumber) {
+        void updatePaymentStatus(invoiceNumber, "CANCELLED")
+          .then(loadSubscriptionData)
+          .catch(() => undefined);
+      }
+      return;
+    }
+    if (paymentResult === "error") {
+      setError(text("Thanh toán không thành công. Vui lòng thử lại.", "Payment was not successful. Please try again."));
+      if (invoiceNumber) {
+        void updatePaymentStatus(invoiceNumber, "FAILED")
+          .then(loadSubscriptionData)
+          .catch(() => undefined);
+      }
+      return;
+    }
+    if (paymentResult !== "success" || !invoiceNumber) return;
+
+    let active = true;
+    let attempts = 0;
+    const checkStatus = async () => {
+      attempts += 1;
+      try {
+        const payment = await fetchPayment(invoiceNumber);
+        if (!active) return;
+        if (payment.status === "PAID") {
+          setNotice(text("Thanh toán thành công. Gói của bạn đã được kích hoạt.", "Payment completed. Your plan is now active."));
+          await loadSubscriptionData();
+          return;
+        }
+        if (attempts < 20) {
+          window.setTimeout(() => void checkStatus(), 2000);
+        } else {
+          setNotice(text("SePay đang xác nhận giao dịch. Bạn có thể kiểm tra lại sau ít phút.", "SePay is confirming the transaction. Please check again shortly."));
+        }
+      } catch (statusError) {
+        if (active) {
+          setError(statusError instanceof Error ? statusError.message : text("Không thể kiểm tra giao dịch.", "Could not check the payment."));
+        }
+      }
+    };
+    void checkStatus();
+    return () => {
+      active = false;
+    };
+  }, [loadSubscriptionData, searchParams, text]);
+
+  const currentPlan = currentSubscription?.plan ?? "FREE";
+  const currentPlanDetails =
+    plans.find((plan) => plan.code === currentPlan) ?? plans[0];
+  const selectedPlanDetails = useMemo(
+    () => plans.find((plan) => plan.code === selectedPlan),
+    [plans, selectedPlan],
+  );
+
+  async function handleCheckout() {
+    if (!selectedPlan) return;
+    setError("");
+    setNotice("");
+    setIsCheckingOut(true);
+    try {
+      const checkout = await createCheckout(selectedPlan, paymentMethod);
+      submitSePayCheckout(checkout);
+    } catch (checkoutError) {
+      setError(
+        checkoutError instanceof Error
+          ? checkoutError.message
+          : text("Không thể khởi tạo thanh toán.", "Could not initialize payment."),
+      );
+      setIsCheckingOut(false);
+    }
+  }
+
+  async function handleSwitchToFree() {
+    if (
+      !window.confirm(
+        text(
+          "Chuyển về gói Free sẽ áp dụng hạn mức miễn phí ngay lập tức. Tiếp tục?",
+          "Switching to Free applies the free limits immediately. Continue?",
+        ),
+      )
+    ) {
+      return;
+    }
+
+    setError("");
+    setNotice("");
+    setIsSwitchingFree(true);
+    try {
+      await switchToFreePlan();
+      await loadSubscriptionData();
+      setNotice(text("Đã chuyển sang gói Free.", "Switched to the Free plan."));
+    } catch (switchError) {
+      setError(
+        switchError instanceof Error
+          ? switchError.message
+          : text("Không thể đổi gói.", "Could not change the plan."),
+      );
+    } finally {
+      setIsSwitchingFree(false);
+    }
+  }
 
   return (
     <main id="main-content" className="simple-workspace-page">
       <header>
         <p className="eyebrow">{text("GÓI DỊCH VỤ", "SUBSCRIPTION")}</p>
         <h1>{text("Gói dịch vụ phù hợp với quá trình nghiên cứu.", "A plan that grows with your research.")}</h1>
-        <p>{text("Xem mức sử dụng hiện tại và so sánh dung lượng học tập của từng gói.", "Review your current usage and compare the study capacity available to you.")}</p>
+        <p>{text("Thanh toán an toàn bằng thẻ quốc tế hoặc QR chuyển khoản qua SePay.", "Pay securely by international card or domestic bank-transfer QR through SePay.")}</p>
       </header>
+
+      {notice ? <div className="payment-notice payment-notice--success"><Check size={17} />{notice}</div> : null}
+      {error ? <div className="payment-notice payment-notice--error"><X size={17} />{error}</div> : null}
+
       <section className="subscription-layout">
         <article className="current-plan-panel">
           <div>
             <span><Sparkles size={18} />{text("Gói hiện tại", "Current plan")}</span>
-            <strong>Student</strong>
+            <strong>{currentPlanDetails?.name ?? currentPlan}</strong>
           </div>
-          <p>{text("Đã dùng 68 trong 100 câu hỏi AI", "68 of 100 AI questions used")}</p>
-          <div className="usage-meter"><span style={{ width: "68%" }} /></div>
-          <small>{text("Hạn mức được đặt lại vào ngày 1 tháng 7, 2026", "Usage resets on July 1, 2026")}</small>
+          {currentSubscription?.expiresAt ? (
+            <p>{text(
+              `Có hiệu lực đến ${new Date(currentSubscription.expiresAt).toLocaleDateString("vi-VN")}`,
+              `Active until ${new Date(currentSubscription.expiresAt).toLocaleDateString("en-US")}`,
+            )}</p>
+          ) : (
+            <p>{text("Gói miễn phí không có ngày hết hạn.", "The Free plan does not expire.")}</p>
+          )}
+          <div className="usage-meter"><span style={{ width: `${getQuotaUsagePercent(currentSubscription)}%` }} /></div>
+          <small>
+            {currentSubscription
+              ? text(
+                  `Đã dùng ${currentSubscription.aiChatsUsed} / ${currentSubscription.aiChatLimit ?? "∞"} lượt chat AI · ${currentSubscription.uploadLimit} tài liệu · ${currentSubscription.storageLimitMb} MB`,
+                  `${currentSubscription.aiChatsUsed} / ${currentSubscription.aiChatLimit ?? "∞"} AI chats used · ${currentSubscription.uploadLimit} documents · ${currentSubscription.storageLimitMb} MB`,
+                )
+              : text("Đang tải hạn mức...", "Loading limits...")}
+          </small>
         </article>
+
         <div className="plan-grid">
-          <article>
-            <p className="eyebrow">FREE</p>
-            <h2>$0</h2>
-            <span>{text("Dùng thử tìm kiếm tài liệu có dẫn nguồn.", "For trying grounded document search.")}</span>
-            <ul>
-              <li><Check size={15} />10 {text("câu hỏi AI", "AI questions")}</li>
-              <li><Check size={15} />5 {text("tài liệu", "documents")}</li>
-            </ul>
-            <button type="button" disabled>{text("Gói cơ bản hiện tại", "Current baseline")}</button>
-          </article>
-          <article className="featured">
-            <p className="eyebrow">STUDENT</p>
-            <h2>$6 <small>/ {text("tháng", "month")}</small></h2>
-            <span>{text("Dành cho học tập và nghiên cứu thường xuyên.", "For active coursework and research.")}</span>
-            <ul>
-              <li><Check size={15} />100 {text("câu hỏi AI", "AI questions")}</li>
-              <li><Check size={15} />100 {text("tài liệu", "documents")}</li>
-            </ul>
-            <button type="button">{text("Quản lý gói Student", "Manage Student plan")}</button>
-          </article>
-          <article>
-            <p className="eyebrow">PRO</p>
-            <h2>$14 <small>/ {text("tháng", "month")}</small></h2>
-            <span>{text("Dành cho quy trình học thuật chuyên sâu.", "For intensive academic workflows.")}</span>
-            <ul>
-              <li><Check size={15} />500 {text("câu hỏi AI", "AI questions")}</li>
-              <li><Check size={15} />{text("Không giới hạn tài liệu", "Unlimited documents")}</li>
-            </ul>
-            <button type="button">{text("Nâng cấp lên Pro", "Upgrade to Pro")}</button>
+          {plans.map((plan) => (
+            <PlanCard
+              key={plan.code}
+              plan={plan}
+              isCurrent={currentPlan === plan.code}
+              onSelect={() => {
+                if (plan.code === "FREE") {
+                  void handleSwitchToFree();
+                } else {
+                  setSelectedPlan(plan.code);
+                }
+              }}
+              isBusy={isSwitchingFree}
+              locale={locale}
+              text={text}
+            />
+          ))}
+        </div>
+
+        {history.length > 0 ? (
+          <section className="payment-history-panel">
+            <header>
+              <div>
+                <p className="eyebrow">{text("LỊCH SỬ THANH TOÁN", "PAYMENT HISTORY")}</p>
+                <h2>{text("Giao dịch gần đây", "Recent transactions")}</h2>
+              </div>
+              <ShieldCheck size={20} />
+            </header>
+            <div>
+              {history.slice(0, 5).map((payment) => (
+                <article key={payment.invoiceNumber}>
+                  <span>
+                    {payment.paymentMethod === "CARD" ? <CreditCard size={17} /> : <Landmark size={17} />}
+                    <span><strong>{payment.plan}</strong><small>{payment.invoiceNumber}</small></span>
+                  </span>
+                  <span><strong>{formatPrice(payment.amount, payment.currency, locale)}</strong><small className={`payment-status payment-status--${payment.status.toLowerCase()}`}>{payment.status}</small></span>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
+      </section>
+
+      {selectedPlan && selectedPlanDetails ? (
+        <div className="payment-overlay" role="presentation" onMouseDown={() => !isCheckingOut && setSelectedPlan(undefined)}>
+          <article className="payment-dialog" role="dialog" aria-modal="true" aria-label={text("Chọn phương thức thanh toán", "Choose payment method")} onMouseDown={(event) => event.stopPropagation()}>
+            <header>
+              <div><p className="eyebrow">{text("THANH TOÁN QUA SEPAY", "SEPAY CHECKOUT")}</p><h2>{selectedPlanDetails.name}</h2></div>
+              <button type="button" onClick={() => setSelectedPlan(undefined)} disabled={isCheckingOut} aria-label={text("Đóng", "Close")}><X size={18} /></button>
+            </header>
+            <div className="payment-order-summary">
+              <span>{text("Thanh toán hàng tháng", "Monthly payment")}</span>
+              <strong>{formatPrice(selectedPlanDetails.amount, selectedPlanDetails.currency, locale)}</strong>
+            </div>
+            <div className="payment-methods">
+              <button type="button" className={paymentMethod === "BANK_TRANSFER" ? "active" : ""} onClick={() => setPaymentMethod("BANK_TRANSFER")}>
+                <Landmark size={23} />
+                <span><strong>{text("QR chuyển khoản", "Bank-transfer QR")}</strong><small>{text("Quét VietQR bằng ứng dụng ngân hàng trong nước", "Scan VietQR with a Vietnamese banking app")}</small></span>
+                {paymentMethod === "BANK_TRANSFER" ? <Check size={17} /> : null}
+              </button>
+              <button type="button" className={paymentMethod === "CARD" ? "active" : ""} onClick={() => setPaymentMethod("CARD")}>
+                <CreditCard size={23} />
+                <span><strong>{text("Thẻ quốc tế", "International card")}</strong><small>Visa · Mastercard · JCB · 3D Secure</small></span>
+                {paymentMethod === "CARD" ? <Check size={17} /> : null}
+              </button>
+            </div>
+            <div className="payment-security-note"><ShieldCheck size={17} /><span>{text("Bạn sẽ được chuyển đến trang thanh toán bảo mật của SePay. DocuMind không lưu thông tin thẻ.", "You will continue on SePay's secure checkout. DocuMind never stores card details.")}</span></div>
+            {error ? <div className="payment-notice payment-notice--error" role="alert">{error}</div> : null}
+            <footer>
+              <button type="button" className="secondary-button" onClick={() => setSelectedPlan(undefined)} disabled={isCheckingOut}>{text("Để sau", "Not now")}</button>
+              <button type="button" className="primary-button" onClick={() => void handleCheckout()} disabled={isCheckingOut}>
+                {isCheckingOut ? <LoaderCircle className="spin" size={18} /> : paymentMethod === "CARD" ? <CreditCard size={18} /> : <Landmark size={18} />}
+                {isCheckingOut ? text("Đang kết nối SePay...", "Connecting to SePay...") : text("Tiếp tục thanh toán", "Continue to payment")}
+              </button>
+            </footer>
           </article>
         </div>
-      </section>
+      ) : null}
+
+      {isLoading ? <span className="subscription-loading" aria-label={text("Đang tải", "Loading")}><LoaderCircle className="spin" size={18} /></span> : null}
     </main>
+  );
+}
+
+function PlanCard({
+  plan,
+  isCurrent,
+  onSelect,
+  locale,
+  isBusy,
+  text,
+}: {
+  plan: SubscriptionPlan;
+  isCurrent: boolean;
+  onSelect: () => void;
+  locale: string;
+  isBusy: boolean;
+  text: (vi: string, en: string) => string;
+}) {
+  const features = PLAN_FEATURES[plan.code];
+  const isFeatured = plan.code === "STUDENT";
+  return (
+    <article className={isFeatured ? "featured" : undefined}>
+      {isFeatured ? <span className="recommended-badge">{text("Đề xuất", "Recommended")}</span> : null}
+      <p className="eyebrow">{plan.code}</p>
+      <h2>{plan.amount === 0 ? "0đ" : formatPrice(plan.amount, plan.currency, locale)} {plan.amount > 0 ? <small>/ {text("tháng", "month")}</small> : null}</h2>
+      <span>{text(...features.bestFor)}</span>
+      <ul className="plan-features">
+        <li><span><Cloud size={17} />{text("Dung lượng", "Storage")}</span><strong>{features.storage}{plan.code === "PRO" ? ` (${text("có thể mở rộng", "expandable")})` : ""}</strong></li>
+        <li><span><FileText size={17} />{text("Giới hạn tải lên", "Upload limit")}</span><strong>{features.uploads} {text("tài liệu", "documents")}</strong></li>
+        <li><span><MessageSquare size={17} />AI Chat</span><strong>{features.chats === "UNLIMITED" ? text("Không giới hạn", "Unlimited") : `${features.chats} ${text("lượt chat / tháng", "chats / month")}`}</strong></li>
+        <li><span><Download size={17} />{text("Truy cập ngoại tuyến", "Offline access")}</span><FeatureValue value={features.offline} text={text} /></li>
+        <li><span><BarChart3 size={17} />{text("Báo cáo thanh toán", "Payment reporting")}</span><FeatureValue value={features.reporting} text={text} /></li>
+      </ul>
+      <button type="button" disabled={isCurrent || isBusy} onClick={onSelect}>
+        {isBusy && plan.code === "FREE"
+          ? text("Đang chuyển gói...", "Switching plan...")
+          : isCurrent
+            ? text("Gói hiện tại", "Current plan")
+            : plan.code === "FREE"
+              ? text("Chuyển sang Free", "Switch to Free")
+              : text(`Chọn gói ${plan.name}`, `Choose ${plan.name}`)}
+      </button>
+    </article>
+  );
+}
+
+function FeatureValue({ value, text }: { value: string; text: (vi: string, en: string) => string }) {
+  if (value === "NO") return <strong className="feature-negative"><X size={16} />{text("Không", "No")}</strong>;
+  if (value === "YES") return <strong className="feature-positive"><Check size={16} />{text("Có", "Yes")}</strong>;
+  if (value === "LIMITED") return <strong className="feature-limited">{text("Giới hạn", "Limited")}</strong>;
+  if (value === "BASIC") return <strong className="feature-highlight">{text("Cơ bản", "Basic")}</strong>;
+  if (value === "MANAGED") return <strong>{text("Quản lý qua bảng thanh toán", "Managed via payments table")}</strong>;
+  return <strong>{value}</strong>;
+}
+
+function formatPrice(amount: number, currency: string, locale: string) {
+  return new Intl.NumberFormat(locale === "vi" ? "vi-VN" : "en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(amount);
+}
+
+function getQuotaUsagePercent(subscription?: CurrentSubscription) {
+  if (!subscription || subscription.aiChatLimit === null) return 0;
+  if (subscription.aiChatLimit === 0) return 0;
+  return Math.min(
+    100,
+    (subscription.aiChatsUsed / subscription.aiChatLimit) * 100,
   );
 }
