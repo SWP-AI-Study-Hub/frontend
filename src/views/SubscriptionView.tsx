@@ -76,6 +76,8 @@ const PLAN_FEATURES: Record<SubscriptionPlanCode, {
   },
 };
 
+const DEFAULT_PLAN_FEATURES = PLAN_FEATURES.FREE;
+
 export function SubscriptionView() {
   const { locale } = useLanguage();
   const text = useCallback(
@@ -374,7 +376,7 @@ function PlanCard({
   isBusy: boolean;
   text: (vi: string, en: string) => string;
 }) {
-  const features = PLAN_FEATURES[plan.code];
+  const features = PLAN_FEATURES[plan.code] ?? DEFAULT_PLAN_FEATURES;
   const isFeatured = plan.code === "STUDENT";
   return (
     <article className={isFeatured ? "featured" : undefined}>
