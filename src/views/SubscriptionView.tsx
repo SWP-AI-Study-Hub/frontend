@@ -12,6 +12,7 @@ import {
   MessageSquare,
   ShieldCheck,
   Sparkles,
+  Timer,
   X,
 } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -37,21 +38,45 @@ import type {
 } from "../types/payment";
 
 const FALLBACK_PLANS: SubscriptionPlan[] = [
-  { code: "FREE", name: "Free", amount: 0, currency: "VND", billingPeriod: "NONE" },
-  { code: "STUDENT", name: "Student", amount: 149000, currency: "VND", billingPeriod: "MONTHLY" },
-  { code: "PRO", name: "Pro", amount: 349000, currency: "VND", billingPeriod: "MONTHLY" },
+  {
+    code: "FREE",
+    name: "Free",
+    amount: 0,
+    currency: "VND",
+    billingPeriod: "NONE",
+  },
+  {
+    code: "STUDENT",
+    name: "Student",
+    amount: 149000,
+    currency: "VND",
+    billingPeriod: "MONTHLY",
+  },
+  {
+    code: "PRO",
+    name: "Pro",
+    amount: 349000,
+    currency: "VND",
+    billingPeriod: "MONTHLY",
+  },
 ];
 
-const PLAN_FEATURES: Record<SubscriptionPlanCode, {
-  bestFor: [string, string];
-  storage: string;
-  uploads: number;
-  chats: string;
-  offline: "NO" | "LIMITED" | "YES";
-  reporting: "N/A" | "BASIC" | "MANAGED";
-}> = {
+const PLAN_FEATURES: Record<
+  SubscriptionPlanCode,
+  {
+    bestFor: [string, string];
+    storage: string;
+    uploads: number;
+    chats: string;
+    offline: "NO" | "LIMITED" | "YES";
+    reporting: "N/A" | "BASIC" | "MANAGED";
+  }
+> = {
   FREE: {
-    bestFor: ["Phù hợp nhất cho người dùng không thường xuyên.", "Best for casual users."],
+    bestFor: [
+      "Phù hợp nhất cho người dùng không thường xuyên.",
+      "Best for casual users.",
+    ],
     storage: "100 MB",
     uploads: 10,
     chats: "20",
@@ -59,7 +84,10 @@ const PLAN_FEATURES: Record<SubscriptionPlanCode, {
     reporting: "N/A",
   },
   STUDENT: {
-    bestFor: ["Phù hợp nhất cho học sinh, sinh viên học tập tích cực.", "Best for active students."],
+    bestFor: [
+      "Phù hợp nhất cho học sinh, sinh viên học tập tích cực.",
+      "Best for active students.",
+    ],
     storage: "1 GB",
     uploads: 100,
     chats: "300",
@@ -67,7 +95,10 @@ const PLAN_FEATURES: Record<SubscriptionPlanCode, {
     reporting: "BASIC",
   },
   PRO: {
-    bestFor: ["Phù hợp nhất cho người dùng chuyên sâu.", "Best for power users."],
+    bestFor: [
+      "Phù hợp nhất cho người dùng chuyên sâu.",
+      "Best for power users.",
+    ],
     storage: "5 GB",
     uploads: 500,
     chats: "UNLIMITED",
@@ -98,6 +129,11 @@ export function SubscriptionView() {
   const [isSwitchingFree, setIsSwitchingFree] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [checkoutSession, setCheckoutSession] = useState<{
+    invoiceNumber: string;
+    expiresAt: string;
+  }>();
+  const [nowMs, setNowMs] = useState(() => Date.now());
 
   const loadSubscriptionData = useCallback(async () => {
     const [planItems, subscription, paymentItems] = await Promise.all([
@@ -118,7 +154,10 @@ export function SubscriptionView() {
           setError(
             loadError instanceof Error
               ? loadError.message
-              : text("Không thể tải thông tin thanh toán.", "Could not load payment information."),
+              : text(
+                  "Không thể tải thông tin thanh toán.",
+                  "Could not load payment information.",
+                ),
           );
         }
       })
@@ -129,6 +168,11 @@ export function SubscriptionView() {
       active = false;
     };
   }, [loadSubscriptionData, text]);
+
+  useEffect(() => {
+    const timerId = window.setInterval(() => setNowMs(Date.now()), 1000);
+    return () => window.clearInterval(timerId);
+  }, []);
 
   useEffect(() => {
     const paymentResult = searchParams?.get("payment");
@@ -145,7 +189,12 @@ export function SubscriptionView() {
       return;
     }
     if (paymentResult === "error") {
-      setError(text("Thanh toán không thành công. Vui lòng thử lại.", "Payment was not successful. Please try again."));
+      setError(
+        text(
+          "Thanh toán không thành công. Vui lòng thử lại.",
+          "Payment was not successful. Please try again.",
+        ),
+      );
       if (invoiceNumber) {
         void updatePaymentStatus(invoiceNumber, "FAILED")
           .then(loadSubscriptionData)
@@ -163,18 +212,35 @@ export function SubscriptionView() {
         const payment = await fetchPayment(invoiceNumber);
         if (!active) return;
         if (payment.status === "PAID") {
-          setNotice(text("Thanh toán thành công. Gói của bạn đã được kích hoạt.", "Payment completed. Your plan is now active."));
+          setNotice(
+            text(
+              "Thanh toán thành công. Gói của bạn đã được kích hoạt.",
+              "Payment completed. Your plan is now active.",
+            ),
+          );
           await loadSubscriptionData();
           return;
         }
         if (attempts < 20) {
           window.setTimeout(() => void checkStatus(), 2000);
         } else {
-          setNotice(text("SePay đang xác nhận giao dịch. Bạn có thể kiểm tra lại sau ít phút.", "SePay is confirming the transaction. Please check again shortly."));
+          setNotice(
+            text(
+              "SePay đang xác nhận giao dịch. Bạn có thể kiểm tra lại sau ít phút.",
+              "SePay is confirming the transaction. Please check again shortly.",
+            ),
+          );
         }
       } catch (statusError) {
         if (active) {
-          setError(statusError instanceof Error ? statusError.message : text("Không thể kiểm tra giao dịch.", "Could not check the payment."));
+          setError(
+            statusError instanceof Error
+              ? statusError.message
+              : text(
+                  "Không thể kiểm tra giao dịch.",
+                  "Could not check the payment.",
+                ),
+          );
         }
       }
     };
@@ -191,6 +257,10 @@ export function SubscriptionView() {
     () => plans.find((plan) => plan.code === selectedPlan),
     [plans, selectedPlan],
   );
+  const checkoutSecondsRemaining = getRemainingSeconds(
+    checkoutSession?.expiresAt,
+    nowMs,
+  );
 
   async function handleCheckout() {
     if (!selectedPlan) return;
@@ -199,12 +269,47 @@ export function SubscriptionView() {
     setIsCheckingOut(true);
     try {
       const checkout = await createCheckout(selectedPlan, paymentMethod);
-      submitSePayCheckout(checkout);
+      setCheckoutSession({
+        invoiceNumber: checkout.invoiceNumber,
+        expiresAt: checkout.expiresAt,
+      });
+      window.setTimeout(() => submitSePayCheckout(checkout), 250);
     } catch (checkoutError) {
       setError(
         checkoutError instanceof Error
           ? checkoutError.message
-          : text("Không thể khởi tạo thanh toán.", "Could not initialize payment."),
+          : text(
+              "Không thể khởi tạo thanh toán.",
+              "Could not initialize payment.",
+            ),
+      );
+      setIsCheckingOut(false);
+    }
+  }
+
+  async function handleResumePayment(payment: PaymentOrder) {
+    if (payment.plan === "FREE") return;
+    setError("");
+    setNotice("");
+    setIsCheckingOut(true);
+    try {
+      const checkout = await createCheckout(
+        payment.plan,
+        payment.paymentMethod,
+      );
+      setCheckoutSession({
+        invoiceNumber: checkout.invoiceNumber,
+        expiresAt: checkout.expiresAt,
+      });
+      window.setTimeout(() => submitSePayCheckout(checkout), 250);
+    } catch (checkoutError) {
+      setError(
+        checkoutError instanceof Error
+          ? checkoutError.message
+          : text(
+              "Khong the mo lai phien thanh toan.",
+              "Could not reopen the payment session.",
+            ),
       );
       setIsCheckingOut(false);
     }
@@ -244,28 +349,62 @@ export function SubscriptionView() {
     <main id="main-content" className="simple-workspace-page">
       <header>
         <p className="eyebrow">{text("GÓI DỊCH VỤ", "SUBSCRIPTION")}</p>
-        <h1>{text("Gói dịch vụ phù hợp với quá trình nghiên cứu.", "A plan that grows with your research.")}</h1>
-        <p>{text("Thanh toán an toàn bằng thẻ quốc tế hoặc QR chuyển khoản qua SePay.", "Pay securely by international card or domestic bank-transfer QR through SePay.")}</p>
+        <h1>
+          {text(
+            "Gói dịch vụ phù hợp với quá trình nghiên cứu.",
+            "A plan that grows with your research.",
+          )}
+        </h1>
+        <p>
+          {text(
+            "Thanh toán an toàn bằng thẻ quốc tế hoặc QR chuyển khoản qua SePay.",
+            "Pay securely by international card or domestic bank-transfer QR through SePay.",
+          )}
+        </p>
       </header>
 
-      {notice ? <div className="payment-notice payment-notice--success"><Check size={17} />{notice}</div> : null}
-      {error ? <div className="payment-notice payment-notice--error"><X size={17} />{error}</div> : null}
+      {notice ? (
+        <div className="payment-notice payment-notice--success">
+          <Check size={17} />
+          {notice}
+        </div>
+      ) : null}
+      {error ? (
+        <div className="payment-notice payment-notice--error">
+          <X size={17} />
+          {error}
+        </div>
+      ) : null}
 
       <section className="subscription-layout">
         <article className="current-plan-panel">
           <div>
-            <span><Sparkles size={18} />{text("Gói hiện tại", "Current plan")}</span>
+            <span>
+              <Sparkles size={18} />
+              {text("Gói hiện tại", "Current plan")}
+            </span>
             <strong>{currentPlanDetails?.name ?? currentPlan}</strong>
           </div>
           {currentSubscription?.expiresAt ? (
-            <p>{text(
-              `Có hiệu lực đến ${new Date(currentSubscription.expiresAt).toLocaleDateString("vi-VN")}`,
-              `Active until ${new Date(currentSubscription.expiresAt).toLocaleDateString("en-US")}`,
-            )}</p>
+            <p>
+              {text(
+                `Có hiệu lực đến ${new Date(currentSubscription.expiresAt).toLocaleDateString("vi-VN")}`,
+                `Active until ${new Date(currentSubscription.expiresAt).toLocaleDateString("en-US")}`,
+              )}
+            </p>
           ) : (
-            <p>{text("Gói miễn phí không có ngày hết hạn.", "The Free plan does not expire.")}</p>
+            <p>
+              {text(
+                "Gói miễn phí không có ngày hết hạn.",
+                "The Free plan does not expire.",
+              )}
+            </p>
           )}
-          <div className="usage-meter"><span style={{ width: `${getQuotaUsagePercent(currentSubscription)}%` }} /></div>
+          <div className="usage-meter">
+            <span
+              style={{ width: `${getQuotaUsagePercent(currentSubscription)}%` }}
+            />
+          </div>
           <small>
             {currentSubscription
               ? text(
@@ -300,63 +439,205 @@ export function SubscriptionView() {
           <section className="payment-history-panel">
             <header>
               <div>
-                <p className="eyebrow">{text("LỊCH SỬ THANH TOÁN", "PAYMENT HISTORY")}</p>
+                <p className="eyebrow">
+                  {text("LỊCH SỬ THANH TOÁN", "PAYMENT HISTORY")}
+                </p>
                 <h2>{text("Giao dịch gần đây", "Recent transactions")}</h2>
               </div>
               <ShieldCheck size={20} />
             </header>
             <div>
-              {history.slice(0, 5).map((payment) => (
-                <article key={payment.invoiceNumber}>
-                  <span>
-                    {payment.paymentMethod === "CARD" ? <CreditCard size={17} /> : <Landmark size={17} />}
-                    <span><strong>{payment.plan}</strong><small>{payment.invoiceNumber}</small></span>
-                  </span>
-                  <span><strong>{formatPrice(payment.amount, payment.currency, locale)}</strong><small className={`payment-status payment-status--${payment.status.toLowerCase()}`}>{payment.status}</small></span>
-                </article>
-              ))}
+              {history.slice(0, 5).map((payment) => {
+                const remainingSeconds = getRemainingSeconds(
+                  payment.expiresAt,
+                  nowMs,
+                );
+                const canResume =
+                  payment.status === "PENDING" &&
+                  remainingSeconds > 0 &&
+                  payment.plan !== "FREE";
+
+                return (
+                  <article key={payment.invoiceNumber}>
+                    <span>
+                      {payment.paymentMethod === "CARD" ? (
+                        <CreditCard size={17} />
+                      ) : (
+                        <Landmark size={17} />
+                      )}
+                      <span>
+                        <strong>{payment.plan}</strong>
+                        <small>{payment.invoiceNumber}</small>
+                      </span>
+                    </span>
+                    <span>
+                      <strong>
+                        {formatPrice(payment.amount, payment.currency, locale)}
+                      </strong>
+                      <small
+                        className={`payment-status payment-status--${payment.status.toLowerCase()}`}
+                      >
+                        {payment.status}
+                      </small>
+                      {canResume ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleResumePayment(payment)}
+                          disabled={isCheckingOut}
+                        >
+                          <Timer size={14} />
+                          {text("Tiep tuc", "Resume")} -{" "}
+                          {formatCountdown(remainingSeconds)}
+                        </button>
+                      ) : null}
+                    </span>
+                  </article>
+                );
+              })}
             </div>
           </section>
         ) : null}
       </section>
 
       {selectedPlan && selectedPlanDetails ? (
-        <div className="payment-overlay" role="presentation" onMouseDown={() => !isCheckingOut && setSelectedPlan(undefined)}>
-          <article className="payment-dialog" role="dialog" aria-modal="true" aria-label={text("Chọn phương thức thanh toán", "Choose payment method")} onMouseDown={(event) => event.stopPropagation()}>
+        <div
+          className="payment-overlay"
+          role="presentation"
+          onMouseDown={() => !isCheckingOut && setSelectedPlan(undefined)}
+        >
+          <article
+            className="payment-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={text(
+              "Chọn phương thức thanh toán",
+              "Choose payment method",
+            )}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
             <header>
-              <div><p className="eyebrow">{text("THANH TOÁN QUA SEPAY", "SEPAY CHECKOUT")}</p><h2>{selectedPlanDetails.name}</h2></div>
-              <button type="button" onClick={() => setSelectedPlan(undefined)} disabled={isCheckingOut} aria-label={text("Đóng", "Close")}><X size={18} /></button>
+              <div>
+                <p className="eyebrow">
+                  {text("THANH TOÁN QUA SEPAY", "SEPAY CHECKOUT")}
+                </p>
+                <h2>{selectedPlanDetails.name}</h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPlan(undefined)}
+                disabled={isCheckingOut}
+                aria-label={text("Đóng", "Close")}
+              >
+                <X size={18} />
+              </button>
             </header>
             <div className="payment-order-summary">
               <span>{text("Thanh toán hàng tháng", "Monthly payment")}</span>
-              <strong>{formatPrice(selectedPlanDetails.amount, selectedPlanDetails.currency, locale)}</strong>
+              <strong>
+                {formatPrice(
+                  selectedPlanDetails.amount,
+                  selectedPlanDetails.currency,
+                  locale,
+                )}
+              </strong>
             </div>
             <div className="payment-methods">
-              <button type="button" className={paymentMethod === "BANK_TRANSFER" ? "active" : ""} onClick={() => setPaymentMethod("BANK_TRANSFER")}>
+              <button
+                type="button"
+                className={paymentMethod === "BANK_TRANSFER" ? "active" : ""}
+                onClick={() => setPaymentMethod("BANK_TRANSFER")}
+              >
                 <Landmark size={23} />
-                <span><strong>{text("QR chuyển khoản", "Bank-transfer QR")}</strong><small>{text("Quét VietQR bằng ứng dụng ngân hàng trong nước", "Scan VietQR with a Vietnamese banking app")}</small></span>
+                <span>
+                  <strong>{text("QR chuyển khoản", "Bank-transfer QR")}</strong>
+                  <small>
+                    {text(
+                      "Quét VietQR bằng ứng dụng ngân hàng trong nước",
+                      "Scan VietQR with a Vietnamese banking app",
+                    )}
+                  </small>
+                </span>
                 {paymentMethod === "BANK_TRANSFER" ? <Check size={17} /> : null}
               </button>
-              <button type="button" className={paymentMethod === "CARD" ? "active" : ""} onClick={() => setPaymentMethod("CARD")}>
+              <button
+                type="button"
+                className={paymentMethod === "CARD" ? "active" : ""}
+                onClick={() => setPaymentMethod("CARD")}
+              >
                 <CreditCard size={23} />
-                <span><strong>{text("Thẻ quốc tế", "International card")}</strong><small>Visa · Mastercard · JCB · 3D Secure</small></span>
+                <span>
+                  <strong>{text("Thẻ quốc tế", "International card")}</strong>
+                  <small>Visa · Mastercard · JCB · 3D Secure</small>
+                </span>
                 {paymentMethod === "CARD" ? <Check size={17} /> : null}
               </button>
             </div>
-            <div className="payment-security-note"><ShieldCheck size={17} /><span>{text("Bạn sẽ được chuyển đến trang thanh toán bảo mật của SePay. DocuMind không lưu thông tin thẻ.", "You will continue on SePay's secure checkout. DocuMind never stores card details.")}</span></div>
-            {error ? <div className="payment-notice payment-notice--error" role="alert">{error}</div> : null}
+            <div className="payment-security-note">
+              <ShieldCheck size={17} />
+              <span>
+                {text(
+                  "Bạn sẽ được chuyển đến trang thanh toán bảo mật của SePay. DocuMind không lưu thông tin thẻ.",
+                  "You will continue on SePay's secure checkout. DocuMind never stores card details.",
+                )}
+              </span>
+            </div>
+            {checkoutSession ? (
+              <div className="payment-countdown" role="status">
+                <Timer size={17} />
+                <span>
+                  {text("Phien thanh toan", "Payment session")}{" "}
+                  {checkoutSession.invoiceNumber} -{" "}
+                  {formatCountdown(checkoutSecondsRemaining)}
+                </span>
+              </div>
+            ) : null}
+            {error ? (
+              <div
+                className="payment-notice payment-notice--error"
+                role="alert"
+              >
+                {error}
+              </div>
+            ) : null}
             <footer>
-              <button type="button" className="secondary-button" onClick={() => setSelectedPlan(undefined)} disabled={isCheckingOut}>{text("Để sau", "Not now")}</button>
-              <button type="button" className="primary-button" onClick={() => void handleCheckout()} disabled={isCheckingOut}>
-                {isCheckingOut ? <LoaderCircle className="spin" size={18} /> : paymentMethod === "CARD" ? <CreditCard size={18} /> : <Landmark size={18} />}
-                {isCheckingOut ? text("Đang kết nối SePay...", "Connecting to SePay...") : text("Tiếp tục thanh toán", "Continue to payment")}
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => setSelectedPlan(undefined)}
+                disabled={isCheckingOut}
+              >
+                {text("Để sau", "Not now")}
+              </button>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => void handleCheckout()}
+                disabled={isCheckingOut}
+              >
+                {isCheckingOut ? (
+                  <LoaderCircle className="spin" size={18} />
+                ) : paymentMethod === "CARD" ? (
+                  <CreditCard size={18} />
+                ) : (
+                  <Landmark size={18} />
+                )}
+                {isCheckingOut
+                  ? text("Đang kết nối SePay...", "Connecting to SePay...")
+                  : text("Tiếp tục thanh toán", "Continue to payment")}
               </button>
             </footer>
           </article>
         </div>
       ) : null}
 
-      {isLoading ? <span className="subscription-loading" aria-label={text("Đang tải", "Loading")}><LoaderCircle className="spin" size={18} /></span> : null}
+      {isLoading ? (
+        <span
+          className="subscription-loading"
+          aria-label={text("Đang tải", "Loading")}
+        >
+          <LoaderCircle className="spin" size={18} />
+        </span>
+      ) : null}
     </main>
   );
 }
@@ -380,16 +661,66 @@ function PlanCard({
   const isFeatured = plan.code === "STUDENT";
   return (
     <article className={isFeatured ? "featured" : undefined}>
-      {isFeatured ? <span className="recommended-badge">{text("Đề xuất", "Recommended")}</span> : null}
+      {isFeatured ? (
+        <span className="recommended-badge">
+          {text("Đề xuất", "Recommended")}
+        </span>
+      ) : null}
       <p className="eyebrow">{plan.code}</p>
-      <h2>{plan.amount === 0 ? "0đ" : formatPrice(plan.amount, plan.currency, locale)} {plan.amount > 0 ? <small>/ {text("tháng", "month")}</small> : null}</h2>
+      <h2>
+        {plan.amount === 0
+          ? "0đ"
+          : formatPrice(plan.amount, plan.currency, locale)}{" "}
+        {plan.amount > 0 ? <small>/ {text("tháng", "month")}</small> : null}
+      </h2>
       <span>{text(...features.bestFor)}</span>
       <ul className="plan-features">
-        <li><span><Cloud size={17} />{text("Dung lượng", "Storage")}</span><strong>{features.storage}{plan.code === "PRO" ? ` (${text("có thể mở rộng", "expandable")})` : ""}</strong></li>
-        <li><span><FileText size={17} />{text("Giới hạn tải lên", "Upload limit")}</span><strong>{features.uploads} {text("tài liệu", "documents")}</strong></li>
-        <li><span><MessageSquare size={17} />AI Chat</span><strong>{features.chats === "UNLIMITED" ? text("Không giới hạn", "Unlimited") : `${features.chats} ${text("lượt chat / tháng", "chats / month")}`}</strong></li>
-        <li><span><Download size={17} />{text("Truy cập ngoại tuyến", "Offline access")}</span><FeatureValue value={features.offline} text={text} /></li>
-        <li><span><BarChart3 size={17} />{text("Báo cáo thanh toán", "Payment reporting")}</span><FeatureValue value={features.reporting} text={text} /></li>
+        <li>
+          <span>
+            <Cloud size={17} />
+            {text("Dung lượng", "Storage")}
+          </span>
+          <strong>
+            {features.storage}
+            {plan.code === "PRO"
+              ? ` (${text("có thể mở rộng", "expandable")})`
+              : ""}
+          </strong>
+        </li>
+        <li>
+          <span>
+            <FileText size={17} />
+            {text("Giới hạn tải lên", "Upload limit")}
+          </span>
+          <strong>
+            {features.uploads} {text("tài liệu", "documents")}
+          </strong>
+        </li>
+        <li>
+          <span>
+            <MessageSquare size={17} />
+            AI Chat
+          </span>
+          <strong>
+            {features.chats === "UNLIMITED"
+              ? text("Không giới hạn", "Unlimited")
+              : `${features.chats} ${text("lượt chat / tháng", "chats / month")}`}
+          </strong>
+        </li>
+        <li>
+          <span>
+            <Download size={17} />
+            {text("Truy cập ngoại tuyến", "Offline access")}
+          </span>
+          <FeatureValue value={features.offline} text={text} />
+        </li>
+        <li>
+          <span>
+            <BarChart3 size={17} />
+            {text("Báo cáo thanh toán", "Payment reporting")}
+          </span>
+          <FeatureValue value={features.reporting} text={text} />
+        </li>
       </ul>
       <button type="button" disabled={isCurrent || isBusy} onClick={onSelect}>
         {isBusy && plan.code === "FREE"
@@ -404,12 +735,41 @@ function PlanCard({
   );
 }
 
-function FeatureValue({ value, text }: { value: string; text: (vi: string, en: string) => string }) {
-  if (value === "NO") return <strong className="feature-negative"><X size={16} />{text("Không", "No")}</strong>;
-  if (value === "YES") return <strong className="feature-positive"><Check size={16} />{text("Có", "Yes")}</strong>;
-  if (value === "LIMITED") return <strong className="feature-limited">{text("Giới hạn", "Limited")}</strong>;
-  if (value === "BASIC") return <strong className="feature-highlight">{text("Cơ bản", "Basic")}</strong>;
-  if (value === "MANAGED") return <strong>{text("Quản lý qua bảng thanh toán", "Managed via payments table")}</strong>;
+function FeatureValue({
+  value,
+  text,
+}: {
+  value: string;
+  text: (vi: string, en: string) => string;
+}) {
+  if (value === "NO")
+    return (
+      <strong className="feature-negative">
+        <X size={16} />
+        {text("Không", "No")}
+      </strong>
+    );
+  if (value === "YES")
+    return (
+      <strong className="feature-positive">
+        <Check size={16} />
+        {text("Có", "Yes")}
+      </strong>
+    );
+  if (value === "LIMITED")
+    return (
+      <strong className="feature-limited">{text("Giới hạn", "Limited")}</strong>
+    );
+  if (value === "BASIC")
+    return (
+      <strong className="feature-highlight">{text("Cơ bản", "Basic")}</strong>
+    );
+  if (value === "MANAGED")
+    return (
+      <strong>
+        {text("Quản lý qua bảng thanh toán", "Managed via payments table")}
+      </strong>
+    );
   return <strong>{value}</strong>;
 }
 
@@ -419,6 +779,20 @@ function formatPrice(amount: number, currency: string, locale: string) {
     currency,
     maximumFractionDigits: 0,
   }).format(amount);
+}
+
+function getRemainingSeconds(expiresAt: string | undefined, nowMs: number) {
+  if (!expiresAt) return 0;
+  const expiresAtMs = new Date(expiresAt).getTime();
+  if (!Number.isFinite(expiresAtMs)) return 0;
+  return Math.max(0, Math.ceil((expiresAtMs - nowMs) / 1000));
+}
+
+function formatCountdown(totalSeconds: number) {
+  const safeSeconds = Math.max(0, totalSeconds);
+  const minutes = Math.floor(safeSeconds / 60);
+  const seconds = safeSeconds % 60;
+  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
 }
 
 function getQuotaUsagePercent(subscription?: CurrentSubscription) {

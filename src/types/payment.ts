@@ -3,6 +3,7 @@ export type PaymentMethodCode = "BANK_TRANSFER" | "CARD";
 export type PaymentStatus =
   | "PENDING"
   | "PAID"
+  | "SUCCESS"
   | "FAILED"
   | "CANCELLED"
   | "REFUNDED"
@@ -29,6 +30,7 @@ export type CurrentSubscription = {
 export type CheckoutResponse = {
   invoiceNumber: string;
   checkoutUrl: string;
+  expiresAt: string;
   fields: Record<string, string | number>;
 };
 
@@ -40,5 +42,6 @@ export type PaymentOrder = {
   currency: string;
   status: PaymentStatus;
   paidAt: string | null;
+  expiresAt: string;
   createdAt: string;
 };
