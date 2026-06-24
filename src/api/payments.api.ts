@@ -26,13 +26,6 @@ export function createCheckout(
   });
 }
 
-export function switchToFreePlan() {
-  return apiRequest<CurrentSubscription>("/subscription/change", {
-    method: "POST",
-    body: { plan: "FREE" },
-  });
-}
-
 export function fetchPayment(invoiceNumber: string) {
   return apiRequest<PaymentOrder>(
     `/payments/${encodeURIComponent(invoiceNumber)}`,
