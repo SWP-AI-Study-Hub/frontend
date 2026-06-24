@@ -255,6 +255,13 @@ export function SubscriptionView() {
     () => plans.find((plan) => plan.code === selectedPlan),
     [plans, selectedPlan],
   );
+  const selectedCheckoutAmount = useMemo(
+    () =>
+      selectedPlanDetails
+        ? getEstimatedCheckoutAmount(selectedPlanDetails, currentPlan, plans)
+        : 0,
+    [currentPlan, plans, selectedPlanDetails],
+  );
   const checkoutSecondsRemaining = getRemainingSeconds(
     checkoutSession?.expiresAt,
     nowMs,
@@ -388,9 +395,13 @@ export function SubscriptionView() {
             <PlanCard
               key={plan.code}
               plan={plan}
+              currentPlan={currentPlan}
               isCurrent={currentPlan === plan.code}
               onSelect={() => {
-                if (plan.code !== "FREE") {
+                if (
+                  plan.code !== "FREE" &&
+                  !(currentPlan === "PRO" && plan.code === "STUDENT")
+                ) {
                   setSelectedPlan(plan.code);
                 }
               }}
@@ -497,10 +508,17 @@ export function SubscriptionView() {
               </button>
             </header>
             <div className="payment-order-summary">
-              <span>{text("Thanh toán hàng tháng", "Monthly payment")}</span>
+              <span>
+                {currentPlan === "STUDENT" && selectedPlan === "PRO"
+                  ? text(
+                      "Thanh toan phan chenh lech",
+                      "Pay the missing difference",
+                    )
+                  : text("Thanh toán hàng tháng", "Monthly payment")}
+              </span>
               <strong>
                 {formatPrice(
-                  selectedPlanDetails.amount,
+                  selectedCheckoutAmount,
                   selectedPlanDetails.currency,
                   locale,
                 )}
@@ -609,12 +627,14 @@ export function SubscriptionView() {
 
 function PlanCard({
   plan,
+  currentPlan,
   isCurrent,
   onSelect,
   locale,
   text,
 }: {
   plan: SubscriptionPlan;
+  currentPlan: SubscriptionPlanCode;
   isCurrent: boolean;
   onSelect: () => void;
   locale: string;
@@ -623,6 +643,7 @@ function PlanCard({
   const features = PLAN_FEATURES[plan.code] ?? DEFAULT_PLAN_FEATURES;
   const isFeatured = plan.code === "STUDENT";
   const isFreeUnavailable = plan.code === "FREE" && !isCurrent;
+  const hideAction = currentPlan === "PRO" && plan.code === "STUDENT";
   return (
     <article
       className={[
@@ -693,17 +714,19 @@ function PlanCard({
           <FeatureValue value={features.reporting} text={text} />
         </li>
       </ul>
-      <button
-        type="button"
-        disabled={isCurrent || isFreeUnavailable}
-        onClick={onSelect}
-      >
-        {isCurrent
-          ? text("Gói hiện tại", "Current plan")
-          : plan.code === "FREE"
-            ? text("Tự động khi hết hạn", "Automatic after expiry")
-            : text(`Chọn gói ${plan.name}`, `Choose ${plan.name}`)}
-      </button>
+      {hideAction ? null : (
+        <button
+          type="button"
+          disabled={isCurrent || isFreeUnavailable}
+          onClick={onSelect}
+        >
+          {isCurrent
+            ? text("Gói hiện tại", "Current plan")
+            : plan.code === "FREE"
+              ? text("Tự động khi hết hạn", "Automatic after expiry")
+              : text(`Chọn gói ${plan.name}`, `Choose ${plan.name}`)}
+        </button>
+      )}
     </article>
   );
 }
@@ -744,6 +767,19 @@ function FeatureValue({
       </strong>
     );
   return <strong>{value}</strong>;
+}
+
+function getEstimatedCheckoutAmount(
+  selectedPlan: SubscriptionPlan,
+  currentPlan: SubscriptionPlanCode,
+  plans: SubscriptionPlan[],
+) {
+  if (currentPlan === "STUDENT" && selectedPlan.code === "PRO") {
+    const studentPlan = plans.find((plan) => plan.code === "STUDENT");
+    return Math.max(0, selectedPlan.amount - (studentPlan?.amount ?? 0));
+  }
+
+  return selectedPlan.amount;
 }
 
 function formatPrice(amount: number, currency: string, locale: string) {
