@@ -1,5 +1,6 @@
 import {
   communityDocuments,
+  getSavedCommunityDocuments,
   getSavedCommunityDocumentIds,
   toggleSavedCommunityDocument,
 } from './community.api'
@@ -28,5 +29,13 @@ describe('community demo service', () => {
     expect(getSavedCommunityDocumentIds()).toContain(documentId)
 
     expect(toggleSavedCommunityDocument(documentId)).not.toContain(documentId)
+  })
+
+  it('returns saved community documents for the Saved page', () => {
+    const document = communityDocuments[0]
+
+    toggleSavedCommunityDocument(document.id)
+
+    expect(getSavedCommunityDocuments()).toEqual([document])
   })
 })

@@ -93,10 +93,18 @@ export function getSavedCommunityDocumentIds(): string[] {
   if (typeof window === 'undefined') return []
 
   try {
-    return JSON.parse(window.localStorage.getItem(SAVED_KEY) ?? '[]') as string[]
+    const parsed = JSON.parse(window.localStorage.getItem(SAVED_KEY) ?? '[]')
+    return Array.isArray(parsed)
+      ? parsed.filter((value): value is string => typeof value === 'string')
+      : []
   } catch {
     return []
   }
+}
+
+export function getSavedCommunityDocuments(): CommunityDocument[] {
+  const savedIds = new Set(getSavedCommunityDocumentIds())
+  return communityDocuments.filter((document) => savedIds.has(document.id))
 }
 
 export function toggleSavedCommunityDocument(id: string): string[] {
