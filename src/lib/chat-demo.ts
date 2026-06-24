@@ -27,6 +27,8 @@ export function demoDocumentAnswer(question: string, locale: Locale = 'vi'): AiC
         ? ['So sánh tính nhất quán mạnh và nhất quán cuối cùng', 'Giải thích các mô hình lỗi chính', 'Tạo năm câu hỏi ôn tập']
         : ['Compare strong and eventual consistency', 'Explain the main failure models', 'Create five review questions'],
     sources: [getDocumentCitation(locale)],
+    answerStatus: 'ANSWERED',
+    errorCode: null,
   }
 }
 
@@ -65,5 +67,7 @@ export function demoLibraryAnswer(question: string, locale: Locale = 'vi'): AiCh
         relevanceScore: 0.76,
       },
     ],
+    answerStatus: 'ANSWERED',
+    errorCode: null,
   }
 }

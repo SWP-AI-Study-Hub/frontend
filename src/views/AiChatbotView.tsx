@@ -467,7 +467,14 @@ export function AiChatbotView() {
 
       setSessionId(response.sessionId);
       setSources(response.sources);
-      setMessages((prev) => [...prev, { id: response.messageId, sender: "AI", content: response.answer, sources: response.sources }]);
+      setMessages((prev) => [...prev, {
+        id: response.messageId,
+        sender: "AI",
+        content: response.answer,
+        sources: response.sources,
+        answerStatus: response.answerStatus,
+        errorCode: response.errorCode,
+      }]);
     } catch {
       setMessages((prev) => [...prev, {
         id: crypto.randomUUID(),
@@ -526,6 +533,59 @@ export function AiChatbotView() {
     if (activeMode === "SELECTED_SOURCES")
       return text("Nhập câu hỏi dựa trên các nguồn đã chọn...", "Ask about selected sources...");
     return text("Đặt câu hỏi trên toàn bộ thư viện...", "Ask across your entire library...");
+  };
+
+  const getAnswerIssueCopy = (msg: ChatMessage) => {
+    if (msg.answerStatus === "FALLBACK_WITH_SOURCES") {
+      const title = text("AI chưa tạo được phần diễn giải", "AI could not generate the narrative answer");
+      const descriptionByCode: Record<string, string> = {
+        GEMINI_MISSING_API_KEY: text(
+          "Thiếu cấu hình khóa Gemini. Hệ thống vẫn đã tìm nguồn liên quan để bạn đọc ngay.",
+          "Gemini API key is not configured. Relevant sources are still available.",
+        ),
+        GEMINI_RATE_LIMIT: text(
+          "Gemini đang bị giới hạn quota hoặc tần suất. Bạn có thể xem nguồn hoặc thử lại sau.",
+          "Gemini is rate limited or out of quota. Review the sources or retry later.",
+        ),
+        GEMINI_TIMEOUT: text(
+          "Gemini phản hồi quá lâu. Nguồn liên quan vẫn được giữ lại ở phần tham chiếu.",
+          "Gemini took too long to respond. Relevant sources are still shown.",
+        ),
+        GEMINI_NETWORK_ERROR: text(
+          "Kết nối đến Gemini gặp lỗi mạng. Hãy kiểm tra backend hoặc thử lại sau.",
+          "The Gemini connection failed. Check the backend network or retry later.",
+        ),
+        GEMINI_API_ERROR: text(
+          "Gemini trả về lỗi dịch vụ. Các trích dẫn đã tìm được vẫn có thể mở để kiểm tra.",
+          "Gemini returned a service error. Retrieved citations are still available.",
+        ),
+        GEMINI_INVALID_RESPONSE: text(
+          "Gemini trả về phản hồi rỗng. Hãy thử hỏi lại cụ thể hơn hoặc thử lại sau.",
+          "Gemini returned an empty response. Try a more specific question or retry later.",
+        ),
+      };
+      return {
+        title,
+        description:
+          descriptionByCode[msg.errorCode || ""] ||
+          text(
+            "Dịch vụ tạo sinh đang lỗi. Hệ thống vẫn đã tìm được tài liệu tham chiếu phù hợp.",
+            "The generation service failed. Relevant references were still retrieved.",
+          ),
+      };
+    }
+
+    if (msg.answerStatus === "NO_SOURCES") {
+      return {
+        title: text("Chưa tìm thấy nguồn phù hợp", "No matching source found"),
+        description: text(
+          "Thử đổi từ khóa, bỏ bớt bộ lọc hoặc chọn trực tiếp một vài tài liệu nguồn.",
+          "Try different keywords, remove filters, or select source documents directly.",
+        ),
+      };
+    }
+
+    return null;
   };
 
   return (
@@ -809,33 +869,45 @@ export function AiChatbotView() {
             </div>
           ) : (
             <>
-              {messages.map((msg) => (
-                <div key={msg.id} className={`ws-message${msg.sender === "USER" ? " user" : " ai"}`}>
-                  <div className="ws-message-avatar">
-                    {msg.sender === "USER" ? "U" : <Sparkles size={15} />}
-                  </div>
-                  <div className="ws-message-bubble">
-                    <div className="ws-message-text">
-                      {renderMessageContent(msg.content, msg.sources, openCitationDrawer)}
+              {messages.map((msg) => {
+                const answerIssue = getAnswerIssueCopy(msg);
+                return (
+                  <div key={msg.id} className={`ws-message${msg.sender === "USER" ? " user" : " ai"}`}>
+                    <div className="ws-message-avatar">
+                      {msg.sender === "USER" ? "U" : <Sparkles size={15} />}
                     </div>
-                    {msg.sources.length > 0 && (
-                      <div className="ws-message-citations">
-                        {msg.sources.map((src) => (
-                          <button
-                            type="button"
-                            key={src.sourceNumber}
-                            className="ws-citation-tag"
-                            onClick={() => openCitationDrawer(src)}
-                          >
-                            <span className="ws-citation-num">[{src.sourceNumber}]</span>
-                            <span className="ws-citation-label">{src.title}</span>
-                          </button>
-                        ))}
+                    <div className={`ws-message-bubble${answerIssue ? " ws-message-bubble--notice" : ""}`}>
+                      {answerIssue && (
+                        <div className="ws-answer-issue" role="status">
+                          <AlertTriangle size={16} aria-hidden="true" />
+                          <div>
+                            <strong>{answerIssue.title}</strong>
+                            <span>{answerIssue.description}</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="ws-message-text">
+                        {renderMessageContent(msg.content, msg.sources, openCitationDrawer)}
                       </div>
-                    )}
+                      {msg.sources.length > 0 && (
+                        <div className="ws-message-citations">
+                          {msg.sources.map((src) => (
+                            <button
+                              type="button"
+                              key={src.sourceNumber}
+                              className="ws-citation-tag"
+                              onClick={() => openCitationDrawer(src)}
+                            >
+                              <span className="ws-citation-num">[{src.sourceNumber}]</span>
+                              <span className="ws-citation-label">{src.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {isLoading && (
                 <div className="ws-message ai">
