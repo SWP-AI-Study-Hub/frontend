@@ -4247,6 +4247,42 @@
   border: none;
   border-radius: 14px 14px 4px 14px;
 }
+.ws-message-bubble--notice {
+  border-color: #f8c471;
+  background: #fffdf7;
+}
+
+.ws-answer-issue {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  margin-bottom: 10px;
+  padding: 10px 12px;
+  border: 1px solid #f3d08a;
+  border-radius: 6px;
+  background: #fffbeb;
+  color: #7c2d12;
+}
+.ws-answer-issue svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
+}
+.ws-answer-issue strong,
+.ws-answer-issue span {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.ws-answer-issue strong {
+  margin-bottom: 2px;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+.ws-answer-issue span {
+  color: #92400e;
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
 
 .ws-message-text {
   font-size: 0.9rem;

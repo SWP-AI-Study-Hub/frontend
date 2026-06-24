@@ -11,7 +11,6 @@ const roles: UserRole[] = ['ADMIN', 'USER']
 const statuses: UserStatus[] = ['ACTIVE', 'BLOCKED', 'INACTIVE']
 const mutableStatuses: AdminMutableUserStatus[] = ['ACTIVE', 'BLOCKED']
 const DEFAULT_QUERY: UserQuery = { page: 1, limit: 10 }
-type UserFilters = Pick<UserQuery, 'keyword' | 'role' | 'status'>
 
 export function AdminUsersView() {
   const { user: currentUser } = useAuth()
@@ -43,15 +42,23 @@ export function AdminUsersView() {
     }
   }, [t])
 
+  const getQuery = useCallback((pNum: number): UserQuery => {
+    const q: UserQuery = { ...DEFAULT_QUERY, page: pNum }
+    if (keyword) q.keyword = keyword
+    if (role) q.role = role
+    if (status) q.status = status
+    return q
+  }, [keyword, role, status])
+
   useEffect(() => {
-    void loadUsers({ ...DEFAULT_QUERY, page, keyword, role, status })
+    void loadUsers(getQuery(page))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadUsers, page, role, status])
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault()
     setPage(1)
-    await loadUsers({ ...DEFAULT_QUERY, page: 1, keyword, role, status })
+    await loadUsers(getQuery(1))
   }
 
   async function handleStatusChange(targetUser: CurrentUser, nextStatus: AdminMutableUserStatus) {
@@ -66,7 +73,7 @@ export function AdminUsersView() {
 
     try {
       await updateUserStatus(targetUser.id, nextStatus)
-      await loadUsers({ ...DEFAULT_QUERY, page, keyword, role, status })
+      await loadUsers(getQuery(page))
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.statusFailed'))
     } finally {
@@ -231,6 +238,8 @@ export function AdminUsersView() {
                     <button
                       key={pNum}
                       type="button"
+                      aria-label={`Page ${pNum}`}
+                      aria-current={data.meta.page === pNum ? 'page' : undefined}
                       className={`pagination-btn ${data.meta.page === pNum ? 'active' : ''}`}
                       onClick={() => setPage(pNum)}
                     >
