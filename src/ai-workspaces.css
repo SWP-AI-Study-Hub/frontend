@@ -2360,6 +2360,9 @@
   align-content: start;
   padding: 1.35rem;
 }
+.plan-grid article.plan-card--disabled {
+  opacity: 0.58;
+}
 .plan-grid article.featured {
   border-color: var(--amber);
   box-shadow: 0 8px 24px rgba(180, 83, 9, 0.1);

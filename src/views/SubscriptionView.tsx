@@ -24,7 +24,6 @@ import {
   fetchPaymentHistory,
   fetchSubscriptionPlans,
   submitSePayCheckout,
-  switchToFreePlan,
   updatePaymentStatus,
 } from "../api/payments.api";
 import { useLanguage } from "../i18n/LanguageProvider";
@@ -126,7 +125,6 @@ export function SubscriptionView() {
     useState<PaymentMethodCode>("BANK_TRANSFER");
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
-  const [isSwitchingFree, setIsSwitchingFree] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [checkoutSession, setCheckoutSession] = useState<{
@@ -257,6 +255,13 @@ export function SubscriptionView() {
     () => plans.find((plan) => plan.code === selectedPlan),
     [plans, selectedPlan],
   );
+  const selectedCheckoutAmount = useMemo(
+    () =>
+      selectedPlanDetails
+        ? getEstimatedCheckoutAmount(selectedPlanDetails, currentPlan, plans)
+        : 0,
+    [currentPlan, plans, selectedPlanDetails],
+  );
   const checkoutSecondsRemaining = getRemainingSeconds(
     checkoutSession?.expiresAt,
     nowMs,
@@ -312,36 +317,6 @@ export function SubscriptionView() {
             ),
       );
       setIsCheckingOut(false);
-    }
-  }
-
-  async function handleSwitchToFree() {
-    if (
-      !window.confirm(
-        text(
-          "Chuyển về gói Free sẽ áp dụng hạn mức miễn phí ngay lập tức. Tiếp tục?",
-          "Switching to Free applies the free limits immediately. Continue?",
-        ),
-      )
-    ) {
-      return;
-    }
-
-    setError("");
-    setNotice("");
-    setIsSwitchingFree(true);
-    try {
-      await switchToFreePlan();
-      await loadSubscriptionData();
-      setNotice(text("Đã chuyển sang gói Free.", "Switched to the Free plan."));
-    } catch (switchError) {
-      setError(
-        switchError instanceof Error
-          ? switchError.message
-          : text("Không thể đổi gói.", "Could not change the plan."),
-      );
-    } finally {
-      setIsSwitchingFree(false);
     }
   }
 
@@ -420,15 +395,16 @@ export function SubscriptionView() {
             <PlanCard
               key={plan.code}
               plan={plan}
+              currentPlan={currentPlan}
               isCurrent={currentPlan === plan.code}
               onSelect={() => {
-                if (plan.code === "FREE") {
-                  void handleSwitchToFree();
-                } else {
+                if (
+                  plan.code !== "FREE" &&
+                  !(currentPlan === "PRO" && plan.code === "STUDENT")
+                ) {
                   setSelectedPlan(plan.code);
                 }
               }}
-              isBusy={isSwitchingFree}
               locale={locale}
               text={text}
             />
@@ -532,10 +508,17 @@ export function SubscriptionView() {
               </button>
             </header>
             <div className="payment-order-summary">
-              <span>{text("Thanh toán hàng tháng", "Monthly payment")}</span>
+              <span>
+                {currentPlan === "STUDENT" && selectedPlan === "PRO"
+                  ? text(
+                      "Thanh toan phan chenh lech",
+                      "Pay the missing difference",
+                    )
+                  : text("Thanh toán hàng tháng", "Monthly payment")}
+              </span>
               <strong>
                 {formatPrice(
-                  selectedPlanDetails.amount,
+                  selectedCheckoutAmount,
                   selectedPlanDetails.currency,
                   locale,
                 )}
@@ -644,23 +627,32 @@ export function SubscriptionView() {
 
 function PlanCard({
   plan,
+  currentPlan,
   isCurrent,
   onSelect,
   locale,
-  isBusy,
   text,
 }: {
   plan: SubscriptionPlan;
+  currentPlan: SubscriptionPlanCode;
   isCurrent: boolean;
   onSelect: () => void;
   locale: string;
-  isBusy: boolean;
   text: (vi: string, en: string) => string;
 }) {
   const features = PLAN_FEATURES[plan.code] ?? DEFAULT_PLAN_FEATURES;
   const isFeatured = plan.code === "STUDENT";
+  const isFreeUnavailable = plan.code === "FREE" && !isCurrent;
+  const hideAction = currentPlan === "PRO" && plan.code === "STUDENT";
   return (
-    <article className={isFeatured ? "featured" : undefined}>
+    <article
+      className={[
+        isFeatured ? "featured" : "",
+        isFreeUnavailable ? "plan-card--disabled" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {isFeatured ? (
         <span className="recommended-badge">
           {text("Đề xuất", "Recommended")}
@@ -722,15 +714,19 @@ function PlanCard({
           <FeatureValue value={features.reporting} text={text} />
         </li>
       </ul>
-      <button type="button" disabled={isCurrent || isBusy} onClick={onSelect}>
-        {isBusy && plan.code === "FREE"
-          ? text("Đang chuyển gói...", "Switching plan...")
-          : isCurrent
+      {hideAction ? null : (
+        <button
+          type="button"
+          disabled={isCurrent || isFreeUnavailable}
+          onClick={onSelect}
+        >
+          {isCurrent
             ? text("Gói hiện tại", "Current plan")
             : plan.code === "FREE"
-              ? text("Chuyển sang Free", "Switch to Free")
+              ? text("Tự động khi hết hạn", "Automatic after expiry")
               : text(`Chọn gói ${plan.name}`, `Choose ${plan.name}`)}
-      </button>
+        </button>
+      )}
     </article>
   );
 }
@@ -771,6 +767,19 @@ function FeatureValue({
       </strong>
     );
   return <strong>{value}</strong>;
+}
+
+function getEstimatedCheckoutAmount(
+  selectedPlan: SubscriptionPlan,
+  currentPlan: SubscriptionPlanCode,
+  plans: SubscriptionPlan[],
+) {
+  if (currentPlan === "STUDENT" && selectedPlan.code === "PRO") {
+    const studentPlan = plans.find((plan) => plan.code === "STUDENT");
+    return Math.max(0, selectedPlan.amount - (studentPlan?.amount ?? 0));
+  }
+
+  return selectedPlan.amount;
 }
 
 function formatPrice(amount: number, currency: string, locale: string) {
