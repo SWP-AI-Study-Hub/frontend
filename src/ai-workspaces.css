@@ -1586,6 +1586,7 @@
 .upload-dropzone.selected {
   grid-template-columns: auto 1fr auto;
   min-height: 112px;
+  min-width: 0;
   text-align: left;
   border-style: solid;
 }
@@ -1855,10 +1856,14 @@
   min-width: 0;
 }
 
+.upload-success h1,
 .upload-success h2 {
   max-width: 100%;
+  margin: 0 0 12px;
   overflow-wrap: anywhere;
-  font-size: 2rem;
+  word-break: break-word;
+  font-size: 2.25rem;
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
@@ -4974,14 +4979,22 @@
 }
 
 .selected-file-copy {
+  display: grid;
+  gap: 3px;
   min-width: 0;
 }
 
 .selected-file-copy strong,
 .upload-summary-list dd {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.selected-file-copy strong {
+  display: block;
+  max-width: 100%;
 }
 
 .file-valid {
@@ -4996,6 +5009,7 @@
 
 .selected-file-actions {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 8px;
 }
