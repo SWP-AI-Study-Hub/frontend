@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { CheckCircle2, UserPlus } from "lucide-react";
 import { useAuth } from "../features/auth/useAuth";
 import { useLanguage } from "../i18n/LanguageProvider";
-import { ROUTES } from "../lib/routes";
+import { ROUTES, getAuthenticatedHomeRoute } from "../lib/routes";
 
 export function RegisterView() {
   const { loginWithGoogle, register } = useAuth();
@@ -63,9 +63,7 @@ export function RegisterView() {
     try {
       const result = await loginWithGoogle();
       if (result.status === "authenticated") {
-        router.replace(
-          result.user.role === "ADMIN" ? ROUTES.adminUsers : ROUTES.dashboard,
-        );
+        router.replace(getAuthenticatedHomeRoute(result.user.role));
         return;
       }
 

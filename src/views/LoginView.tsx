@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { LogIn } from "lucide-react";
 import { useAuth } from "../features/auth/useAuth";
 import { useLanguage } from "../i18n/LanguageProvider";
-import { ROUTES } from "../lib/routes";
+import { ROUTES, getAuthenticatedHomeRoute } from "../lib/routes";
 
 export function LoginView() {
   const { login, loginWithGoogle } = useAuth();
@@ -22,9 +22,7 @@ export function LoginView() {
 
   function redirectAfterLogin(role: "ADMIN" | "USER") {
     const from = searchParams?.get("from");
-    router.replace(
-      from ?? (role === "ADMIN" ? ROUTES.adminUsers : ROUTES.dashboard),
-    );
+    router.replace(from ?? getAuthenticatedHomeRoute(role));
   }
 
   async function handleSubmit(event: FormEvent) {

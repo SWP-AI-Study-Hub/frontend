@@ -9,11 +9,9 @@ import {
   FileSpreadsheet,
   FileText,
   Search,
-  Trash2,
   X,
 } from 'lucide-react'
 import {
-  deleteDocument,
   getAdminDocuments,
   hideDocument,
   unhideDocument,
@@ -25,14 +23,14 @@ import { useLanguage } from '../i18n/LanguageProvider'
 import { localize } from '../i18n/localize'
 import { formatFileSize } from '../api/documents.api'
 
-const DEFAULT_QUERY: DocumentQuery = { page: 1, limit: 8 }
+const DEFAULT_QUERY: DocumentQuery = { page: 1, limit: 8, visibility: 'PUBLIC' }
 
 export function AdminDocumentsView() {
   const { locale, t } = useLanguage()
   const text = (vi: string, en: string) => localize(locale, vi, en)
 
   const [keyword, setKeyword] = useState('')
-  const [visibility, setVisibility] = useState('')
+  const [visibility, setVisibility] = useState('PUBLIC')
   const [status, setStatus] = useState('')
   const [aiStatus, setAiStatus] = useState('')
   const [page, setPage] = useState(1)
@@ -43,7 +41,7 @@ export function AdminDocumentsView() {
 
   // Moderation state
   const [selectedDoc, setSelectedDoc] = useState<AdminDocument | null>(null)
-  const [moderationAction, setModerationAction] = useState<'HIDE' | 'DELETE' | null>(null)
+  const [isModerationModalOpen, setIsModerationModalOpen] = useState(false)
   const [moderationReason, setModerationReason] = useState('')
   const [isSubmitingAction, setIsSubmitingAction] = useState(false)
 
@@ -74,24 +72,20 @@ export function AdminDocumentsView() {
     await loadDocuments({ page: 1, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus })
   }
 
-  const handleActionClick = (doc: AdminDocument, action: 'HIDE' | 'DELETE') => {
+  const handleActionClick = (doc: AdminDocument) => {
     setSelectedDoc(doc)
-    setModerationAction(action)
+    setIsModerationModalOpen(true)
     setModerationReason('')
   }
 
   const handleConfirmAction = async () => {
-    if (!selectedDoc || !moderationAction) return
+    if (!selectedDoc) return
     setIsSubmitingAction(true)
     setError('')
     try {
-      if (moderationAction === 'HIDE') {
-        await hideDocument(selectedDoc.id, moderationReason)
-      } else {
-        await deleteDocument(selectedDoc.id)
-      }
+      await hideDocument(selectedDoc.id, moderationReason)
       setSelectedDoc(null)
-      setModerationAction(null)
+      setIsModerationModalOpen(false)
       // Reload current page
       await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus })
     } catch (err) {
@@ -152,8 +146,8 @@ export function AdminDocumentsView() {
           <h1>{text('Kiểm duyệt tài liệu', 'Document Moderation')}</h1>
           <p>
             {text(
-              'Xem xét tài liệu được đăng tải, ẩn các tài liệu vi phạm quy chế học tập hoặc xóa vĩnh viễn học liệu.',
-              'Review uploaded documents, hide documents violating academic integrity, or permanently delete study materials.'
+              'Xem xét tài liệu được đăng tải và ẩn các tài liệu vi phạm quy chế học tập khỏi cộng đồng.',
+              'Review uploaded documents and hide materials that violate academic integrity from the community.'
             )}
           </p>
         </div>
@@ -329,7 +323,7 @@ export function AdminDocumentsView() {
                               type="button"
                               className="btn-icon-action btn-warn"
                               title={text('Ẩn tài liệu', 'Hide document')}
-                              onClick={() => handleActionClick(doc, 'HIDE')}
+                              onClick={() => handleActionClick(doc)}
                             >
                               <EyeOff size={15} />
                             </button>
@@ -342,16 +336,6 @@ export function AdminDocumentsView() {
                               onClick={() => void handleUnhideDocument(doc.id)}
                             >
                               <Eye size={15} />
-                            </button>
-                          ) : null}
-                          {doc.status !== 'DELETED' ? (
-                            <button
-                              type="button"
-                              className="btn-icon-action btn-danger"
-                              title={text('Xóa vĩnh viễn', 'Permanently delete')}
-                              onClick={() => handleActionClick(doc, 'DELETE')}
-                            >
-                              <Trash2 size={15} />
                             </button>
                           ) : null}
                         </div>
@@ -404,21 +388,17 @@ export function AdminDocumentsView() {
       </section>
 
       {/* Moderation Confirmation Modal */}
-      {selectedDoc && moderationAction ? (
+      {selectedDoc && isModerationModalOpen ? (
         <div className="admin-modal-overlay">
           <div className="admin-modal">
             <header className="admin-modal-header">
-              <h3>
-                {moderationAction === 'HIDE'
-                  ? text('Xác nhận ẩn tài liệu', 'Confirm Hide Document')
-                  : text('Xác nhận xóa tài liệu', 'Confirm Delete Document')}
-              </h3>
+              <h3>{text('Xác nhận ẩn tài liệu', 'Confirm Hide Document')}</h3>
               <button
                 type="button"
                 className="admin-modal-close"
                 onClick={() => {
                   setSelectedDoc(null)
-                  setModerationAction(null)
+                  setIsModerationModalOpen(false)
                 }}
               >
                 <X size={18} />
@@ -426,40 +406,33 @@ export function AdminDocumentsView() {
             </header>
             <div className="admin-modal-body">
               <p>
-                {moderationAction === 'HIDE'
-                  ? text(
-                      `Bạn có chắc chắn muốn ẩn tài liệu "${selectedDoc.title}"? Tài liệu bị ẩn sẽ không hiển thị trên thư viện công cộng và kết quả tìm kiếm của sinh viên.`,
-                      `Are you sure you want to hide "${selectedDoc.title}"? Hidden documents will not appear in the community library or students' searches.`
-                    )
-                  : text(
-                      `Bạn có chắc chắn muốn xóa tài liệu "${selectedDoc.title}"? Hành động này không thể hoàn tác và toàn bộ dữ liệu chỉ mục sẽ bị xóa bỏ hoàn toàn.`,
-                      `Are you sure you want to delete "${selectedDoc.title}"? This action is irreversible and all indexing data will be wiped out.`
-                    )}
+                {text(
+                  `Bạn có chắc chắn muốn ẩn tài liệu "${selectedDoc.title}"? Tài liệu bị ẩn sẽ không hiển thị trên thư viện công cộng và kết quả tìm kiếm của sinh viên.`,
+                  `Are you sure you want to hide "${selectedDoc.title}"? Hidden documents will not appear in the community library or students' searches.`
+                )}
               </p>
 
-              {moderationAction === 'HIDE' ? (
-                <div style={{ marginTop: '1rem' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      marginBottom: '0.45rem',
-                      fontWeight: 700,
-                      color: 'var(--ink)',
-                      fontSize: '0.8rem',
-                    }}
-                  >
-                    {text('Lý do kiểm duyệt (không bắt buộc)', 'Moderation reason (optional)')}
-                  </label>
-                  <textarea
-                    value={moderationReason}
-                    onChange={(event) => setModerationReason(event.target.value)}
-                    placeholder={text(
-                      'Ví dụ: Vi phạm bản quyền, Học liệu không phù hợp...',
-                      'e.g. Copyright infringement, Out of scope study material...'
-                    )}
-                  />
-                </div>
-              ) : null}
+              <div style={{ marginTop: '1rem' }}>
+                <label
+                  style={{
+                    display: 'block',
+                    marginBottom: '0.45rem',
+                    fontWeight: 700,
+                    color: 'var(--ink)',
+                    fontSize: '0.8rem',
+                  }}
+                >
+                  {text('Lý do kiểm duyệt (không bắt buộc)', 'Moderation reason (optional)')}
+                </label>
+                <textarea
+                  value={moderationReason}
+                  onChange={(event) => setModerationReason(event.target.value)}
+                  placeholder={text(
+                    'Ví dụ: Vi phạm bản quyền, Học liệu không phù hợp...',
+                    'e.g. Copyright infringement, Out of scope study material...'
+                  )}
+                />
+              </div>
             </div>
             <footer className="admin-modal-footer">
               <button
@@ -467,7 +440,7 @@ export function AdminDocumentsView() {
                 className="secondary-button"
                 onClick={() => {
                   setSelectedDoc(null)
-                  setModerationAction(null)
+                  setIsModerationModalOpen(false)
                 }}
                 disabled={isSubmitingAction}
               >
@@ -477,8 +450,8 @@ export function AdminDocumentsView() {
                 type="button"
                 className="primary-button"
                 style={{
-                  background: moderationAction === 'DELETE' ? 'var(--danger)' : 'var(--ink)',
-                  borderColor: moderationAction === 'DELETE' ? 'var(--danger)' : 'var(--ink)',
+                  background: 'var(--ink)',
+                  borderColor: 'var(--ink)',
                 }}
                 onClick={() => void handleConfirmAction()}
                 disabled={isSubmitingAction}

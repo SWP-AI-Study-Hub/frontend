@@ -22,3 +22,7 @@ export const ROUTES = {
   terms: "/terms",
   privacy: "/privacy",
 } as const;
+
+export function getAuthenticatedHomeRoute(role: "ADMIN" | "USER") {
+  return role === "ADMIN" ? ROUTES.adminDashboard : ROUTES.dashboard;
+}
