@@ -105,7 +105,11 @@ export function UploadDocumentView() {
   }, [text]);
 
   const selectedSubject = subjects.find((item) => item.id === subjectId);
-  const selectedCategory = categories.find((item) => item.id === categoryId);
+  const availableCategories = useMemo(
+    () => categories.filter((item) => item.subjectId === subjectId),
+    [categories, subjectId],
+  );
+  const selectedCategory = availableCategories.find((item) => item.id === categoryId);
   const missingFields = useMemo(
     () => getMissingUploadFields({ file, title, subjectId, categoryId }),
     [categoryId, file, subjectId, title],
@@ -198,10 +202,14 @@ export function UploadDocumentView() {
   async function handleCreateCategory() {
     const name = newCategoryName.trim();
     if (!name) return;
+    if (!subjectId) {
+      setTaxonomyError(text("Hãy chọn môn học trước khi thêm danh mục.", "Select a subject before adding a category."));
+      return;
+    }
     setIsCreatingTaxonomy(true);
     setTaxonomyError("");
     try {
-      const item = await createCategory(name);
+      const item = await createCategory(name, subjectId);
       setCategories((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
       setCategoryId(item.id);
       setNewCategoryName("");
@@ -284,6 +292,12 @@ export function UploadDocumentView() {
     setErrorMessage("");
     setPhase("idle");
   }
+
+  useEffect(() => {
+    if (categoryId && !availableCategories.some((item) => item.id === categoryId)) {
+      setCategoryId("");
+    }
+  }, [availableCategories, categoryId]);
 
   if (phase === "success" && createdDocument) {
     return (
@@ -375,7 +389,7 @@ export function UploadDocumentView() {
                 <input value={newSubjectCode} onChange={(event) => setNewSubjectCode(event.target.value)} placeholder={text("Mã môn học", "Subject code")} />
                 <button type="button" className="quick-add-submit-btn" onClick={handleCreateSubject} disabled={isCreatingTaxonomy || !newSubjectName.trim()}>{text("Lưu", "Save")}</button>
               </QuickTaxonomyField>
-              <QuickTaxonomyField label={text("Danh mục", "Category")} adding={isAddingCategory} setAdding={setIsAddingCategory} value={categoryId} setValue={setCategoryId} options={categories} placeholder={text("Chọn danh mục", "Select category")} disabled={isBusy}>
+              <QuickTaxonomyField label={text("Danh mục", "Category")} adding={isAddingCategory} setAdding={setIsAddingCategory} value={categoryId} setValue={setCategoryId} options={availableCategories} placeholder={text("Chọn danh mục", "Select category")} disabled={isBusy || !subjectId}>
                 <input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder={text("Tên danh mục", "Category name")} />
                 <button type="button" className="quick-add-submit-btn" onClick={handleCreateCategory} disabled={isCreatingTaxonomy || !newCategoryName.trim()}>{text("Lưu", "Save")}</button>
               </QuickTaxonomyField>
