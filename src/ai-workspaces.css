@@ -4637,6 +4637,7 @@
   min-height: 0;
   overflow: hidden;
   background: var(--ws-card);
+  border-left: 1px solid var(--ws-border);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
 }
@@ -4651,9 +4652,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 14px 16px;
   border-bottom: 1px solid var(--ws-border);
   flex-shrink: 0;
+}
+.ws-references-title-group {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
 }
 .ws-references-header h2 {
   margin: 0;
@@ -4662,8 +4672,13 @@
   font-weight: 700;
   color: var(--ws-primary);
   letter-spacing: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .ws-references-count {
+  flex: 0 0 auto;
   background: var(--ws-bg);
   border: 1px solid var(--ws-border);
   border-radius: 999px;
@@ -4672,18 +4687,20 @@
   font-weight: 700;
   color: var(--ws-muted);
 }
-
 .ws-references-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-width: 0;
 }
 
 /* Reference cards */
 .ws-reference-card {
+  min-width: 0;
   background: var(--ws-bg);
   border: 1px solid var(--ws-border);
   border-radius: 11px;
@@ -4741,6 +4758,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   font-size: 0.68rem;
   color: var(--ws-subtle);
   border-top: 1px dashed var(--ws-border);
@@ -5955,6 +5973,11 @@
   background: #ffb77d;
 }
 
+.ws-references-content .ws-sidebar-use-sources-btn {
+  width: 100%;
+  margin: 8px 0 0;
+}
+
 .ws-sidebar-add-sources-btn {
   display: flex;
   align-items: center;
@@ -5977,6 +6000,11 @@
   color: var(--ink);
 }
 
+.ws-references-content .ws-sidebar-add-sources-btn {
+  width: 100%;
+  margin: 8px 0 0;
+}
+
 .ws-sidebar-selected-list {
   display: grid;
   gap: 8px;
@@ -5985,6 +6013,14 @@
   max-height: calc(100vh - 280px);
   min-height: 0;
   padding-right: 4px;
+}
+
+.ws-references-content .ws-sidebar-selected-list {
+  margin: 10px 0 0;
+  max-height: none;
+  width: 100%;
+  min-width: 0;
+  padding: 0 4px 0 0;
 }
 
 .ws-sidebar-selected-item {
