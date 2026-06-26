@@ -162,8 +162,9 @@ export function createSubject(name: string, code: string) {
   })
 }
 
-export function fetchCategories() {
-  return apiRequest<CategoryItem[]>('/categories')
+export function fetchCategories(subjectId?: string) {
+  const url = subjectId ? `/categories?subjectId=${subjectId}` : '/categories'
+  return apiRequest<CategoryItem[]>(url)
 }
 
 export function createCategory(name: string) {

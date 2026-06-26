@@ -75,6 +75,7 @@ export function LibraryView() {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
+  const [subjectCategories, setSubjectCategories] = useState<Record<string, CategoryItem[]>>({});
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
   const [previewDocument, setPreviewDocument] = useState<LibraryDocument>();
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
@@ -205,6 +206,11 @@ export function LibraryView() {
     try {
       await deleteSubject(id);
       setSubjects((current) => current.filter((s) => s.id !== id));
+      setSubjectCategories((current) => {
+        const next = { ...current };
+        delete next[id];
+        return next;
+      });
       if (subjectId === id) {
         selectFolder("", "");
       }
@@ -226,6 +232,13 @@ export function LibraryView() {
       setCategories((current) =>
         current.map((c) => (c.id === id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
       );
+      setSubjectCategories((current) => {
+        const next = { ...current };
+        Object.keys(next).forEach((subId) => {
+          next[subId] = next[subId].map((c) => (c.id === id ? updated : c));
+        });
+        return next;
+      });
       setEditingCategoryId(null);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : text("Không thể cập nhật danh mục.", "Could not update category."));
@@ -244,6 +257,13 @@ export function LibraryView() {
     try {
       await deleteCategory(id);
       setCategories((current) => current.filter((c) => c.id !== id));
+      setSubjectCategories((current) => {
+        const next = { ...current };
+        Object.keys(next).forEach((subId) => {
+          next[subId] = next[subId].filter((c) => c.id !== id);
+        });
+        return next;
+      });
       if (categoryId === id) {
         selectFolder(subjectId, "");
       }
@@ -285,8 +305,18 @@ export function LibraryView() {
   function toggleSubject(id: string) {
     setExpandedSubjects((current) => {
       const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+        if (!subjectCategories[id]) {
+          fetchCategories(id)
+            .then((items) => {
+              setSubjectCategories((prev) => ({ ...prev, [id]: items }));
+            })
+            .catch(() => undefined);
+        }
+      }
       return next;
     });
   }
@@ -455,72 +485,82 @@ export function LibraryView() {
 
                   {expanded ? (
                     <div className="folder-categories">
-                      {categories.map((category) => {
-                        const isEditingCategory = editingCategoryId === category.id;
-                        const isCategoryActive = subjectId === subject.id && categoryId === category.id;
+                      {!subjectCategories[subject.id] ? (
+                        <div style={{ padding: "6px 12px", fontSize: "0.7rem", color: "var(--muted)", fontStyle: "italic" }}>
+                          {text("Đang tải...", "Loading...")}
+                        </div>
+                      ) : subjectCategories[subject.id].length === 0 ? (
+                        <div style={{ padding: "6px 12px", fontSize: "0.7rem", color: "var(--muted)", fontStyle: "italic" }}>
+                          {text("Trống", "Empty")}
+                        </div>
+                      ) : (
+                        subjectCategories[subject.id].map((category) => {
+                          const isEditingCategory = editingCategoryId === category.id;
+                          const isCategoryActive = subjectId === subject.id && categoryId === category.id;
 
-                        return isEditingCategory ? (
-                          <form
-                            key={category.id}
-                            onSubmit={(e) => handleUpdateCategory(category.id, e)}
-                            className="folder-rename-form folder-rename-form--category"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <input
-                              type="text"
-                              value={editCategoryName}
-                              onChange={(e) => setEditCategoryName(e.target.value)}
-                              autoFocus
-                              className="rename-input"
-                              placeholder={text("Tên danh mục", "Category name")}
-                            />
-                            <button type="submit" className="folder-action-confirm-btn" title={text("Lưu", "Save")}>
-                              <Check size={14} />
-                            </button>
-                            <button type="button" onClick={cancelEdit} className="folder-action-cancel-btn" title={text("Hủy", "Cancel")}>
-                              <X size={14} />
-                            </button>
-                          </form>
-                        ) : (
-                          <div
-                            key={category.id}
-                            className={`folder-category-row${isCategoryActive ? " active" : ""}`}
-                          >
-                            <button
-                              type="button"
-                              className={`folder-category-select${isCategoryActive ? " active" : ""}`}
-                              onClick={() => selectFolder(subject.id, category.id)}
+                          return isEditingCategory ? (
+                            <form
+                              key={category.id}
+                              onSubmit={(e) => handleUpdateCategory(category.id, e)}
+                              className="folder-rename-form folder-rename-form--category"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              <FileText size={14} />
-                              <span>{category.name}</span>
-                            </button>
-                            <div className="folder-action-container" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="text"
+                                value={editCategoryName}
+                                onChange={(e) => setEditCategoryName(e.target.value)}
+                                autoFocus
+                                className="rename-input"
+                                placeholder={text("Tên danh mục", "Category name")}
+                              />
+                              <button type="submit" className="folder-action-confirm-btn" title={text("Lưu", "Save")}>
+                                <Check size={14} />
+                              </button>
+                              <button type="button" onClick={cancelEdit} className="folder-action-cancel-btn" title={text("Hủy", "Cancel")}>
+                                <X size={14} />
+                              </button>
+                            </form>
+                          ) : (
+                            <div
+                              key={category.id}
+                              className={`folder-category-row${isCategoryActive ? " active" : ""}`}
+                            >
                               <button
                                 type="button"
-                                className={`folder-actions-trigger${
-                                  activeMenu?.type === "category" && activeMenu?.id === category.id ? " active" : ""
-                                }`}
-                                onClick={(e) => handleMenuToggle(e, "category", category.id)}
-                                title={text("Thao tác", "Actions")}
+                                className={`folder-category-select${isCategoryActive ? " active" : ""}`}
+                                onClick={() => selectFolder(subject.id, category.id)}
                               >
-                                <MoreVertical size={14} />
+                                <FileText size={14} />
+                                <span>{category.name}</span>
                               </button>
-                              {activeMenu?.type === "category" && activeMenu?.id === category.id && (
-                                <div className="folder-dropdown-menu">
-                                  <button type="button" className="folder-dropdown-item" onClick={(e) => startEditCategory(category, e)}>
-                                    <Edit2 size={13} />
-                                    {text("Sửa tên", "Rename")}
-                                  </button>
-                                  <button type="button" className="folder-dropdown-item danger" onClick={(e) => handleDeleteCategory(category.id, e)}>
-                                    <Trash2 size={13} />
-                                    {text("Xóa", "Delete")}
-                                  </button>
-                                </div>
-                              )}
+                              <div className="folder-action-container" onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  type="button"
+                                  className={`folder-actions-trigger${
+                                    activeMenu?.type === "category" && activeMenu?.id === category.id ? " active" : ""
+                                  }`}
+                                  onClick={(e) => handleMenuToggle(e, "category", category.id)}
+                                  title={text("Thao tác", "Actions")}
+                                >
+                                  <MoreVertical size={14} />
+                                </button>
+                                {activeMenu?.type === "category" && activeMenu?.id === category.id && (
+                                  <div className="folder-dropdown-menu">
+                                    <button type="button" className="folder-dropdown-item" onClick={(e) => startEditCategory(category, e)}>
+                                      <Edit2 size={13} />
+                                      {text("Sửa tên", "Rename")}
+                                    </button>
+                                    <button type="button" className="folder-dropdown-item danger" onClick={(e) => handleDeleteCategory(category.id, e)}>
+                                      <Trash2 size={13} />
+                                      {text("Xóa", "Delete")}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        );
-                      })}
+                          );
+                        })
+                      )}
                     </div>
                   ) : null}
                 </div>
@@ -530,6 +570,75 @@ export function LibraryView() {
 
           <div className="folder-group-heading"><span>{text("Danh mục dùng chung", "Shared categories")}</span><button type="button" onClick={() => setAddingCategory((value) => !value)}><Plus size={14} />{text("Thêm nhanh", "Quick add")}</button></div>
           {addingCategory ? <div className="folder-quick-add folder-quick-add--category"><input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder={text("Tên danh mục", "Category name")} /><button type="button" onClick={handleCreateCategory} disabled={isCreating || !newCategoryName.trim()}>{text("Lưu", "Save")}</button></div> : null}
+
+          <div className="folder-categories folder-categories--shared" style={{ marginLeft: 0, paddingLeft: 0, borderLeft: 0, marginTop: "8px" }}>
+            {categories.map((category) => {
+              const isEditingCategory = editingCategoryId === category.id;
+              const isCategoryActive = !subjectId && categoryId === category.id;
+
+              return isEditingCategory ? (
+                <form
+                  key={category.id}
+                  onSubmit={(e) => handleUpdateCategory(category.id, e)}
+                  className="folder-rename-form folder-rename-form--category"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <input
+                    type="text"
+                    value={editCategoryName}
+                    onChange={(e) => setEditCategoryName(e.target.value)}
+                    autoFocus
+                    className="rename-input"
+                    placeholder={text("Tên danh mục", "Category name")}
+                  />
+                  <button type="submit" className="folder-action-confirm-btn" title={text("Lưu", "Save")}>
+                    <Check size={14} />
+                  </button>
+                  <button type="button" onClick={cancelEdit} className="folder-action-cancel-btn" title={text("Hủy", "Cancel")}>
+                    <X size={14} />
+                  </button>
+                </form>
+              ) : (
+                <div
+                  key={category.id}
+                  className={`folder-category-row${isCategoryActive ? " active" : ""}`}
+                >
+                  <button
+                    type="button"
+                    className={`folder-category-select${isCategoryActive ? " active" : ""}`}
+                    onClick={() => selectFolder("", category.id)}
+                  >
+                    <FileText size={14} />
+                    <span>{category.name}</span>
+                  </button>
+                  <div className="folder-action-container" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      className={`folder-actions-trigger${
+                        activeMenu?.type === "category" && activeMenu?.id === category.id ? " active" : ""
+                      }`}
+                      onClick={(e) => handleMenuToggle(e, "category", category.id)}
+                      title={text("Thao tác", "Actions")}
+                    >
+                      <MoreVertical size={14} />
+                    </button>
+                    {activeMenu?.type === "category" && activeMenu?.id === category.id && (
+                      <div className="folder-dropdown-menu">
+                        <button type="button" className="folder-dropdown-item" onClick={(e) => startEditCategory(category, e)}>
+                          <Edit2 size={13} />
+                          {text("Sửa tên", "Rename")}
+                        </button>
+                        <button type="button" className="folder-dropdown-item danger" onClick={(e) => handleDeleteCategory(category.id, e)}>
+                          <Trash2 size={13} />
+                          {text("Xóa", "Delete")}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </aside>
 
         <section className="library-content">
