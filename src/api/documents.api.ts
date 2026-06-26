@@ -19,6 +19,7 @@ export type SubjectItem = {
 
 export type CategoryItem = {
   id: string
+  subjectId?: string | null
   name: string
   description?: string
 }
@@ -162,14 +163,16 @@ export function createSubject(name: string, code: string) {
   })
 }
 
-export function fetchCategories() {
-  return apiRequest<CategoryItem[]>('/categories')
+export function fetchCategories(subjectId?: string) {
+  const params = new URLSearchParams()
+  if (subjectId) params.set('subjectId', subjectId)
+  return apiRequest<CategoryItem[]>(`/categories${params.size ? `?${params}` : ''}`)
 }
 
-export function createCategory(name: string) {
+export function createCategory(name: string, subjectId: string) {
   return apiRequest<CategoryItem>('/categories', {
     method: 'POST',
-    body: { name, description: '' },
+    body: { name, subjectId, description: '' },
   })
 }
 
@@ -186,10 +189,10 @@ export function deleteSubject(id: string) {
   })
 }
 
-export function updateCategory(id: string, name: string) {
+export function updateCategory(id: string, name: string, subjectId?: string) {
   return apiRequest<CategoryItem>(`/categories/${id}`, {
     method: 'PATCH',
-    body: { name, description: '' },
+    body: { name, subjectId, description: '' },
   })
 }
 

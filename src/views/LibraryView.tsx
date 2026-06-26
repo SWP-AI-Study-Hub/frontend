@@ -325,16 +325,18 @@ export function LibraryView() {
   async function handleCreateCategory() {
     const name = newCategoryName.trim();
     if (!name) return;
+    const targetSubject = subjectId || subjects[0]?.id || "";
+    if (!targetSubject) {
+      setErrorMessage(text("Hãy tạo hoặc chọn môn học trước khi thêm danh mục.", "Create or select a subject before adding a category."));
+      return;
+    }
     setIsCreating(true);
     setErrorMessage("");
     try {
-      const item = await createCategory(name);
+      const item = await createCategory(name, targetSubject);
       setCategories((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
-      const targetSubject = subjectId || subjects[0]?.id || "";
-      if (targetSubject) {
-        setExpandedSubjects((current) => new Set(current).add(targetSubject));
-        selectFolder(targetSubject, item.id);
-      }
+      setExpandedSubjects((current) => new Set(current).add(targetSubject));
+      selectFolder(targetSubject, item.id);
       setAddingCategory(false);
       setNewCategoryName("");
     } catch (error) {
@@ -380,6 +382,7 @@ export function LibraryView() {
               const expanded = expandedSubjects.has(subject.id);
               const active = subjectId === subject.id && !categoryId;
               const isEditingSubject = editingSubjectId === subject.id;
+              const subjectCategories = categories.filter((category) => category.subjectId === subject.id);
 
               return (
                 <div className="folder-subject" key={subject.id}>
@@ -455,7 +458,7 @@ export function LibraryView() {
 
                   {expanded ? (
                     <div className="folder-categories">
-                      {categories.map((category) => {
+                      {subjectCategories.map((category) => {
                         const isEditingCategory = editingCategoryId === category.id;
                         const isCategoryActive = subjectId === subject.id && categoryId === category.id;
 
@@ -528,7 +531,7 @@ export function LibraryView() {
             })}
           </nav>
 
-          <div className="folder-group-heading"><span>{text("Danh mục dùng chung", "Shared categories")}</span><button type="button" onClick={() => setAddingCategory((value) => !value)}><Plus size={14} />{text("Thêm nhanh", "Quick add")}</button></div>
+          <div className="folder-group-heading"><span>{text("Danh mục theo môn học", "Subject categories")}</span><button type="button" onClick={() => setAddingCategory((value) => !value)}><Plus size={14} />{text("Thêm nhanh", "Quick add")}</button></div>
           {addingCategory ? <div className="folder-quick-add folder-quick-add--category"><input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder={text("Tên danh mục", "Category name")} /><button type="button" onClick={handleCreateCategory} disabled={isCreating || !newCategoryName.trim()}>{text("Lưu", "Save")}</button></div> : null}
         </aside>
 
