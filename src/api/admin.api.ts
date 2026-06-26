@@ -22,6 +22,38 @@ export type DocumentListResponse = {
   }
 }
 
+type ApiAdminDocument = {
+  id: string
+  title: string
+  description: string | null
+  fileName: string
+  fileType: string
+  fileSize: string | number
+  subject: { id: string; name: string }
+  category: { id: string; name: string }
+  tags: Array<{ id: string; name: string }>
+  aiStatus: mock.AdminDocument['aiStatus']
+  visibility: mock.AdminDocument['visibility']
+  status: mock.AdminDocument['status']
+  moderationReason?: string | null
+  owner: {
+    fullName: string | null
+    email: string
+  }
+  createdAt: string
+  updatedAt: string
+}
+
+type ApiAdminDocumentListResponse =
+  | {
+      data: ApiAdminDocument[]
+      meta: DocumentListResponse['meta']
+    }
+  | {
+      items: ApiAdminDocument[]
+      meta: DocumentListResponse['meta']
+    }
+
 const USE_MOCKS = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true'
 
 function toQueryString(query: Record<string, unknown>) {
@@ -33,6 +65,61 @@ function toQueryString(query: Record<string, unknown>) {
   })
   const text = params.toString()
   return text ? `?${text}` : ''
+}
+
+function fileTypeFromMime(mime: string, fileName: string) {
+  const extension = fileName.split('.').pop()?.toUpperCase()
+  if (extension && ['PDF', 'DOC', 'DOCX', 'PPT', 'PPTX', 'XLS', 'XLSX'].includes(extension)) return extension
+  if (mime.includes('pdf')) return 'PDF'
+  if (mime.includes('word')) return 'DOCX'
+  if (mime.includes('presentation') || mime.includes('powerpoint')) return 'PPTX'
+  if (mime.includes('spreadsheet') || mime.includes('excel')) return 'XLSX'
+  return extension ?? 'FILE'
+}
+
+function mapAdminDocument(document: ApiAdminDocument): mock.AdminDocument {
+  return {
+    id: document.id,
+    title: document.title,
+    description: document.description ?? '',
+    fileName: document.fileName,
+    fileType: fileTypeFromMime(document.fileType, document.fileName),
+    fileSize: Number(document.fileSize),
+    subjectId: document.subject.id,
+    subject: document.subject.name,
+    categoryId: document.category.id,
+    category: document.category.name,
+    tags: document.tags.map((tag) => tag.name),
+    pages: 0,
+    visibility: document.visibility,
+    aiStatus: document.aiStatus,
+    status: document.status,
+    moderationReason: document.moderationReason ?? undefined,
+    owner: {
+      fullName: document.owner.fullName ?? document.owner.email,
+      email: document.owner.email,
+    },
+    createdAt: document.createdAt,
+    updatedAt: document.updatedAt,
+    indexStatus:
+      document.aiStatus === 'COMPLETED' || document.aiStatus === 'MOCKED'
+        ? 'READY'
+        : document.aiStatus === 'FAILED'
+          ? 'FAILED'
+          : document.aiStatus === 'PENDING'
+            ? 'PENDING'
+            : 'PROCESSING',
+  }
+}
+
+function normalizeAdminDocumentList(
+  response: ApiAdminDocumentListResponse,
+): DocumentListResponse {
+  const items = 'items' in response ? response.items : response.data
+  return {
+    items: items.map(mapAdminDocument),
+    meta: response.meta,
+  }
 }
 
 // ----------------------------------------------------
@@ -102,11 +189,12 @@ export async function getUploadStatistics(): Promise<mock.UploadStatItem[]> {
 // Document Moderation Service Functions
 // ----------------------------------------------------
 
-export function getAdminDocuments(query: DocumentQuery = {}): Promise<DocumentListResponse> {
+export async function getAdminDocuments(query: DocumentQuery = {}): Promise<DocumentListResponse> {
   if (USE_MOCKS) {
     return mock.mockGetAdminDocuments(query)
   }
-  return apiRequest<DocumentListResponse>(`/admin/documents${toQueryString(query)}`)
+  const response = await apiRequest<ApiAdminDocumentListResponse>(`/admin/documents${toQueryString(query)}`)
+  return normalizeAdminDocumentList(response)
 }
 
 export function hideDocument(id: string, reason?: string): Promise<mock.AdminDocument> {
@@ -126,14 +214,5 @@ export function unhideDocument(id: string): Promise<mock.AdminDocument> {
   return apiRequest<mock.AdminDocument>(`/admin/documents/${id}/hide`, {
     method: 'PUT',
     body: { hidden: false },
-  })
-}
-
-export function deleteDocument(id: string): Promise<mock.AdminDocument> {
-  if (USE_MOCKS) {
-    return mock.mockDeleteDocument(id)
-  }
-  return apiRequest<mock.AdminDocument>(`/admin/documents/${id}`, {
-    method: 'DELETE',
   })
 }

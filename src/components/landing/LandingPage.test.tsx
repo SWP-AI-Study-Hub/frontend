@@ -76,6 +76,21 @@ describe("LandingPage authentication state", () => {
     ).toBe(true);
   });
 
+  it("links active admins to the admin dashboard", () => {
+    vi.mocked(useAuth).mockReturnValue({
+      user: { ...activeUser, role: "ADMIN" },
+      isLoading: false,
+    } as ReturnType<typeof useAuth>);
+
+    render(<LandingPage />);
+
+    const appLinks = screen.getAllByRole("link", { name: "Open app" });
+    expect(appLinks.length).toBeGreaterThan(0);
+    expect(
+      appLinks.every((link) => link.getAttribute("href") === "/admin/dashboard"),
+    ).toBe(true);
+  });
+
   it("sends guests to login from the open-app button", () => {
     vi.mocked(useAuth).mockReturnValue({
       user: null,

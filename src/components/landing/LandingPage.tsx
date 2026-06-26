@@ -8,7 +8,6 @@ import {
   Check,
   ChevronDown,
   FileSearch,
-  FileType,
   Files,
   FileUp,
   Library,
@@ -23,7 +22,7 @@ import {
 import { useLanguage } from "../../i18n/LanguageProvider";
 import { useAuth } from "../../features/auth/useAuth";
 import { localize } from "../../i18n/localize";
-import { ROUTES } from "../../lib/routes";
+import { ROUTES, getAuthenticatedHomeRoute } from "../../lib/routes";
 import type { TranslationKey } from "../../i18n/translations";
 import { Brand } from "../ui/Brand";
 import { LanguageSwitcher } from "../ui/LanguageSwitcher";
@@ -104,8 +103,7 @@ export function LandingPage() {
   const text = (vi: string, en: string) => localize(locale, vi, en);
   const [menuOpen, setMenuOpen] = useState(false);
   const [openFaq, setOpenFaq] = useState(0);
-  const appRoute =
-    user?.role === "ADMIN" ? ROUTES.adminUsers : ROUTES.dashboard;
+  const appRoute = user ? getAuthenticatedHomeRoute(user.role) : ROUTES.dashboard;
   const isAuthenticated = !isLoading && user?.status === "ACTIVE";
   const appEntryRoute = isAuthenticated ? appRoute : ROUTES.login;
 
