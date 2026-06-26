@@ -213,6 +213,13 @@ export function AiChatbotView() {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sources, setSources] = useState<Citation[]>([]);
+  const visibleSources = useMemo(
+    () =>
+      sources.filter(
+        (source) => source.relevanceScore === null || source.relevanceScore >= 0.62,
+      ),
+    [sources],
+  );
 
   // UI Panel states
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
@@ -1047,27 +1054,24 @@ export function AiChatbotView() {
       {/* ─── RIGHT SIDEBAR ────────────────────────────────────────── */}
       <aside className={`ws-references-panel${referencesCollapsed ? " ws-panel--collapsed" : ""}${referencesDrawerOpen ? " ws-panel--open" : ""}`}>
         <div className="ws-references-header">
-          <h2>{text("Nguồn & file", "Sources & files")}</h2>
-          <span className="ws-references-count">
-            {activeMode === "MY_LIBRARY" ? sources.length : selectedDocumentIds.length}
-          </span>
+          <div className="ws-references-title-group">
+            <h2>{text("Nguồn & file", "Sources & files")}</h2>
+            <span className="ws-references-count">
+              {activeMode === "MY_LIBRARY" ? visibleSources.length : selectedDocumentIds.length}
+            </span>
+          </div>
         </div>
 
         <div className="ws-references-content">
           {activeMode === "MY_LIBRARY" ? (
             <>
-              {sources.length > 0 ? (
+              {visibleSources.length > 0 ? (
                 <>
                   <div style={{ padding: "16px 16px 0", fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>
                     {text("Nguồn tìm thấy", "Sources found")}
                   </div>
                   <div className="ws-sidebar-selected-list">
-                    {sources
-                      .filter((source) => {
-                        const threshold = 0.35;
-                        return source.relevanceScore === null || source.relevanceScore >= threshold;
-                      })
-                      .map((source) => (
+                    {visibleSources.map((source) => (
                         <div key={source.sourceNumber} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
                           <div className="ws-reference-title-row">
                             <span className="ws-reference-number">{source.sourceNumber}</span>
@@ -1088,7 +1092,7 @@ export function AiChatbotView() {
                     type="button"
                     className="ws-sidebar-use-sources-btn"
                     onClick={() => {
-                      const newIds = Array.from(new Set([...selectedDocumentIds, ...sources.map(s => s.documentId)]));
+                      const newIds = Array.from(new Set([...selectedDocumentIds, ...visibleSources.map(s => s.documentId)]));
                       setSelectedDocumentIds(newIds);
                       setActiveMode("SELECTED_SOURCES");
                     }}
