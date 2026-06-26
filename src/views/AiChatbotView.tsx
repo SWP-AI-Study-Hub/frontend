@@ -27,16 +27,16 @@ import {
   Check,
   ChevronDown,
 } from "lucide-react";
-import { askDocument, askLibrary } from "../api/chat.api";
+import { askLibrary } from "../api/chat.api";
 import { createDownloadUrl, fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
-import { demoDocumentAnswer, demoLibraryAnswer } from "../lib/chat-demo";
+import { demoLibraryAnswer } from "../lib/chat-demo";
 import type { ChatMessage, Citation } from "../types/chat";
 import { ROUTES } from "../lib/routes";
 import type { LibraryDocument } from "../types/document";
 
-type ActiveMode = "CURRENT_DOCUMENT" | "SELECTED_SOURCES" | "MY_LIBRARY";
+type ActiveMode = "SELECTED_SOURCES" | "MY_LIBRARY";
 
 function renderMessageContent(
   content: string,
@@ -274,12 +274,6 @@ export function AiChatbotView() {
 
   // Welcome message per mode
   const welcomeMessage = useMemo(() => {
-    if (activeMode === "CURRENT_DOCUMENT") {
-      return text(
-        `Chào mừng! Bạn đang đặt câu hỏi dựa trên tài liệu: "${currentDocument?.title || ""}".`,
-        `Welcome! You are asking questions grounded in: "${currentDocument?.title || ""}".`,
-      );
-    }
     if (activeMode === "SELECTED_SOURCES") {
       return text(
         "Hãy chọn các tài liệu từ danh sách bên trái để đặt câu hỏi.",
@@ -296,16 +290,16 @@ export function AiChatbotView() {
       "Chào mừng! Bạn đang đặt câu hỏi trên toàn bộ thư viện của mình.",
       "Welcome! You are asking questions across your entire library.",
     );
-  }, [activeMode, currentDocument, selectedSubjectIds.length, selectedSubjectNames, text]);
+  }, [activeMode, selectedSubjectIds.length, selectedSubjectNames, text]);
 
   // 4. Load sessionStorage on mount (hydration-safe)
   useEffect(() => {
     const savedMode = sessionStorage.getItem("documind.workspace.activeMode");
-    if (savedMode && ["CURRENT_DOCUMENT", "SELECTED_SOURCES", "MY_LIBRARY"].includes(savedMode)) {
+    if (savedMode && ["SELECTED_SOURCES", "MY_LIBRARY"].includes(savedMode)) {
       setActiveMode(savedMode as ActiveMode);
     } else {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("scope") === "document") setActiveMode("CURRENT_DOCUMENT");
+      if (params.get("scope") === "document") setActiveMode("SELECTED_SOURCES");
     }
 
     const savedSelected = sessionStorage.getItem("documind.workspace.selectedDocumentIds");
@@ -338,13 +332,12 @@ export function AiChatbotView() {
   useEffect(() => { sessionStorage.setItem("documind.workspace.selectedSubjectIds", JSON.stringify(selectedSubjectIds)); }, [selectedSubjectIds]);
   useEffect(() => { if (currentDocumentId) sessionStorage.setItem("documind.workspace.currentDocumentId", currentDocumentId); }, [currentDocumentId]);
 
-  // 6. Reset chat on mode / document change
+  // 6. Initialize welcome message if empty
   useEffect(() => {
-    setMessages([{ id: "welcome", sender: "AI", content: welcomeMessage, sources: [] }]);
-    setSources([]);
-    setSessionId(undefined);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeMode, activeMode === "CURRENT_DOCUMENT" ? currentDocumentId : undefined]);
+    if (messages.length === 0) {
+      setMessages([{ id: "welcome", sender: "AI", content: welcomeMessage, sources: [] }]);
+    }
+  }, [welcomeMessage, messages.length]);
 
   // Auto-scroll
   useEffect(() => { messageEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isLoading]);
@@ -430,9 +423,8 @@ export function AiChatbotView() {
   const submitQuestion = async () => {
     const trimmed = question.trim();
     if (!trimmed || isLoading) return;
-    if (activeMode === "CURRENT_DOCUMENT" && !currentDocument) return;
 
-    setMessages((prev) => [...prev, { id: crypto.randomUUID(), sender: "USER", content: trimmed, sources: [] }]);
+    setMessages((prev) => [...prev, { id: crypto.randomUUID(), sender: "USER", content: trimmed, sources: [], scope: activeMode }]);
     setQuestion("");
     setIsLoading(true);
     setSources([]);
@@ -447,6 +439,7 @@ export function AiChatbotView() {
             "Please select at least one source document from the left list to ask questions.",
           ),
           sources: [],
+          scope: activeMode
         }]);
         setIsLoading(false);
       }, 500);
@@ -454,10 +447,7 @@ export function AiChatbotView() {
     }
 
     try {
-      const response = activeMode === "CURRENT_DOCUMENT" && currentDocument
-        ? await askDocument({ documentId: currentDocument.id, question: trimmed, sessionId })
-            .catch(() => demoDocumentAnswer(trimmed, locale))
-        : await askLibrary({
+      const response = await askLibrary({
             question: trimmed,
             sessionId,
             filters: activeMode === "SELECTED_SOURCES"
@@ -477,6 +467,7 @@ export function AiChatbotView() {
         sources: response.sources,
         answerStatus: response.answerStatus,
         errorCode: response.errorCode,
+        scope: activeMode
       }]);
     } catch {
       setMessages((prev) => [...prev, {
@@ -484,6 +475,7 @@ export function AiChatbotView() {
         sender: "AI",
         content: text("Đã xảy ra lỗi. Vui lòng thử lại sau.", "An error occurred. Please try again."),
         sources: [],
+        scope: activeMode
       }]);
     } finally {
       setIsLoading(false);
@@ -531,10 +523,13 @@ export function AiChatbotView() {
   };
 
   const getPlaceholderText = () => {
-    if (activeMode === "CURRENT_DOCUMENT")
-      return text(`Đặt câu hỏi về "${currentDocument?.title || "tài liệu hiện tại"}"...`, `Ask about "${currentDocument?.title || "current document"}"...`);
-    if (activeMode === "SELECTED_SOURCES")
+    if (activeMode === "SELECTED_SOURCES") {
+      if (selectedDocumentIds.length === 1) {
+        const doc = documents.find((d) => d.id === selectedDocumentIds[0]);
+        return text(`Đặt câu hỏi về "${doc?.title || "tài liệu đã chọn"}"...`, `Ask about "${doc?.title || "selected document"}"...`);
+      }
       return text("Nhập câu hỏi dựa trên các nguồn đã chọn...", "Ask about selected sources...");
+    }
     return text("Đặt câu hỏi trên toàn bộ thư viện...", "Ask across your entire library...");
   };
 
@@ -749,8 +744,8 @@ export function AiChatbotView() {
                       className="ws-ask-file-btn"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setCurrentDocumentId(doc.id);
-                        setActiveMode("CURRENT_DOCUMENT");
+                        setSelectedDocumentIds([doc.id]);
+                        setActiveMode("SELECTED_SOURCES");
                       }}
                     >
                       <Sparkles size={11} />
@@ -809,14 +804,6 @@ export function AiChatbotView() {
               <strong>{text(`File đã chọn (${selectedDocumentIds.length})`, `Selected Files (${selectedDocumentIds.length})`)}</strong>
               <small>{text("AI chỉ tìm kiếm trong file được chọn", "AI searches selected files only")}</small>
             </button>
-            <button
-              type="button"
-              className={`ws-mode-btn${activeMode === "CURRENT_DOCUMENT" ? " active" : ""}`}
-              onClick={() => setActiveMode("CURRENT_DOCUMENT")}
-            >
-              <strong>{text("Một tài liệu", "One File")}</strong>
-              <small>{text("AI trả lời từ một tài liệu cụ thể", "AI answers from one specific file")}</small>
-            </button>
           </div>
 
           {/* Sidebar toggles */}
@@ -859,17 +846,6 @@ export function AiChatbotView() {
                 )}
               </p>
             </div>
-          ) : activeMode === "CURRENT_DOCUMENT" && !currentDocumentId ? (
-            <div className="ws-empty-state ws-empty-state--no-document">
-              <div className="ws-empty-icon"><FileSearch size={26} /></div>
-              <h3>{text("Chưa chọn tài liệu mục tiêu", "No target document selected")}</h3>
-              <p>
-                {text(
-                  "Vui lòng chọn một tài liệu ở danh sách bên trái và click vào nút 'Hỏi tài liệu này' để bắt đầu đặt câu hỏi.",
-                  "Please select a document from the left sidebar and click 'Ask this file' to start asking questions.",
-                )}
-              </p>
-            </div>
           ) : (
             <>
               {messages.map((msg) => {
@@ -887,6 +863,27 @@ export function AiChatbotView() {
                             <strong>{answerIssue.title}</strong>
                             <span>{answerIssue.description}</span>
                           </div>
+                        </div>
+                      )}
+                      {msg.sender === "AI" && msg.id !== "welcome" && msg.scope && (
+                        <div className="ws-message-scope-indicator">
+                          {msg.scope === "MY_LIBRARY" ? (
+                            <span className="ws-scope-tag">
+                              <Library size={12} />
+                              {text(
+                                "Dựa trên các tài liệu liên quan tìm thấy trong thư viện của bạn...",
+                                "Based on relevant literature in your library...",
+                              )}
+                            </span>
+                          ) : (
+                            <span className="ws-scope-tag">
+                              <FileText size={12} />
+                              {text(
+                                "Dựa trên các file bạn đã chọn...",
+                                "Based on the selected files...",
+                              )}
+                            </span>
+                          )}
                         </div>
                       )}
                       <div className="ws-message-text">
@@ -964,7 +961,7 @@ export function AiChatbotView() {
             <div className="ws-selected-chips-container">
               <div className="ws-selected-chips-header">
                 <span>
-                  <strong>{selectedDocumentIds.length}</strong> {text("file đã chọn", "files selected")}
+                  <strong>{selectedDocumentIds.length}</strong> {text("File đang dùng cho câu hỏi tiếp theo", "Files used for next question")}
                 </span>
                 <button type="button" onClick={clearSelection} className="ws-selected-clear-all">
                   {text("Bỏ chọn tất cả", "Clear all")}
@@ -1012,16 +1009,14 @@ export function AiChatbotView() {
           <div className="ws-grounding-indicator">
             <Database size={12} />
             <span>
-              {activeMode === "CURRENT_DOCUMENT"
-                ? text(`Nguồn tham chiếu: ${currentDocument?.title || "Tài liệu hiện tại"}`, `Grounded in: ${currentDocument?.title || "Current document"}`)
-                : activeMode === "SELECTED_SOURCES"
-                ? text(`Nguồn tham chiếu: ${selectedDocumentIds.length} tài liệu đã chọn`, `Grounded in: ${selectedDocumentIds.length} selected sources`)
+              {activeMode === "SELECTED_SOURCES"
+                ? text(`Câu hỏi tiếp theo dựa trên: ${selectedDocumentIds.length} file đang dùng`, `Next question based on: ${selectedDocumentIds.length} selected files`)
                 : selectedSubjectIds.length > 0
                   ? text(
-                      `Nguồn tham chiếu: ${selectedSubjectNames.join(", ")}`,
-                      `Grounded in: ${selectedSubjectNames.join(", ")}`,
+                      `Câu hỏi tiếp theo dựa trên: các môn ${selectedSubjectNames.join(", ")}`,
+                      `Next question based on: subjects ${selectedSubjectNames.join(", ")}`,
                     )
-                  : text("Nguồn tham chiếu: Toàn bộ thư viện", "Grounded in: Entire library")}
+                  : text("Câu hỏi tiếp theo dựa trên: Toàn bộ thư viện", "Next question based on: Entire library")}
             </span>
           </div>
         </div>
@@ -1030,45 +1025,116 @@ export function AiChatbotView() {
       {/* ─── RIGHT SIDEBAR ────────────────────────────────────────── */}
       <aside className={`ws-references-panel${referencesCollapsed ? " ws-panel--collapsed" : ""}${referencesDrawerOpen ? " ws-panel--open" : ""}`}>
         <div className="ws-references-header">
-          <h2>{text("Tài liệu Tham chiếu", "References")}</h2>
-          <span className="ws-references-count">{sources.length}</span>
+          <h2>{text("Nguồn & file", "Sources & files")}</h2>
+          <span className="ws-references-count">
+            {activeMode === "MY_LIBRARY" ? sources.length : selectedDocumentIds.length}
+          </span>
         </div>
 
         <div className="ws-references-content">
-          {sources.length > 0 ? (
-            sources
-              .filter((source) => {
-                const threshold = 0.35;
-                return source.relevanceScore === null || source.relevanceScore >= threshold;
-              })
-              .map((source) => (
-                <div key={source.sourceNumber} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
-                  <div className="ws-reference-title-row">
-                    <span className="ws-reference-number">{source.sourceNumber}</span>
-                    <span className="ws-reference-title" title={source.title}>{source.title}</span>
+          {activeMode === "MY_LIBRARY" ? (
+            <>
+              {sources.length > 0 ? (
+                <>
+                  <div style={{ padding: "16px 16px 0", fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>
+                    {text("Nguồn tìm thấy", "Sources found")}
                   </div>
-                  <p className="ws-reference-snippet">{source.snippet}</p>
-                  <div className="ws-reference-footer">
-                    {renderRelevanceBadge(source.relevanceScore)}
-                    <button type="button" className="ws-open-doc-btn" onClick={(e) => { e.stopPropagation(); openCitationDrawer(source); }}>
-                      <span>{text("Xem đoạn trích", "View snippet")}</span>
-                      <ChevronRight size={12} />
-                    </button>
+                  <div className="ws-sidebar-selected-list">
+                    {sources
+                      .filter((source) => {
+                        const threshold = 0.35;
+                        return source.relevanceScore === null || source.relevanceScore >= threshold;
+                      })
+                      .map((source) => (
+                        <div key={source.sourceNumber} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
+                          <div className="ws-reference-title-row">
+                            <span className="ws-reference-number">{source.sourceNumber}</span>
+                            <span className="ws-reference-title" title={source.title}>{source.title}</span>
+                          </div>
+                          <p className="ws-reference-snippet">{source.snippet}</p>
+                          <div className="ws-reference-footer">
+                            {renderRelevanceBadge(source.relevanceScore)}
+                            <button type="button" className="ws-open-doc-btn" onClick={(e) => { e.stopPropagation(); openCitationDrawer(source); }}>
+                              <span>{text("Xem đoạn trích", "View snippet")}</span>
+                              <ChevronRight size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
                   </div>
+                  <button
+                    type="button"
+                    className="ws-sidebar-use-sources-btn"
+                    onClick={() => {
+                      const newIds = Array.from(new Set([...selectedDocumentIds, ...sources.map(s => s.documentId)]));
+                      setSelectedDocumentIds(newIds);
+                      setActiveMode("SELECTED_SOURCES");
+                    }}
+                  >
+                    <Sparkles size={14} />
+                    <span>{text("Dùng các nguồn này cho câu hỏi tiếp theo", "Use these sources for next question")}</span>
+                  </button>
+                </>
+              ) : (
+                <div className="ws-refs-empty">
+                  <FileSearch size={32} />
+                  <strong>{text("Chưa có trích dẫn", "No references yet")}</strong>
+                  <p>
+                    {text("Đặt câu hỏi để tìm kiếm trích dẫn từ toàn bộ thư viện của bạn.", "Ask a question to see citations from your entire library.")}
+                  </p>
                 </div>
-              ))
+              )}
+            </>
           ) : (
-            <div className="ws-refs-empty">
-              <FileSearch size={32} />
-              <strong>{text("Chưa có trích dẫn", "No references yet")}</strong>
-              <p>
-                {activeMode === "CURRENT_DOCUMENT"
-                  ? text("Đặt câu hỏi để tìm kiếm trích dẫn từ tài liệu này.", "Ask a question to see citations from this document.")
-                  : activeMode === "SELECTED_SOURCES"
-                  ? text("Đặt câu hỏi để tìm kiếm trích dẫn từ các tài liệu đã chọn.", "Ask a question to see citations from selected files.")
-                  : text("Đặt câu hỏi để tìm kiếm trích dẫn từ toàn bộ thư viện của bạn.", "Ask a question to see citations from your entire library.")}
-              </p>
-            </div>
+            <>
+              {selectedDocumentIds.length > 0 ? (
+                <>
+                  <div style={{ padding: "16px 16px 0", fontSize: "0.85rem", fontWeight: 700, color: "var(--ink)" }}>
+                    {text("File đang dùng cho câu hỏi tiếp theo", "Files used for next question")}
+                  </div>
+                  <div className="ws-sidebar-selected-list">
+                    {selectedDocumentIds.map((id) => {
+                      const doc = documents.find((d) => d.id === id);
+                      if (!doc) return null;
+                      return (
+                        <div key={id} className="ws-sidebar-selected-item">
+                          {getFileIcon(doc.fileType)}
+                          <span title={doc.title}>{doc.title}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedDocumentIds((prev) => prev.filter((item) => item !== id))}
+                            aria-label={text("Bỏ chọn", "Remove selection")}
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                <div className="ws-refs-empty">
+                  <FileSearch size={32} />
+                  <strong>{text("Chưa chọn file nào", "No files selected")}</strong>
+                  <p>
+                    {text("Vui lòng đánh dấu chọn tài liệu từ danh sách bên trái để sử dụng.", "Please select documents from the list on the left to use them.")}
+                  </p>
+                </div>
+              )}
+              <button
+                type="button"
+                className="ws-sidebar-add-sources-btn"
+                onClick={() => {
+                  const searchInput = document.querySelector(".ws-search-input") as HTMLInputElement;
+                  if (searchInput) {
+                    searchInput.focus();
+                  }
+                }}
+              >
+                <Plus size={14} />
+                <span>{text("Thêm nguồn", "Add sources")}</span>
+              </button>
+            </>
           )}
         </div>
       </aside>
@@ -1077,7 +1143,7 @@ export function AiChatbotView() {
       <div className={`ws-drawer-overlay${drawerOpen ? " open" : ""}`} onClick={() => setDrawerOpen(false)}>
         <div className="ws-drawer" onClick={(e) => e.stopPropagation()}>
           <header className="ws-drawer-header">
-            <h3>{text("Chi tiết Đoạn trích", "Snippet Preview")}</h3>
+            <h3>{text("Đoạn trích tham khảo", "Reference Passage")}</h3>
             <button onClick={() => setDrawerOpen(false)} className="ws-drawer-close" aria-label={text("Đóng", "Close")}>
               <X size={18} />
             </button>
@@ -1104,7 +1170,7 @@ export function AiChatbotView() {
                 </div>
 
                 <div className="ws-drawer-snippet-section">
-                  <span className="ws-drawer-snippet-title">{text("Đoạn trích nguồn", "Source Passage")}</span>
+                  <span className="ws-drawer-snippet-title">{text("Đoạn trích tham khảo", "Reference Passage")}</span>
                   <div className="ws-drawer-snippet-box">{previewCitation.snippet}</div>
                 </div>
 
@@ -1122,8 +1188,8 @@ export function AiChatbotView() {
                 type="button"
                 className="ws-drawer-footer-btn ws-drawer-footer-btn--primary"
                 onClick={() => {
-                  setCurrentDocumentId(previewCitation.documentId);
-                  setActiveMode("CURRENT_DOCUMENT");
+                  setSelectedDocumentIds([previewCitation.documentId]);
+                  setActiveMode("SELECTED_SOURCES");
                   setDrawerOpen(false);
                 }}
               >
