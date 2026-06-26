@@ -17,7 +17,7 @@ describe('documents API helpers', () => {
     vi.clearAllMocks()
   })
 
-  it('validates the four supported formats and 20 MB maximum', () => {
+  it('validates the four supported formats and 80 MB maximum', () => {
     expect(validateDocumentFile(new File(['content'], 'notes.pdf'))).toBeNull()
     expect(validateDocumentFile(new File(['content'], 'slides.pptx'))).toBeNull()
     expect(validateDocumentFile(new File(['content'], 'notes.exe'))).toContain('PDF')

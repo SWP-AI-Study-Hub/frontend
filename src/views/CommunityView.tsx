@@ -90,7 +90,7 @@ export function CommunityView() {
   }
 
   async function toggleSaved(document: CommunityDocument) {
-    if (savingIdSet.has(document.id)) return
+    if (document.owned || savingIdSet.has(document.id)) return
 
     setSavingIds((current) => [...current, document.id])
     setDocuments((current) =>
@@ -200,6 +200,7 @@ export function CommunityView() {
         <section className="community-grid">
           {filteredDocuments.map((document) => {
             const isSaved = Boolean(document.saved)
+            const isOwned = Boolean(document.owned)
             const isSaving = savingIdSet.has(document.id)
             return (
               <article className="community-card" key={document.id}>
@@ -224,6 +225,7 @@ export function CommunityView() {
                       <small>{document.savedCount} {text('lượt lưu', 'saves')}</small>
                     </span>
                   </div>
+                  {!isOwned ? (
                   <button
                     type="button"
                     className={isSaved ? 'save-library-button saved' : 'save-library-button'}
@@ -235,6 +237,7 @@ export function CommunityView() {
                       ? text('Đã lưu vào thư viện', 'Saved to My Library')
                       : text('Lưu vào thư viện', 'Save to My Library')}
                   </button>
+                  ) : null}
                 </div>
               </article>
             )
