@@ -524,44 +524,38 @@ export function LibraryView() {
                               className={`folder-category-select${isCategoryActive ? " active" : ""}`}
                               onClick={() => selectFolder(subject.id, category.id)}
                             >
+                              <FileText size={14} />
+                              <span>{category.name}</span>
+                            </button>
+                            <div className="folder-action-container" onClick={(e) => e.stopPropagation()}>
                               <button
                                 type="button"
-                                className={`folder-category-select${isCategoryActive ? " active" : ""}`}
-                                onClick={() => selectFolder(subject.id, category.id)}
+                                className={`folder-actions-trigger${
+                                  activeMenu?.type === "category" && activeMenu?.id === category.id ? " active" : ""
+                                }`}
+                                onClick={(e) => handleMenuToggle(e, "category", category.id)}
+                                title={text("Thao tác", "Actions")}
                               >
-                                <FileText size={14} />
-                                <span>{category.name}</span>
+                                <MoreVertical size={14} />
                               </button>
-                              <div className="folder-action-container" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  className={`folder-actions-trigger${
-                                    activeMenu?.type === "category" && activeMenu?.id === category.id ? " active" : ""
-                                  }`}
-                                  onClick={(e) => handleMenuToggle(e, "category", category.id)}
-                                  title={text("Thao tác", "Actions")}
-                                >
-                                  <MoreVertical size={14} />
-                                </button>
-                                {activeMenu?.type === "category" && activeMenu?.id === category.id && (
-                                  <div className="folder-dropdown-menu">
-                                    <button type="button" className="folder-dropdown-item" onClick={(e) => startEditCategory(category, e)}>
-                                      <Edit2 size={13} />
-                                      {text("Sửa tên", "Rename")}
-                                    </button>
-                                    <button type="button" className="folder-dropdown-item danger" onClick={(e) => handleDeleteCategory(category.id, e)}>
-                                      <Trash2 size={13} />
-                                      {text("Xóa", "Delete")}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
+                              {activeMenu?.type === "category" && activeMenu?.id === category.id && (
+                                <div className="folder-dropdown-menu">
+                                  <button type="button" className="folder-dropdown-item" onClick={(e) => startEditCategory(category, e)}>
+                                    <Edit2 size={13} />
+                                    {text("Sửa tên", "Rename")}
+                                  </button>
+                                  <button type="button" className="folder-dropdown-item danger" onClick={(e) => handleDeleteCategory(category.id, e)}>
+                                    <Trash2 size={13} />
+                                    {text("Xóa", "Delete")}
+                                  </button>
+                                </div>
+                              )}
                             </div>
+                          </div>
                           );
-                        })
-                      )}
-                    </div>
-                  ) : null}
+                        })}
+                      </div>
+                    ) : null}
                 </div>
               );
             })}

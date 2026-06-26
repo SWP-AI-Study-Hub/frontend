@@ -5,7 +5,7 @@ import {
   notifyUnauthorized,
   setStoredAuthToken,
 } from './auth-token'
-import { ApiError, apiRequest, normalizeApiBaseUrl } from './http'
+import { apiRequest, normalizeApiBaseUrl } from './http'
 
 vi.mock('./firebase', () => ({
   getFirebaseAuth: vi.fn(),

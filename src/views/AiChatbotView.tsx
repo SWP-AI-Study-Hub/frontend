@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Bot,
@@ -161,7 +161,10 @@ function renderMessageContent(
 export function AiChatbotView() {
   const router = useRouter();
   const { locale } = useLanguage();
-  const text = (vi: string, en: string) => localize(locale, vi, en);
+  const text = useCallback(
+    (vi: string, en: string) => localize(locale, vi, en),
+    [locale],
+  );
 
   // 1. Fetch Library Documents
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
@@ -293,7 +296,7 @@ export function AiChatbotView() {
       "Chào mừng! Bạn đang đặt câu hỏi trên toàn bộ thư viện của mình.",
       "Welcome! You are asking questions across your entire library.",
     );
-  }, [locale, activeMode, currentDocument, selectedSubjectIds.length, selectedSubjectNames]);
+  }, [activeMode, currentDocument, selectedSubjectIds.length, selectedSubjectNames, text]);
 
   // 4. Load sessionStorage on mount (hydration-safe)
   useEffect(() => {
