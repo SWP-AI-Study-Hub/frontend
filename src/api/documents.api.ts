@@ -64,6 +64,8 @@ export type DocumentListQuery = {
   fileType?: string
   aiStatus?: ApiExtractionStatus
   visibility?: DocumentVisibility | ''
+  savedOnly?: boolean
+  ownerOnly?: boolean
   sortBy?: 'createdAt' | 'title' | 'fileSize'
   sortOrder?: 'asc' | 'desc'
   page?: number
@@ -198,8 +200,11 @@ export function deleteCategory(id: string) {
 }
 
 export async function fetchLibraryDocuments(query: DocumentListQuery = {}): Promise<DocumentListResult> {
-  const params = new URLSearchParams({ ownerOnly: 'true' })
-  Object.entries(query).forEach(([key, value]) => {
+  const { ownerOnly, ...rest } = query
+  const params = new URLSearchParams()
+  const shouldLimitToOwner = ownerOnly ?? !query.savedOnly
+  if (shouldLimitToOwner) params.set('ownerOnly', 'true')
+  Object.entries(rest).forEach(([key, value]) => {
     if (value !== undefined && value !== '') params.set(key, String(value))
   })
   const result = await apiRequest<DocumentListApiResponse>(`/documents?${params}`)

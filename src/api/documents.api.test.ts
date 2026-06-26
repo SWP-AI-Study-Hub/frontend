@@ -1,12 +1,23 @@
+import { beforeEach, vi } from 'vitest'
 import {
   MAX_FILE_SIZE,
+  fetchLibraryDocuments,
   getMissingUploadFields,
   mapApiDocument,
   validateDocumentFile,
 } from './documents.api'
+import { apiRequest } from '../lib/http'
+
+vi.mock('../lib/http', () => ({
+  apiRequest: vi.fn(),
+}))
 
 describe('documents API helpers', () => {
-  it('validates the four supported formats and 80 MB maximum', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('validates the four supported formats and 20 MB maximum', () => {
     expect(validateDocumentFile(new File(['content'], 'notes.pdf'))).toBeNull()
     expect(validateDocumentFile(new File(['content'], 'slides.pptx'))).toBeNull()
     expect(validateDocumentFile(new File(['content'], 'notes.exe'))).toContain('PDF')
@@ -67,5 +78,27 @@ describe('documents API helpers', () => {
         indexStatus: 'READY',
       }),
     )
+  })
+
+  it('does not combine savedOnly with the default ownerOnly filter', async () => {
+    vi.mocked(apiRequest).mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
+    })
+
+    await fetchLibraryDocuments({ savedOnly: true, limit: 100 })
+
+    expect(apiRequest).toHaveBeenCalledWith('/documents?savedOnly=true&limit=100')
+  })
+
+  it('keeps ownerOnly as the default for normal library listings', async () => {
+    vi.mocked(apiRequest).mockResolvedValue({
+      data: [],
+      pagination: { page: 1, limit: 100, total: 0, totalPages: 0 },
+    })
+
+    await fetchLibraryDocuments({ limit: 100 })
+
+    expect(apiRequest).toHaveBeenCalledWith('/documents?ownerOnly=true&limit=100')
   })
 })
