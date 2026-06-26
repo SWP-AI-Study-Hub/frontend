@@ -5861,3 +5861,108 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Chatbot scope UI and dynamic sidebar styles */
+.ws-message-scope-indicator {
+  margin-bottom: 6px;
+  display: flex;
+}
+
+.ws-scope-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  background: var(--surface-container-low);
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+}
+
+.ws-sidebar-use-sources-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: calc(100% - 32px);
+  margin: 16px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: #904d00;
+  background: #ffdcc3;
+  transition: background-color 150ms;
+}
+
+.ws-sidebar-use-sources-btn:hover {
+  background: #ffb77d;
+}
+
+.ws-sidebar-add-sources-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: calc(100% - 32px);
+  margin: 16px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 0.8rem;
+  cursor: pointer;
+  color: var(--muted);
+  background: transparent;
+}
+
+.ws-sidebar-add-sources-btn:hover {
+  border-color: var(--outline);
+  color: var(--ink);
+}
+
+.ws-sidebar-selected-list {
+  display: grid;
+  gap: 8px;
+  margin: 16px;
+}
+
+.ws-sidebar-selected-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-container-lowest);
+  font-size: 0.78rem;
+  color: var(--ink);
+}
+
+.ws-sidebar-selected-item span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-sidebar-selected-item button {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 4px;
+  color: var(--muted);
+  background: transparent;
+  cursor: pointer;
+}
+
+.ws-sidebar-selected-item button:hover {
+  color: var(--error);
+  background: var(--error-container);
+}
+

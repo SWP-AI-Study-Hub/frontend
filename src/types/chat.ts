@@ -23,6 +23,7 @@ export type ChatMessage = {
   sources: Citation[]
   answerStatus?: AiChatResponse['answerStatus']
   errorCode?: string | null
+  scope?: 'MY_LIBRARY' | 'SELECTED_SOURCES'
 }
 
 export type LibraryFilters = {
