@@ -202,6 +202,12 @@ export function deleteCategory(id: string) {
   })
 }
 
+export function deleteDocument(id: string) {
+  return apiRequest<{ success: boolean }>(`/documents/${id}`, {
+    method: 'DELETE',
+  })
+}
+
 export async function fetchLibraryDocuments(query: DocumentListQuery = {}): Promise<DocumentListResult> {
   const { ownerOnly, ...rest } = query
   const params = new URLSearchParams()

@@ -1415,6 +1415,124 @@
   pointer-events: none;
 }
 
+/* Delete document button in actions */
+.delete-document-action {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  color: var(--muted);
+  background: var(--surface);
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.delete-document-action:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+/* Checkbox column in table */
+.library-table-check {
+  width: 40px;
+  padding: 14px 8px 14px 16px !important;
+}
+
+.library-table-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--brand);
+}
+
+/* Selected row highlight */
+.library-table tbody tr.row-selected {
+  background: #f0f7ff;
+}
+
+/* Selection info bar */
+.library-selection-info {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  color: var(--brand);
+  font-weight: 600;
+}
+
+.delete-selected-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.delete-selected-btn:hover:not(:disabled) {
+  opacity: 0.82;
+}
+
+.delete-selected-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clear-selection-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.clear-selection-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--ink);
+}
+
+/* Card grid: selected state */
+.library-document-card.card-selected {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--brand) 15%, transparent);
+}
+
+/* Card top checkbox */
+.card-select-label {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.card-select-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--brand);
+}
+
+/* Empty categories hint */
+.folder-empty-hint {
+  padding: 4px 28px;
+  font-size: 0.78rem;
+  color: var(--subtle);
+  font-style: italic;
+}
+
 .library-card-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
