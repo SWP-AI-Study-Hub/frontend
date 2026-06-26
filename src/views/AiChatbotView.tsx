@@ -720,7 +720,8 @@ export function AiChatbotView() {
         <div className="ws-sources-list">
           {filteredDocuments.map((doc) => {
             const isSelected = selectedDocumentIds.includes(doc.id);
-            const isCurrent = doc.id === (currentDocumentId || documents[0]?.id);
+            // Only highlight the active card in SELECTED_SOURCES mode (when user explicitly views a doc)
+            const isCurrent = activeMode === "SELECTED_SOURCES" && doc.id === (currentDocumentId || documents[0]?.id);
             return (
               <div
                 key={doc.id}
@@ -758,6 +759,7 @@ export function AiChatbotView() {
                       {doc.indexStatus === "READY" ? text("Sẵn sàng", "Ready") : text("Đang xử lý", "Processing")}
                     </span>
                   </div>
+                  {/* Quick-action button: only shown in SELECTED_SOURCES mode for the currently focused card */}
                   {isCurrent && doc.indexStatus === "READY" && (
                     <button
                       type="button"
@@ -765,7 +767,6 @@ export function AiChatbotView() {
                       onClick={(e) => {
                         e.stopPropagation();
                         setSelectedDocumentIds([doc.id]);
-                        setActiveMode("SELECTED_SOURCES");
                       }}
                     >
                       <Sparkles size={11} />
