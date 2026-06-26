@@ -166,18 +166,33 @@ export function AiChatbotView() {
     [locale],
   );
 
-  // 1. Fetch Library Documents
-  const [documents, setDocuments] = useState<LibraryDocument[]>([]);
+  // 1. Fetch Library Documents (Uploaded & Saved from Community)
+  const [documents, setDocuments] = useState<(LibraryDocument & { isCommunitySaved?: boolean })[]>([]);
 
   useEffect(() => {
     let active = true;
-    fetchLibraryDocuments({ limit: 100 })
-      .then((result) => {
-        if (active) setDocuments(result.items);
+    Promise.all([
+      fetchLibraryDocuments({ limit: 100 }),
+      fetchLibraryDocuments({ savedOnly: true, limit: 100 }).catch(() => ({ items: [] }))
+    ])
+      .then(([uploadedResult, savedResult]) => {
+        if (!active) return;
+        
+        const mergedMap = new Map<string, LibraryDocument & { isCommunitySaved?: boolean }>();
+        uploadedResult.items.forEach((doc) => mergedMap.set(doc.id, doc));
+        savedResult.items.forEach((doc) => {
+          mergedMap.set(doc.id, {
+            ...doc,
+            isCommunitySaved: true,
+          });
+        });
+        
+        setDocuments(Array.from(mergedMap.values()));
       })
       .catch(() => {
         if (active) setDocuments([]);
       });
+      
     return () => {
       active = false;
     };
@@ -258,19 +273,7 @@ export function AiChatbotView() {
     return () => document.removeEventListener("mousedown", closeSubjectDropdown);
   }, []);
 
-  // 3. Currently active document
-  const currentDocument = useMemo(() => {
-    const subjectDocuments =
-      selectedSubjectIds.length === 0
-        ? documents
-        : documents.filter((document) =>
-            selectedSubjectIds.includes(document.subjectId),
-          );
-    return (
-      subjectDocuments.find((doc) => doc.id === currentDocumentId) ||
-      subjectDocuments[0]
-    );
-  }, [documents, currentDocumentId, selectedSubjectIds]);
+
 
   // Welcome message per mode
   const welcomeMessage = useMemo(() => {
@@ -732,7 +735,13 @@ export function AiChatbotView() {
                 <div className="ws-source-details">
                   <span className="ws-source-title" title={doc.title}>{doc.title}</span>
                   <div className="ws-source-meta">
-                    <span>{doc.category || doc.fileType}</span>
+                    {doc.isCommunitySaved ? (
+                      <span className="ws-community-badge" title={text("Đã lưu từ cộng đồng", "Saved from community")}>
+                        {text("Cộng đồng", "Community")}
+                      </span>
+                    ) : (
+                      <span>{doc.category || doc.fileType}</span>
+                    )}
                     <span className="ws-source-meta-dot">·</span>
                     <span className={`ws-source-status${doc.indexStatus === "READY" ? " ready" : " processing"}`}>
                       {doc.indexStatus === "READY" ? text("Sẵn sàng", "Ready") : text("Đang xử lý", "Processing")}
