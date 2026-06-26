@@ -38,19 +38,50 @@ import type { LibraryDocument } from "../types/document";
 
 type ActiveMode = "CURRENT_DOCUMENT" | "SELECTED_SOURCES" | "MY_LIBRARY";
 
-function renderMessageContent(content: string) {
+function renderMessageContent(
+  content: string,
+  citations: Citation[] = [],
+  onCitationClick?: (citation: Citation) => void
+) {
   const lines = content.split("\n");
   const elements: React.ReactNode[] = [];
   let currentList: { type: "ul" | "ol"; items: string[] } | null = null;
 
   const parseInline = (text: string) => {
     // Basic bold parsing: **text**
-    const parts = text.split(/(\*\*.*?\*\*)/g);
-    return parts.map((part, idx) => {
-      if (part.startsWith("**") && part.endsWith("**")) {
-        return <strong key={idx}>{part.slice(2, -2)}</strong>;
+    const boldParts = text.split(/(\*\*.*?\*\*)/g);
+    return boldParts.flatMap((boldPart, boldIdx) => {
+      if (boldPart.startsWith("**") && boldPart.endsWith("**")) {
+        return <strong key={`b-${boldIdx}`}>{boldPart.slice(2, -2)}</strong>;
       }
-      return part;
+
+      // Parse citations: e.g. [Source 1], [Source 2], [1], [2] inside normal text
+      const citationRegex = /(\[Source\s+\d+\]|\[\d+\])/gi;
+      const citationParts = boldPart.split(citationRegex);
+
+      return citationParts.map((part, citeIdx) => {
+        if (/^(\[Source\s+\d+\]|\[\d+\])$/i.test(part)) {
+          const match = part.match(/\d+/);
+          if (match) {
+            const sourceNumber = parseInt(match[0], 10);
+            const citation = citations.find((c) => c.sourceNumber === sourceNumber);
+            if (citation && onCitationClick) {
+              return (
+                <button
+                  key={`cite-${boldIdx}-${citeIdx}`}
+                  type="button"
+                  className="ws-inline-citation"
+                  onClick={() => onCitationClick(citation)}
+                  title={citation.title}
+                >
+                  {part}
+                </button>
+              );
+            }
+          }
+        }
+        return part;
+      });
     });
   };
 
@@ -309,7 +340,8 @@ export function AiChatbotView() {
     setMessages([{ id: "welcome", sender: "AI", content: welcomeMessage, sources: [] }]);
     setSources([]);
     setSessionId(undefined);
-  }, [activeMode, currentDocumentId, welcomeMessage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMode, activeMode === "CURRENT_DOCUMENT" ? currentDocumentId : undefined]);
 
   // Auto-scroll
   useEffect(() => { messageEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isLoading]);
@@ -362,7 +394,16 @@ export function AiChatbotView() {
 
   const handleDocumentRowClick = (docId: string) => {
     setCurrentDocumentId(docId);
-    if (activeMode !== "CURRENT_DOCUMENT") setActiveMode("CURRENT_DOCUMENT");
+    const doc = documents.find((d) => d.id === docId);
+    if (doc) {
+      openCitationDrawer({
+        sourceNumber: 0,
+        documentId: doc.id,
+        title: doc.title,
+        snippet: doc.description || text("Tài liệu chưa có mô tả chi tiết.", "No detailed description for this document."),
+        relevanceScore: null,
+      });
+    }
   };
 
   const openCitationDrawer = (citation: Citation) => {
@@ -393,16 +434,19 @@ export function AiChatbotView() {
     setIsLoading(true);
     setSources([]);
 
-    if (activeMode === "SELECTED_SOURCES") {
+    if (activeMode === "SELECTED_SOURCES" && selectedDocumentIds.length === 0) {
       setTimeout(() => {
         setMessages((prev) => [...prev, {
           id: crypto.randomUUID(),
           sender: "AI",
-          content: text("Chế độ Nguồn đã Chọn hiện tại chưa được hỗ trợ bởi backend.", "Selected Sources mode is pending backend support."),
+          content: text(
+            "Vui lòng chọn ít nhất một tài liệu nguồn ở danh sách bên trái để đặt câu hỏi.",
+            "Please select at least one source document from the left list to ask questions.",
+          ),
           sources: [],
         }]);
         setIsLoading(false);
-      }, 700);
+      }, 500);
       return;
     }
 
@@ -413,8 +457,9 @@ export function AiChatbotView() {
         : await askLibrary({
             question: trimmed,
             sessionId,
-            filters:
-              selectedSubjectIds.length > 0
+            filters: activeMode === "SELECTED_SOURCES"
+              ? { documentIds: selectedDocumentIds }
+              : selectedSubjectIds.length > 0
                 ? { subjectIds: selectedSubjectIds }
                 : undefined,
           })
@@ -422,7 +467,14 @@ export function AiChatbotView() {
 
       setSessionId(response.sessionId);
       setSources(response.sources);
-      setMessages((prev) => [...prev, { id: response.messageId, sender: "AI", content: response.answer, sources: response.sources }]);
+      setMessages((prev) => [...prev, {
+        id: response.messageId,
+        sender: "AI",
+        content: response.answer,
+        sources: response.sources,
+        answerStatus: response.answerStatus,
+        errorCode: response.errorCode,
+      }]);
     } catch {
       setMessages((prev) => [...prev, {
         id: crypto.randomUUID(),
@@ -433,6 +485,36 @@ export function AiChatbotView() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const renderRelevanceBadge = (score: number | null) => {
+    if (score === null) {
+      return (
+        <span className="ws-relevance-badge ws-relevance-badge--ground">
+          {text("Tài liệu gốc", "Ground Source")}
+        </span>
+      );
+    }
+    const percentage = Math.round(score * 100);
+    if (score >= 0.85) {
+      return (
+        <span className="ws-relevance-badge ws-relevance-badge--high" title={`${percentage}% match`}>
+          {text("Độ liên quan cao", "High relevance")} · {percentage}%
+        </span>
+      );
+    }
+    if (score >= 0.70) {
+      return (
+        <span className="ws-relevance-badge ws-relevance-badge--medium" title={`${percentage}% match`}>
+          {text("Độ liên quan TB", "Medium relevance")} · {percentage}%
+        </span>
+      );
+    }
+    return (
+      <span className="ws-relevance-badge ws-relevance-badge--low" title={`${percentage}% match`}>
+        {text("Độ tin cậy thấp", "Low confidence")} · {percentage}%
+      </span>
+    );
   };
 
   const getFileIcon = (fileType?: string) => {
@@ -451,6 +533,59 @@ export function AiChatbotView() {
     if (activeMode === "SELECTED_SOURCES")
       return text("Nhập câu hỏi dựa trên các nguồn đã chọn...", "Ask about selected sources...");
     return text("Đặt câu hỏi trên toàn bộ thư viện...", "Ask across your entire library...");
+  };
+
+  const getAnswerIssueCopy = (msg: ChatMessage) => {
+    if (msg.answerStatus === "FALLBACK_WITH_SOURCES") {
+      const title = text("AI chưa tạo được phần diễn giải", "AI could not generate the narrative answer");
+      const descriptionByCode: Record<string, string> = {
+        GEMINI_MISSING_API_KEY: text(
+          "Thiếu cấu hình khóa Gemini. Hệ thống vẫn đã tìm nguồn liên quan để bạn đọc ngay.",
+          "Gemini API key is not configured. Relevant sources are still available.",
+        ),
+        GEMINI_RATE_LIMIT: text(
+          "Gemini đang bị giới hạn quota hoặc tần suất. Bạn có thể xem nguồn hoặc thử lại sau.",
+          "Gemini is rate limited or out of quota. Review the sources or retry later.",
+        ),
+        GEMINI_TIMEOUT: text(
+          "Gemini phản hồi quá lâu. Nguồn liên quan vẫn được giữ lại ở phần tham chiếu.",
+          "Gemini took too long to respond. Relevant sources are still shown.",
+        ),
+        GEMINI_NETWORK_ERROR: text(
+          "Kết nối đến Gemini gặp lỗi mạng. Hãy kiểm tra backend hoặc thử lại sau.",
+          "The Gemini connection failed. Check the backend network or retry later.",
+        ),
+        GEMINI_API_ERROR: text(
+          "Gemini trả về lỗi dịch vụ. Các trích dẫn đã tìm được vẫn có thể mở để kiểm tra.",
+          "Gemini returned a service error. Retrieved citations are still available.",
+        ),
+        GEMINI_INVALID_RESPONSE: text(
+          "Gemini trả về phản hồi rỗng. Hãy thử hỏi lại cụ thể hơn hoặc thử lại sau.",
+          "Gemini returned an empty response. Try a more specific question or retry later.",
+        ),
+      };
+      return {
+        title,
+        description:
+          descriptionByCode[msg.errorCode || ""] ||
+          text(
+            "Dịch vụ tạo sinh đang lỗi. Hệ thống vẫn đã tìm được tài liệu tham chiếu phù hợp.",
+            "The generation service failed. Relevant references were still retrieved.",
+          ),
+      };
+    }
+
+    if (msg.answerStatus === "NO_SOURCES") {
+      return {
+        title: text("Chưa tìm thấy nguồn phù hợp", "No matching source found"),
+        description: text(
+          "Thử đổi từ khóa, bỏ bớt bộ lọc hoặc chọn trực tiếp một vài tài liệu nguồn.",
+          "Try different keywords, remove filters, or select source documents directly.",
+        ),
+      };
+    }
+
+    return null;
   };
 
   return (
@@ -605,6 +740,20 @@ export function AiChatbotView() {
                       {doc.indexStatus === "READY" ? text("Sẵn sàng", "Ready") : text("Đang xử lý", "Processing")}
                     </span>
                   </div>
+                  {isCurrent && doc.indexStatus === "READY" && (
+                    <button
+                      type="button"
+                      className="ws-ask-file-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setCurrentDocumentId(doc.id);
+                        setActiveMode("CURRENT_DOCUMENT");
+                      }}
+                    >
+                      <Sparkles size={11} />
+                      <span>{text("Hỏi tài liệu này", "Ask this file")}</span>
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -642,22 +791,28 @@ export function AiChatbotView() {
           {/* Mode Selector */}
           <div className="ws-mode-selector">
             <button
-              className={`ws-mode-btn${activeMode === "CURRENT_DOCUMENT" ? " active" : ""}`}
-              onClick={() => setActiveMode("CURRENT_DOCUMENT")}
-            >
-              {text("Tài liệu Hiện tại", "Current Document")}
-            </button>
-            <button
-              className={`ws-mode-btn${activeMode === "SELECTED_SOURCES" ? " active" : ""}`}
-              onClick={() => setActiveMode("SELECTED_SOURCES")}
-            >
-              {text(`Nguồn đã chọn (${selectedDocumentIds.length})`, `Selected (${selectedDocumentIds.length})`)}
-            </button>
-            <button
+              type="button"
               className={`ws-mode-btn${activeMode === "MY_LIBRARY" ? " active" : ""}`}
               onClick={() => setActiveMode("MY_LIBRARY")}
             >
-              {text("Thư viện của tôi", "My Library")}
+              <strong>{text("Toàn bộ thư viện", "Entire Library")}</strong>
+              <small>{text("AI tự động tìm tài liệu liên quan", "AI finds relevant files automatically")}</small>
+            </button>
+            <button
+              type="button"
+              className={`ws-mode-btn${activeMode === "SELECTED_SOURCES" ? " active" : ""}`}
+              onClick={() => setActiveMode("SELECTED_SOURCES")}
+            >
+              <strong>{text(`File đã chọn (${selectedDocumentIds.length})`, `Selected Files (${selectedDocumentIds.length})`)}</strong>
+              <small>{text("AI chỉ tìm kiếm trong file được chọn", "AI searches selected files only")}</small>
+            </button>
+            <button
+              type="button"
+              className={`ws-mode-btn${activeMode === "CURRENT_DOCUMENT" ? " active" : ""}`}
+              onClick={() => setActiveMode("CURRENT_DOCUMENT")}
+            >
+              <strong>{text("Một tài liệu", "One File")}</strong>
+              <small>{text("AI trả lời từ một tài liệu cụ thể", "AI answers from one specific file")}</small>
             </button>
           </div>
 
@@ -690,83 +845,145 @@ export function AiChatbotView() {
 
         {/* Message stream */}
         <div className="ws-message-stream">
-          {messages.map((msg) => (
-            <div key={msg.id} className={`ws-message${msg.sender === "USER" ? " user" : " ai"}`}>
-              <div className="ws-message-avatar">
-                {msg.sender === "USER" ? "U" : <Sparkles size={15} />}
-              </div>
-              <div className="ws-message-bubble">
-                <div className="ws-message-text">
-                  {renderMessageContent(msg.content)}
-                </div>
-                {msg.sources.length > 0 && (
-                  <div className="ws-message-citations">
-                    {msg.sources.map((src) => (
-                      <button
-                        type="button"
-                        key={src.sourceNumber}
-                        className="ws-citation-tag"
-                        onClick={() => openCitationDrawer(src)}
-                      >
-                        <span className="ws-citation-num">[{src.sourceNumber}]</span>
-                        <span className="ws-citation-label">{src.title}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-
-          {isLoading && (
-            <div className="ws-message ai">
-              <div className="ws-message-avatar"><Sparkles size={15} /></div>
-              <div className="retrieval-skeleton">
-                <span /><span /><span />
-                <p>{text("Đang tìm câu trả lời...", "Finding an answer...")}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Empty / welcome state */}
-          {messages.length <= 1 && !isLoading && (
-            <div className="ws-empty-state">
-              <div className="ws-empty-icon"><Bot size={26} /></div>
-              <h3>{text("Hỏi đáp học tập thông minh", "Smart Academic Companion")}</h3>
+          {activeMode === "SELECTED_SOURCES" && selectedDocumentIds.length === 0 ? (
+            <div className="ws-empty-state ws-empty-state--no-selection">
+              <div className="ws-empty-icon"><AlertTriangle size={26} /></div>
+              <h3>{text("Chưa chọn tài liệu nguồn", "No source documents selected")}</h3>
               <p>
                 {text(
-                  "Đặt câu hỏi dựa trên nội dung nguồn học tập của bạn. Trích dẫn và liên kết tài liệu sẽ được đính kèm trực tiếp trong câu trả lời.",
-                  "Ask questions grounded in your learning sources. Citations and document links will be attached directly to the answers.",
+                  "Vui lòng đánh dấu chọn (checkbox) vào các tài liệu ở danh sách bên trái để đặt câu hỏi trên nhóm tài liệu đó.",
+                  "Please check the boxes next to the documents on the left sidebar to ask questions about them.",
                 )}
               </p>
-              <div className="ws-prompt-cards">
-                {(["summarize", "concepts", "quiz", "compare"] as const).map((key) => {
-                  const labels: Record<string, [string, string, string, string]> = {
-                    summarize: ["Tóm tắt tài liệu", "Summarize Source", "Trích xuất thông tin cốt lõi nhất.", "Extract the core takeaways."],
-                    concepts: ["Giải thích thuật ngữ", "Explain Concepts", "Làm rõ thuật ngữ và định lý phức tạp.", "Clarify complex terms and theorems."],
-                    quiz: ["Tạo bài trắc nghiệm", "Generate Quiz", "Tạo bộ câu hỏi để tự đánh giá.", "Generate a self-assessment quiz."],
-                    compare: ["So sánh các nguồn", "Compare Sources", "Tìm điểm tương đồng giữa các bài đọc.", "Find common themes across readings."],
-                  };
-                  const [vi, en, viSub, enSub] = labels[key];
-                  return (
-                    <div key={key} className="ws-prompt-card" onClick={() => handlePromptCardClick(key)}>
-                      <h4>{text(vi, en)}</h4>
-                      <p>{text(viSub, enSub)}</p>
-                    </div>
-                  );
-                })}
-              </div>
             </div>
+          ) : activeMode === "CURRENT_DOCUMENT" && !currentDocumentId ? (
+            <div className="ws-empty-state ws-empty-state--no-document">
+              <div className="ws-empty-icon"><FileSearch size={26} /></div>
+              <h3>{text("Chưa chọn tài liệu mục tiêu", "No target document selected")}</h3>
+              <p>
+                {text(
+                  "Vui lòng chọn một tài liệu ở danh sách bên trái và click vào nút 'Hỏi tài liệu này' để bắt đầu đặt câu hỏi.",
+                  "Please select a document from the left sidebar and click 'Ask this file' to start asking questions.",
+                )}
+              </p>
+            </div>
+          ) : (
+            <>
+              {messages.map((msg) => {
+                const answerIssue = getAnswerIssueCopy(msg);
+                return (
+                  <div key={msg.id} className={`ws-message${msg.sender === "USER" ? " user" : " ai"}`}>
+                    <div className="ws-message-avatar">
+                      {msg.sender === "USER" ? "U" : <Sparkles size={15} />}
+                    </div>
+                    <div className={`ws-message-bubble${answerIssue ? " ws-message-bubble--notice" : ""}`}>
+                      {answerIssue && (
+                        <div className="ws-answer-issue" role="status">
+                          <AlertTriangle size={16} aria-hidden="true" />
+                          <div>
+                            <strong>{answerIssue.title}</strong>
+                            <span>{answerIssue.description}</span>
+                          </div>
+                        </div>
+                      )}
+                      <div className="ws-message-text">
+                        {renderMessageContent(msg.content, msg.sources, openCitationDrawer)}
+                      </div>
+                      {msg.sources.length > 0 && (
+                        <div className="ws-message-citations">
+                          {msg.sources.map((src) => (
+                            <button
+                              type="button"
+                              key={src.sourceNumber}
+                              className="ws-citation-tag"
+                              onClick={() => openCitationDrawer(src)}
+                            >
+                              <span className="ws-citation-num">[{src.sourceNumber}]</span>
+                              <span className="ws-citation-label">{src.title}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {isLoading && (
+                <div className="ws-message ai">
+                  <div className="ws-message-avatar"><Sparkles size={15} /></div>
+                  <div className="retrieval-skeleton">
+                    <span /><span /><span />
+                    <p>{text("Đang tìm câu trả lời...", "Finding an answer...")}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Empty / welcome state */}
+              {messages.length <= 1 && !isLoading && (
+                <div className="ws-empty-state">
+                  <div className="ws-empty-icon"><Bot size={26} /></div>
+                  <h3>{text("Hỏi đáp học tập thông minh", "Smart Academic Companion")}</h3>
+                  <p>
+                    {text(
+                      "Đặt câu hỏi dựa trên nội dung nguồn học tập của bạn. Trích dẫn và liên kết tài liệu sẽ được đính kèm trực tiếp trong câu trả lời.",
+                      "Ask questions grounded in your learning sources. Citations and document links will be attached directly to the answers.",
+                    )}
+                  </p>
+                  <div className="ws-prompt-cards">
+                    {(["summarize", "concepts", "quiz", "compare"] as const).map((key) => {
+                      const labels: Record<string, [string, string, string, string]> = {
+                        summarize: ["Tóm tắt tài liệu", "Summarize Source", "Trích xuất thông tin cốt lõi nhất.", "Extract the core takeaways."],
+                        concepts: ["Giải thích thuật ngữ", "Explain Concepts", "Làm rõ thuật ngữ và định lý phức tạp.", "Clarify complex terms and theorems."],
+                        quiz: ["Tạo bài trắc nghiệm", "Generate Quiz", "Tạo bộ câu hỏi để tự đánh giá.", "Generate a self-assessment quiz."],
+                        compare: ["So sánh các nguồn", "Compare Sources", "Tìm điểm tương đồng giữa các bài đọc.", "Find common themes across readings."],
+                      };
+                      const [vi, en, viSub, enSub] = labels[key];
+                      return (
+                        <div key={key} className="ws-prompt-card" onClick={() => handlePromptCardClick(key)}>
+                          <h4>{text(vi, en)}</h4>
+                          <p>{text(viSub, enSub)}</p>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </>
           )}
           <div ref={messageEndRef} />
         </div>
 
         {/* Bottom input */}
         <div className="ws-chat-footer">
-          {activeMode === "SELECTED_SOURCES" && (
-            <div className="ws-pending-alert">
-              <AlertTriangle size={15} />
-              <span>{text("Chế độ Nguồn đã Chọn đang chờ bổ sung kết nối backend.", "Selected Sources mode is pending backend support.")}</span>
+          {/* Selected sources chips */}
+          {selectedDocumentIds.length > 0 && (
+            <div className="ws-selected-chips-container">
+              <div className="ws-selected-chips-header">
+                <span>
+                  <strong>{selectedDocumentIds.length}</strong> {text("file đã chọn", "files selected")}
+                </span>
+                <button type="button" onClick={clearSelection} className="ws-selected-clear-all">
+                  {text("Bỏ chọn tất cả", "Clear all")}
+                </button>
+              </div>
+              <div className="ws-selected-chips-list">
+                {selectedDocumentIds.map((id) => {
+                  const doc = documents.find((d) => d.id === id);
+                  if (!doc) return null;
+                  return (
+                    <div key={id} className="ws-selected-chip">
+                      <span>{doc.title}</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedDocumentIds((prev) => prev.filter((item) => item !== id))}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
           <div className="ws-input-container">
@@ -816,31 +1033,38 @@ export function AiChatbotView() {
 
         <div className="ws-references-content">
           {sources.length > 0 ? (
-            sources.map((source) => (
-              <div key={source.sourceNumber} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
-                <div className="ws-reference-title-row">
-                  <span className="ws-reference-number">{source.sourceNumber}</span>
-                  <span className="ws-reference-title" title={source.title}>{source.title}</span>
+            sources
+              .filter((source) => {
+                const threshold = 0.35;
+                return source.relevanceScore === null || source.relevanceScore >= threshold;
+              })
+              .map((source) => (
+                <div key={source.sourceNumber} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
+                  <div className="ws-reference-title-row">
+                    <span className="ws-reference-number">{source.sourceNumber}</span>
+                    <span className="ws-reference-title" title={source.title}>{source.title}</span>
+                  </div>
+                  <p className="ws-reference-snippet">{source.snippet}</p>
+                  <div className="ws-reference-footer">
+                    {renderRelevanceBadge(source.relevanceScore)}
+                    <button type="button" className="ws-open-doc-btn" onClick={(e) => { e.stopPropagation(); openCitationDrawer(source); }}>
+                      <span>{text("Xem đoạn trích", "View snippet")}</span>
+                      <ChevronRight size={12} />
+                    </button>
+                  </div>
                 </div>
-                <p className="ws-reference-snippet">{source.snippet}</p>
-                <div className="ws-reference-footer">
-                  <span>
-                    {source.relevanceScore !== null
-                      ? `${Math.round(source.relevanceScore * 100)}% Match`
-                      : "Ground Source"}
-                  </span>
-                  <button className="ws-open-doc-btn" onClick={(e) => { e.stopPropagation(); openCitationDrawer(source); }}>
-                    <span>{text("Xem đoạn trích", "View snippet")}</span>
-                    <ChevronRight size={12} />
-                  </button>
-                </div>
-              </div>
-            ))
+              ))
           ) : (
             <div className="ws-refs-empty">
               <FileSearch size={32} />
               <strong>{text("Chưa có trích dẫn", "No references yet")}</strong>
-              <p>{text("Đặt câu hỏi để hệ thống tìm kiếm và trích dẫn các tài liệu liên quan.", "Ask a question to see grounded source citations here.")}</p>
+              <p>
+                {activeMode === "CURRENT_DOCUMENT"
+                  ? text("Đặt câu hỏi để tìm kiếm trích dẫn từ tài liệu này.", "Ask a question to see citations from this document.")
+                  : activeMode === "SELECTED_SOURCES"
+                  ? text("Đặt câu hỏi để tìm kiếm trích dẫn từ các tài liệu đã chọn.", "Ask a question to see citations from selected files.")
+                  : text("Đặt câu hỏi để tìm kiếm trích dẫn từ toàn bộ thư viện của bạn.", "Ask a question to see citations from your entire library.")}
+              </p>
             </div>
           )}
         </div>
@@ -889,7 +1113,21 @@ export function AiChatbotView() {
             )}
           </div>
 
-          <div className="ws-drawer-footer">
+          <div className="ws-drawer-footer" style={{ display: "flex", gap: "10px" }}>
+            {previewCitation && documents.some((d) => d.id === previewCitation.documentId) && (
+              <button
+                type="button"
+                className="ws-drawer-footer-btn ws-drawer-footer-btn--primary"
+                onClick={() => {
+                  setCurrentDocumentId(previewCitation.documentId);
+                  setActiveMode("CURRENT_DOCUMENT");
+                  setDrawerOpen(false);
+                }}
+              >
+                <Sparkles size={16} />
+                <span>{text("Hỏi tài liệu này", "Ask this file")}</span>
+              </button>
+            )}
             <button
               className="ws-drawer-footer-btn"
               onClick={async () => {

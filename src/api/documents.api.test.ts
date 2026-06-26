@@ -25,7 +25,7 @@ describe('documents API helpers', () => {
       validateDocumentFile(
         new File([new Uint8Array(MAX_FILE_SIZE + 1)], 'large.pdf'),
       ),
-    ).toContain('20 MB')
+    ).toContain('80 MB')
   })
 
   it('requires file, title, subject, and category before upload', () => {

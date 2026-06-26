@@ -12,6 +12,8 @@ export type AiChatResponse = {
   messageId: string
   suggestedPrompts: string[]
   sources: Citation[]
+  answerStatus: 'ANSWERED' | 'FALLBACK_WITH_SOURCES' | 'NO_SOURCES'
+  errorCode?: string | null
 }
 
 export type ChatMessage = {
@@ -19,6 +21,8 @@ export type ChatMessage = {
   sender: 'USER' | 'AI'
   content: string
   sources: Citation[]
+  answerStatus?: AiChatResponse['answerStatus']
+  errorCode?: string | null
 }
 
 export type LibraryFilters = {
@@ -26,4 +30,5 @@ export type LibraryFilters = {
   subjectIds?: string[]
   categoryId?: string
   fileType?: string
+  documentIds?: string[]
 }
