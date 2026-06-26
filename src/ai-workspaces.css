@@ -3506,10 +3506,11 @@
 
   display: grid;
   grid-template-columns: 280px 1fr 300px;
-  height: calc(100vh - 68px);
+  height: calc(100vh - 72px);
   overflow: hidden;
   position: relative;
   background: var(--ws-bg);
+  transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Thin custom scrollbars inside workspace */
@@ -3535,6 +3536,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   background: var(--ws-card);
   border-right: 1px solid var(--ws-border);
@@ -4035,6 +4037,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   position: relative;
   background: #fafaf9;
@@ -4617,6 +4620,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 0;
   overflow: hidden;
   background: var(--ws-card);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -4940,6 +4944,27 @@
 }
 .ws-drawer-footer-btn--primary:hover {
   background: var(--ws-accent-light) !important;
+}
+
+/* Desktop collapsed grid modifications */
+@media (min-width: 1201px) {
+  .ai-workspace.left-collapsed {
+    grid-template-columns: 0px 1fr 300px;
+  }
+  .ai-workspace.right-collapsed {
+    grid-template-columns: 280px 1fr 0px;
+  }
+  .ai-workspace.left-collapsed.right-collapsed {
+    grid-template-columns: 0px 1fr 0px;
+  }
+}
+
+.ws-header-left-toggles,
+.ws-header-right-toggles {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
