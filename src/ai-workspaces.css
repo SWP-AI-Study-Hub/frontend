@@ -3506,11 +3506,17 @@
 
   display: grid;
   grid-template-columns: 280px 1fr 300px;
+  grid-template-rows: 1fr;
   height: calc(100vh - 72px);
   overflow: hidden;
   position: relative;
   background: var(--ws-bg);
   transition: grid-template-columns 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* All direct grid children must have min-height: 0 so internal flex/scroll works */
+.ai-workspace > * {
+  min-height: 0;
 }
 
 /* Thin custom scrollbars inside workspace */
@@ -3794,9 +3800,11 @@
 .ws-filter-chips {
   display: flex;
   gap: 5px;
-  padding: 8px 16px 4px;
+  padding: 6px 10px 4px;
   overflow-x: auto;
   flex-shrink: 0;
+  /* Prevent the chip row from stealing height from the scrollable list below */
+  min-height: 0;
 }
 .ws-filter-chip {
   background: var(--ws-bg);
