@@ -1,39 +1,53 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Bookmark, FileText, Sparkles } from "lucide-react";
 import Link from "next/link";
-import { getSavedCommunityDocuments } from "../api/community.api";
+import { fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
-import { localizeCommunityDocument } from "../i18n/document-display";
+import { localizeLibraryDocument } from "../i18n/document-display";
 import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
-import type { CommunityDocument } from "../types/community";
+import type { LibraryDocument } from "../types/document";
 
 export function SavedView() {
   const { locale } = useLanguage();
-  const text = (vi: string, en: string) => localize(locale, vi, en);
-  const [savedDocuments, setSavedDocuments] = useState<CommunityDocument[]>([]);
+  const text = useCallback((vi: string, en: string) => localize(locale, vi, en), [locale]);
+  const [savedDocuments, setSavedDocuments] = useState<LibraryDocument[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    function refreshSavedDocuments() {
-      setSavedDocuments(getSavedCommunityDocuments());
+    let isMounted = true;
+
+    async function refreshSavedDocuments() {
+      setIsLoading(true);
+      setErrorMessage("");
+      try {
+        const result = await fetchLibraryDocuments({ savedOnly: true, limit: 100 });
+        if (isMounted) setSavedDocuments(result.items);
+      } catch {
+        if (isMounted) {
+          setErrorMessage(text("Không thể tải tài liệu đã lưu.", "Unable to load saved documents."));
+        }
+      } finally {
+        if (isMounted) setIsLoading(false);
+      }
     }
 
-    refreshSavedDocuments();
+    void refreshSavedDocuments();
     window.addEventListener("focus", refreshSavedDocuments);
-    window.addEventListener("storage", refreshSavedDocuments);
 
     return () => {
+      isMounted = false;
       window.removeEventListener("focus", refreshSavedDocuments);
-      window.removeEventListener("storage", refreshSavedDocuments);
     };
-  }, []);
+  }, [locale, text]);
 
   const displayedDocuments = useMemo(
     () =>
       savedDocuments.map((document) =>
-        localizeCommunityDocument(document, locale),
+        localizeLibraryDocument(document, locale),
       ),
     [locale, savedDocuments],
   );
@@ -45,7 +59,29 @@ export function SavedView() {
         <h1>{text("Tài liệu đã lưu.", "Saved documents.")}</h1>
       </header>
       <section className="saved-source-list">
-        {displayedDocuments.length > 0 ? (
+        {isLoading ? (
+          <article>
+            <span>
+              <Sparkles size={20} />
+            </span>
+            <div>
+              <strong>{text("Đang tải tài liệu đã lưu...", "Loading saved documents...")}</strong>
+            </div>
+          </article>
+        ) : errorMessage ? (
+          <article>
+            <span>
+              <Bookmark size={20} />
+            </span>
+            <div>
+              <strong>{errorMessage}</strong>
+            </div>
+            <Link href={ROUTES.community}>
+              <Sparkles size={15} />
+              {text("Xem cộng đồng", "Browse Community")}
+            </Link>
+          </article>
+        ) : displayedDocuments.length > 0 ? (
           displayedDocuments.map((document) => (
             <article key={document.id}>
               <span>
