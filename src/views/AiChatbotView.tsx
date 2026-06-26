@@ -590,7 +590,10 @@ export function AiChatbotView() {
   };
 
   return (
-    <main id="main-content" className="ai-workspace">
+    <main
+      id="main-content"
+      className={`ai-workspace${sourcesCollapsed ? " left-collapsed" : ""}${referencesCollapsed ? " right-collapsed" : ""}`}
+    >
 
       {/* ─── LEFT SIDEBAR ─────────────────────────────────────────── */}
       <aside className={`ws-sources-panel${sourcesCollapsed ? " ws-panel--collapsed" : ""}${sourcesDrawerOpen ? " ws-panel--open" : ""}`}>
@@ -735,12 +738,20 @@ export function AiChatbotView() {
                 <div className="ws-source-details">
                   <span className="ws-source-title" title={doc.title}>{doc.title}</span>
                   <div className="ws-source-meta">
-                    {doc.isCommunitySaved ? (
-                      <span className="ws-community-badge" title={text("Đã lưu từ cộng đồng", "Saved from community")}>
-                        {text("Cộng đồng", "Community")}
-                      </span>
-                    ) : (
-                      <span>{doc.category || doc.fileType}</span>
+                    <span>{doc.fileType}</span>
+                    {doc.category && (
+                      <>
+                        <span className="ws-source-meta-dot">·</span>
+                        <span>{doc.category}</span>
+                      </>
+                    )}
+                    {doc.isCommunitySaved && (
+                      <>
+                        <span className="ws-source-meta-dot">·</span>
+                        <span className="ws-community-badge" title={text("Đã lưu từ cộng đồng", "Saved from community")}>
+                          {text("Cộng đồng", "Community")}
+                        </span>
+                      </>
                     )}
                     <span className="ws-source-meta-dot">·</span>
                     <span className={`ws-source-status${doc.indexStatus === "READY" ? " ready" : " processing"}`}>
@@ -786,14 +797,23 @@ export function AiChatbotView() {
       {/* ─── CENTER CHAT ───────────────────────────────────────────── */}
       <section className="ws-chat-panel">
         <header className="ws-chat-header">
-          {/* Mobile: open left drawer */}
-          <button
-            className="ws-toggle-btn ws-toggle-mobile"
-            onClick={() => setSourcesDrawerOpen(!sourcesDrawerOpen)}
-            title={text("Danh sách tài liệu", "Sources list")}
-          >
-            <Library size={18} />
-          </button>
+          {/* Left Toggles (Mobile & Desktop) */}
+          <div className="ws-header-left-toggles">
+            <button
+              className="ws-toggle-btn ws-toggle-mobile"
+              onClick={() => setSourcesDrawerOpen(!sourcesDrawerOpen)}
+              title={text("Danh sách tài liệu", "Sources list")}
+            >
+              <Library size={18} />
+            </button>
+            <button
+              onClick={() => setSourcesCollapsed(!sourcesCollapsed)}
+              className={`ws-toggle-btn ws-toggle-desktop${!sourcesCollapsed ? " active" : ""}`}
+              title={text("Ẩn/Hiện Sidebar Trái", "Toggle Left Sidebar")}
+            >
+              {sourcesCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            </button>
+          </div>
 
           {/* Mode Selector */}
           <div className="ws-mode-selector">
@@ -815,16 +835,8 @@ export function AiChatbotView() {
             </button>
           </div>
 
-          {/* Sidebar toggles */}
-          <div className="ws-panel-toggles">
-            <button
-              onClick={() => setSourcesCollapsed(!sourcesCollapsed)}
-              className={`ws-toggle-btn ws-toggle-desktop${!sourcesCollapsed ? " active" : ""}`}
-              title={text("Ẩn/Hiện Sidebar Trái", "Toggle Left Sidebar")}
-            >
-              {sourcesCollapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-            </button>
-            {/* Mobile: open right drawer */}
+          {/* Right Toggles (Mobile & Desktop) */}
+          <div className="ws-header-right-toggles">
             <button
               className="ws-toggle-btn ws-toggle-mobile"
               onClick={() => setReferencesDrawerOpen(!referencesDrawerOpen)}
