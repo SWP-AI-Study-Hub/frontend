@@ -31,6 +31,7 @@ import {
   createDownloadUrl,
   createPreviewUrl,
   createSubject,
+  deleteDocument,
   fetchCategories,
   fetchDocument,
   fetchLibraryDocuments,
@@ -75,7 +76,8 @@ export function LibraryView() {
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [subjects, setSubjects] = useState<SubjectItem[]>([]);
   const [categories, setCategories] = useState<CategoryItem[]>([]);
-  const [subjectCategories, setSubjectCategories] = useState<Record<string, CategoryItem[]>>({});
+  // Per-subject categories loaded on expand: subjectId -> CategoryItem[]
+  const [subjectCategoriesMap, setSubjectCategoriesMap] = useState<Record<string, CategoryItem[]>>({});
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
   const [previewDocument, setPreviewDocument] = useState<LibraryDocument>();
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
@@ -96,6 +98,10 @@ export function LibraryView() {
   const [editSubjectName, setEditSubjectName] = useState("");
   const [editSubjectCode, setEditSubjectCode] = useState("");
   const [editCategoryName, setEditCategoryName] = useState("");
+
+  // Document multi-select and delete
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
@@ -125,6 +131,7 @@ export function LibraryView() {
     let active = true;
     setIsLoading(true);
     setErrorMessage("");
+    setSelectedDocIds(new Set());
     fetchLibraryDocuments({
       search: debouncedQuery || undefined,
       subjectId: subjectId || undefined,
@@ -206,7 +213,7 @@ export function LibraryView() {
     try {
       await deleteSubject(id);
       setSubjects((current) => current.filter((s) => s.id !== id));
-      setSubjectCategories((current) => {
+      setSubjectCategoriesMap((current) => {
         const next = { ...current };
         delete next[id];
         return next;
@@ -232,7 +239,7 @@ export function LibraryView() {
       setCategories((current) =>
         current.map((c) => (c.id === id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
       );
-      setSubjectCategories((current) => {
+      setSubjectCategoriesMap((current) => {
         const next = { ...current };
         Object.keys(next).forEach((subId) => {
           next[subId] = next[subId].map((c) => (c.id === id ? updated : c));
@@ -257,7 +264,7 @@ export function LibraryView() {
     try {
       await deleteCategory(id);
       setCategories((current) => current.filter((c) => c.id !== id));
-      setSubjectCategories((current) => {
+      setSubjectCategoriesMap((current) => {
         const next = { ...current };
         Object.keys(next).forEach((subId) => {
           next[subId] = next[subId].filter((c) => c.id !== id);
@@ -309,10 +316,11 @@ export function LibraryView() {
         next.delete(id);
       } else {
         next.add(id);
-        if (!subjectCategories[id]) {
+        // Fetch categories for this subject if not loaded yet
+        if (!subjectCategoriesMap[id]) {
           fetchCategories(id)
             .then((items) => {
-              setSubjectCategories((prev) => ({ ...prev, [id]: items }));
+              setSubjectCategoriesMap((prev) => ({ ...prev, [id]: items }));
             })
             .catch(() => undefined);
         }
@@ -365,6 +373,10 @@ export function LibraryView() {
     try {
       const item = await createCategory(name, targetSubject);
       setCategories((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
+      setSubjectCategoriesMap((prev) => ({
+        ...prev,
+        [targetSubject]: [...(prev[targetSubject] ?? []), item].sort((a, b) => a.name.localeCompare(b.name)),
+      }));
       setExpandedSubjects((current) => new Set(current).add(targetSubject));
       selectFolder(targetSubject, item.id);
       setAddingCategory(false);
@@ -385,12 +397,75 @@ export function LibraryView() {
     }
   }
 
+  // Document selection
+  function toggleDocSelection(id: string) {
+    setSelectedDocIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll() {
+    if (selectedDocIds.size === documents.length && documents.length > 0) {
+      setSelectedDocIds(new Set());
+    } else {
+      setSelectedDocIds(new Set(documents.map((d) => d.id)));
+    }
+  }
+
+  async function handleDeleteSelectedDocuments() {
+    const ids = Array.from(selectedDocIds);
+    if (ids.length === 0) return;
+    const confirmMsg = ids.length === 1
+      ? text("Bạn có chắc chắn muốn xóa tài liệu này không?", "Are you sure you want to delete this document?")
+      : text(`Bạn có chắc chắn muốn xóa ${ids.length} tài liệu đã chọn không?`, `Are you sure you want to delete ${ids.length} selected documents?`);
+    if (!window.confirm(confirmMsg)) return;
+    setIsDeleting(true);
+    setErrorMessage("");
+    try {
+      await Promise.all(ids.map((id) => deleteDocument(id)));
+      setDocuments((current) => current.filter((d) => !selectedDocIds.has(d.id)));
+      setPagination((p) => ({ ...p, total: p.total - ids.length }));
+      setSelectedDocIds(new Set());
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể xóa tài liệu.", "Could not delete the document(s)."));
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  async function handleDeleteSingleDocument(id: string) {
+    if (!window.confirm(text("Bạn có chắc chắn muốn xóa tài liệu này không?", "Are you sure you want to delete this document?"))) return;
+    setIsDeleting(true);
+    setErrorMessage("");
+    try {
+      await deleteDocument(id);
+      setDocuments((current) => current.filter((d) => d.id !== id));
+      setPagination((p) => ({ ...p, total: p.total - 1 }));
+      setSelectedDocIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      if (previewDocument?.id === id) setPreviewDocument(undefined);
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : text("Không thể xóa tài liệu.", "Could not delete the document."));
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
   const getIndexStatusLabel = (indexStatus: LibraryDocument["indexStatus"]) => {
     if (indexStatus === "READY") return text("AI sẵn sàng", "AI ready");
     if (indexStatus === "PROCESSING") return text("Đang xử lý", "Processing");
     if (indexStatus === "FAILED") return text("Thất bại", "Failed");
     return text("Đang chờ", "Pending");
   };
+
+  const allSelected = documents.length > 0 && selectedDocIds.size === documents.length;
+  const someSelected = selectedDocIds.size > 0;
 
   return (
     <main id="main-content" className="library-page">
@@ -407,12 +482,16 @@ export function LibraryView() {
           <div className="folder-group-heading"><span>{text("Môn học", "Subjects")}</span><button type="button" onClick={() => setAddingSubject((value) => !value)}><Plus size={14} />{text("Thêm nhanh", "Quick add")}</button></div>
           {addingSubject ? <div className="folder-quick-add"><input value={newSubjectName} onChange={(event) => setNewSubjectName(event.target.value)} placeholder={text("Tên môn học", "Subject name")} /><input value={newSubjectCode} onChange={(event) => setNewSubjectCode(event.target.value)} placeholder={text("Mã", "Code")} /><button type="button" onClick={handleCreateSubject} disabled={isCreating || !newSubjectName.trim()}>{text("Lưu", "Save")}</button></div> : null}
 
+          <div className="folder-group-heading" style={{ marginTop: "8px" }}><span>{text("Danh mục", "Categories")}</span><button type="button" onClick={() => setAddingCategory((value) => !value)}><Plus size={14} />{text("Thêm nhanh", "Quick add")}</button></div>
+          {addingCategory ? <div className="folder-quick-add folder-quick-add--category"><input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder={text("Tên danh mục", "Category name")} /><button type="button" onClick={handleCreateCategory} disabled={isCreating || !newCategoryName.trim()}>{text("Lưu", "Save")}</button></div> : null}
+
           <nav className="library-folder-tree" aria-label={text("Thư mục theo môn học và danh mục", "Subject and category folders")}>
             {subjects.map((subject) => {
               const expanded = expandedSubjects.has(subject.id);
               const active = subjectId === subject.id && !categoryId;
               const isEditingSubject = editingSubjectId === subject.id;
-              const subjectCategories = categories.filter((category) => category.subjectId === subject.id);
+              // Use the per-subject loaded categories (from API with subjectId filter)
+              const loadedCategories = subjectCategoriesMap[subject.id] ?? [];
 
               return (
                 <div className="folder-subject" key={subject.id}>
@@ -488,7 +567,9 @@ export function LibraryView() {
 
                   {expanded ? (
                     <div className="folder-categories">
-                      {subjectCategories.map((category) => {
+                      {loadedCategories.length === 0 ? (
+                        <p className="folder-empty-hint">{text("Chưa có danh mục", "No categories yet")}</p>
+                      ) : loadedCategories.map((category) => {
                         const isEditingCategory = editingCategoryId === category.id;
                         const isCategoryActive = subjectId === subject.id && categoryId === category.id;
 
@@ -554,84 +635,12 @@ export function LibraryView() {
                           </div>
                           );
                         })}
-                      </div>
-                    ) : null}
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
           </nav>
-
-          <div className="folder-group-heading"><span>{text("Danh mục theo môn học", "Subject categories")}</span><button type="button" onClick={() => setAddingCategory((value) => !value)}><Plus size={14} />{text("Thêm nhanh", "Quick add")}</button></div>
-          {addingCategory ? <div className="folder-quick-add folder-quick-add--category"><input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder={text("Tên danh mục", "Category name")} /><button type="button" onClick={handleCreateCategory} disabled={isCreating || !newCategoryName.trim()}>{text("Lưu", "Save")}</button></div> : null}
-
-          <div className="folder-categories folder-categories--shared" style={{ marginLeft: 0, paddingLeft: 0, borderLeft: 0, marginTop: "8px" }}>
-            {categories.map((category) => {
-              const isEditingCategory = editingCategoryId === category.id;
-              const isCategoryActive = !subjectId && categoryId === category.id;
-
-              return isEditingCategory ? (
-                <form
-                  key={category.id}
-                  onSubmit={(e) => handleUpdateCategory(category.id, e)}
-                  className="folder-rename-form folder-rename-form--category"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <input
-                    type="text"
-                    value={editCategoryName}
-                    onChange={(e) => setEditCategoryName(e.target.value)}
-                    autoFocus
-                    className="rename-input"
-                    placeholder={text("Tên danh mục", "Category name")}
-                  />
-                  <button type="submit" className="folder-action-confirm-btn" title={text("Lưu", "Save")}>
-                    <Check size={14} />
-                  </button>
-                  <button type="button" onClick={cancelEdit} className="folder-action-cancel-btn" title={text("Hủy", "Cancel")}>
-                    <X size={14} />
-                  </button>
-                </form>
-              ) : (
-                <div
-                  key={category.id}
-                  className={`folder-category-row${isCategoryActive ? " active" : ""}`}
-                >
-                  <button
-                    type="button"
-                    className={`folder-category-select${isCategoryActive ? " active" : ""}`}
-                    onClick={() => selectFolder("", category.id)}
-                  >
-                    <FileText size={14} />
-                    <span>{category.name}</span>
-                  </button>
-                  <div className="folder-action-container" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      className={`folder-actions-trigger${
-                        activeMenu?.type === "category" && activeMenu?.id === category.id ? " active" : ""
-                      }`}
-                      onClick={(e) => handleMenuToggle(e, "category", category.id)}
-                      title={text("Thao tác", "Actions")}
-                    >
-                      <MoreVertical size={14} />
-                    </button>
-                    {activeMenu?.type === "category" && activeMenu?.id === category.id && (
-                      <div className="folder-dropdown-menu">
-                        <button type="button" className="folder-dropdown-item" onClick={(e) => startEditCategory(category, e)}>
-                          <Edit2 size={13} />
-                          {text("Sửa tên", "Rename")}
-                        </button>
-                        <button type="button" className="folder-dropdown-item danger" onClick={(e) => handleDeleteCategory(category.id, e)}>
-                          <Trash2 size={13} />
-                          {text("Xóa", "Delete")}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </aside>
 
         <section className="library-content">
@@ -649,12 +658,54 @@ export function LibraryView() {
 
           {errorMessage ? <div className="library-api-error" role="alert"><strong>{text("Không thể hoàn tất yêu cầu", "The request could not be completed")}</strong><p>{errorMessage}</p><button type="button" onClick={() => window.location.reload()}>{text("Thử lại", "Retry")}</button></div> : null}
 
-          <div className="library-result-count"><strong>{pagination.total} {text("tài liệu", "documents")}</strong><span>{selectedCategory?.name || selectedSubject?.name || text("Toàn bộ Library", "Entire Library")}</span></div>
+          <div className="library-result-count">
+            <strong>{pagination.total} {text("tài liệu", "documents")}</strong>
+            <span>{selectedCategory?.name || selectedSubject?.name || text("Toàn bộ Library", "Entire Library")}</span>
+            {someSelected && (
+              <span className="library-selection-info">
+                · {text(`Đã chọn ${selectedDocIds.size}`, `${selectedDocIds.size} selected`)}
+                <button
+                  type="button"
+                  className="delete-selected-btn"
+                  onClick={handleDeleteSelectedDocuments}
+                  disabled={isDeleting}
+                >
+                  <Trash2 size={14} />
+                  {text("Xóa đã chọn", "Delete selected")}
+                </button>
+                <button type="button" className="clear-selection-btn" onClick={() => setSelectedDocIds(new Set())}>
+                  <X size={14} />
+                  {text("Bỏ chọn", "Clear")}
+                </button>
+              </span>
+            )}
+          </div>
 
           {isLoading ? <div className="library-loading" aria-live="polite"><span className="spinner" />{text("Đang tải tài liệu...", "Loading documents...")}</div> : documents.length === 0 ? <div className="soft-empty-state library-empty"><Search size={28} /><strong>{text("Không có tài liệu phù hợp", "No matching documents")}</strong><p>{text("Thử thư mục khác, xóa bộ lọc hoặc tải tài liệu mới.", "Try another folder, clear filters, or upload a new document.")}</p></div> : view === "table" ? (
-            <div className="library-table-wrap"><table className="library-table"><thead><tr><th>{text("Tài liệu", "Document")}</th><th>{text("Môn học / Danh mục", "Subject / Category")}</th><th>{text("Ngày tải", "Uploaded")}</th><th>{text("AI", "AI status")}</th><th>{text("Thao tác", "Actions")}</th></tr></thead><tbody>{documents.map((document) => <tr key={document.id}><td><div className="library-document-cell"><span className="document-type-icon"><DocumentIcon type={document.fileType} /></span><span><strong>{document.title}</strong><small>{document.fileType} · {formatFileSize(document.fileSize)} · {document.visibility === "PRIVATE" ? text("riêng tư", "private") : text("công khai", "public")}</small></span></div></td><td><span className="library-taxonomy-cell"><strong>{document.subject}</strong><small>{document.category}</small></span></td><td>{new Date(document.uploadedAt).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US")}</td><td><span className={`index-status index-status--${document.indexStatus.toLowerCase()}`}>{getIndexStatusLabel(document.indexStatus)}</span></td><td><DocumentActions document={document} text={text} onPreview={() => setPreviewDocument(document)} onDownload={() => void openObject(document, "download")} /></td></tr>)}</tbody></table></div>
+            <div className="library-table-wrap"><table className="library-table"><thead><tr>
+              <th className="library-table-check"><input type="checkbox" checked={allSelected} onChange={toggleSelectAll} aria-label={text("Chọn tất cả", "Select all")} /></th>
+              <th>{text("Tài liệu", "Document")}</th><th>{text("Môn học / Danh mục", "Subject / Category")}</th><th>{text("Ngày tải", "Uploaded")}</th><th>{text("AI", "AI status")}</th><th>{text("Thao tác", "Actions")}</th>
+            </tr></thead><tbody>{documents.map((document) => <tr key={document.id} className={selectedDocIds.has(document.id) ? "row-selected" : ""}>
+              <td className="library-table-check"><input type="checkbox" checked={selectedDocIds.has(document.id)} onChange={() => toggleDocSelection(document.id)} aria-label={text(`Chọn ${document.title}`, `Select ${document.title}`)} /></td>
+              <td><div className="library-document-cell"><span className="document-type-icon"><DocumentIcon type={document.fileType} /></span><span><strong>{document.title}</strong><small>{document.fileType} · {formatFileSize(document.fileSize)} · {document.visibility === "PRIVATE" ? text("riêng tư", "private") : text("công khai", "public")}</small></span></div></td>
+              <td><span className="library-taxonomy-cell"><strong>{document.subject}</strong><small>{document.category}</small></span></td>
+              <td>{new Date(document.uploadedAt).toLocaleDateString(locale === "vi" ? "vi-VN" : "en-US")}</td>
+              <td><span className={`index-status index-status--${document.indexStatus.toLowerCase()}`}>{getIndexStatusLabel(document.indexStatus)}</span></td>
+              <td><DocumentActions document={document} text={text} onPreview={() => setPreviewDocument(document)} onDownload={() => void openObject(document, "download")} onDelete={() => void handleDeleteSingleDocument(document.id)} /></td>
+            </tr>)}</tbody></table></div>
           ) : (
-            <section className="library-card-grid">{documents.map((document) => <article className="library-document-card" key={document.id}><div className="library-card-top"><span className="document-type-icon"><DocumentIcon type={document.fileType} /></span><span className={`index-status index-status--${document.indexStatus.toLowerCase()}`}>{getIndexStatusLabel(document.indexStatus)}</span></div><div><h2>{document.title}</h2><p>{document.description || text("Chưa có mô tả.", "No description yet.")}</p></div><div className="library-card-meta"><span>{document.subject}</span><span>{document.category}</span><span>{formatFileSize(document.fileSize)}</span></div><DocumentActions document={document} text={text} onPreview={() => setPreviewDocument(document)} onDownload={() => void openObject(document, "download")} /></article>)}</section>
+            <section className="library-card-grid">{documents.map((document) => <article className={`library-document-card${selectedDocIds.has(document.id) ? " card-selected" : ""}`} key={document.id}>
+              <div className="library-card-top">
+                <label className="card-select-label" onClick={(e) => e.stopPropagation()}>
+                  <input type="checkbox" checked={selectedDocIds.has(document.id)} onChange={() => toggleDocSelection(document.id)} aria-label={text(`Chọn ${document.title}`, `Select ${document.title}`)} />
+                </label>
+                <span className="document-type-icon"><DocumentIcon type={document.fileType} /></span>
+                <span className={`index-status index-status--${document.indexStatus.toLowerCase()}`}>{getIndexStatusLabel(document.indexStatus)}</span>
+              </div>
+              <div><h2>{document.title}</h2><p>{document.description || text("Chưa có mô tả.", "No description yet.")}</p></div>
+              <div className="library-card-meta"><span>{document.subject}</span><span>{document.category}</span><span>{formatFileSize(document.fileSize)}</span></div>
+              <DocumentActions document={document} text={text} onPreview={() => setPreviewDocument(document)} onDownload={() => void openObject(document, "download")} onDelete={() => void handleDeleteSingleDocument(document.id)} />
+            </article>)}</section>
           )}
 
           {pagination.totalPages > 1 ? <nav className="library-pagination" aria-label={text("Phân trang tài liệu", "Document pagination")}><button type="button" onClick={() => setPage((value) => value - 1)} disabled={page <= 1}><ChevronLeft size={16} />{text("Trước", "Previous")}</button><span>{text(`Trang ${page} / ${pagination.totalPages}`, `Page ${page} of ${pagination.totalPages}`)}</span><button type="button" onClick={() => setPage((value) => value + 1)} disabled={page >= pagination.totalPages}>{text("Sau", "Next")}<ChevronRight size={16} /></button></nav> : null}
@@ -666,6 +717,6 @@ export function LibraryView() {
   );
 }
 
-function DocumentActions({ document, text, onPreview, onDownload }: { document: LibraryDocument; text: (vi: string, en: string) => string; onPreview: () => void; onDownload: () => void }) {
-  return <div className="document-actions"><button type="button" title={text("Xem", "View")} onClick={onPreview}><Eye size={16} /></button><button type="button" title={text("Tải xuống", "Download")} onClick={onDownload}><Download size={16} /></button>{document.indexStatus === "READY" ? <Link href={`${ROUTES.aiChat}?scope=document&document=${document.id}`} className="ask-document-action"><Bot size={16} />{text("Hỏi AI", "Ask AI")}</Link> : <button type="button" className="ask-document-action disabled" disabled><Bot size={16} />{text("Hỏi AI", "Ask AI")}</button>}</div>;
+function DocumentActions({ document, text, onPreview, onDownload, onDelete }: { document: LibraryDocument; text: (vi: string, en: string) => string; onPreview: () => void; onDownload: () => void; onDelete: () => void }) {
+  return <div className="document-actions"><button type="button" title={text("Xem", "View")} onClick={onPreview}><Eye size={16} /></button><button type="button" title={text("Tải xuống", "Download")} onClick={onDownload}><Download size={16} /></button>{document.indexStatus === "READY" ? <Link href={`${ROUTES.aiChat}?scope=document&document=${document.id}`} className="ask-document-action"><Bot size={16} />{text("Hỏi AI", "Ask AI")}</Link> : <button type="button" className="ask-document-action disabled" disabled><Bot size={16} />{text("Hỏi AI", "Ask AI")}</button>}<button type="button" className="delete-document-action" title={text("Xóa", "Delete")} onClick={onDelete}><Trash2 size={16} /></button></div>;
 }
