@@ -11,11 +11,13 @@ export type AdminDashboardSummary = {
 }
 
 export type SubjectStat = {
+  id: string
   subject: string
   count: number
 }
 
 export type CategoryStat = {
+  id: string
   category: string
   count: number
 }
@@ -324,12 +326,14 @@ export async function mockGetDashboardStatistics(): Promise<{
       categoryMap[d.category] = (categoryMap[d.category] || 0) + 1
     })
 
-  const bySubject = Object.entries(subjectMap).map(([subject, count]) => ({
+  const bySubject = Object.entries(subjectMap).map(([subject, count], index) => ({
+    id: `mock-subject-${index}`,
     subject,
     count,
   }))
 
-  const byCategory = Object.entries(categoryMap).map(([category, count]) => ({
+  const byCategory = Object.entries(categoryMap).map(([category, count], index) => ({
+    id: `mock-category-${index}`,
     category,
     count,
   }))

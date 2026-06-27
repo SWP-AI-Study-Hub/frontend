@@ -165,10 +165,12 @@ export async function getDashboardStatistics(): Promise<{
 
   return {
     bySubject: res.documents.bySubject.map((s) => ({
+      id: s.id,
       subject: s.name,
       count: s.count,
     })),
     byCategory: res.documents.byCategory.map((c) => ({
+      id: c.id,
       category: c.name,
       count: c.count,
     })),
