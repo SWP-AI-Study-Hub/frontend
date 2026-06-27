@@ -69,6 +69,11 @@ export function AdminUsersView() {
       return
     }
 
+    if (targetUser.role === 'ADMIN' && nextStatus === 'BLOCKED') {
+      setError(t('admin.adminBlock'))
+      return
+    }
+
     setUpdatingUserId(targetUser.id)
 
     try {
@@ -195,6 +200,8 @@ export function AdminUsersView() {
                       <td>
                         {item.status === 'INACTIVE' ? (
                           <span className="status-pill">INACTIVE</span>
+                        ) : item.role === 'ADMIN' || item.id === currentUser?.id ? (
+                          <span className={`status-pill ${item.status === 'ACTIVE' ? 'success' : item.status === 'BLOCKED' ? 'danger' : ''}`}>{item.status}</span>
                         ) : (
                           <select
                             value={item.status}

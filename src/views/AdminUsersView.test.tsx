@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { getUsers } from '../api/users.api'
 import { useAuth } from '../features/auth/useAuth'
 import { useLanguage } from '../i18n/LanguageProvider'
@@ -74,5 +74,50 @@ describe('AdminUsersView pagination', () => {
         limit: 10,
       })
     })
+  })
+
+  it('renders admin status as text and normal user status as dropdown', async () => {
+    const normalUser: CurrentUser = {
+      id: 'user-id-2',
+      fullName: 'Normal User',
+      email: 'user2@example.com',
+      avatarUrl: null,
+      role: 'USER',
+      status: 'ACTIVE',
+      createdAt: '2026-06-18T00:00:00.000Z',
+      lastLogin: null,
+    }
+    vi.mocked(getUsers).mockResolvedValue({
+      items: [admin, normalUser],
+      meta: {
+        page: 1,
+        limit: 10,
+        totalItems: 2,
+        totalPages: 1,
+        hasNext: false,
+        hasPrevious: false,
+      },
+    })
+
+    render(<AdminUsersView />)
+
+    await screen.findByText(admin.email)
+    await screen.findByText(normalUser.email)
+
+    // Verify table row elements
+    const rows = screen.getAllByRole('row')
+    // rows[0] is header row
+    const adminRow = rows[1]
+    const normalUserRow = rows[2]
+
+    // Admin row should show status text as span
+    const adminStatusPill = within(adminRow).getByText('ACTIVE')
+    expect(adminStatusPill.tagName.toLowerCase()).toBe('span')
+    expect(within(adminRow).queryByRole('combobox')).toBeNull()
+
+    // Normal user row should contain a select dropdown
+    const userSelect = within(normalUserRow).getByRole('combobox')
+    expect(userSelect).toBeInTheDocument()
+    expect(userSelect).toHaveValue('ACTIVE')
   })
 })
