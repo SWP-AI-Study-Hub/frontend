@@ -38,7 +38,7 @@ export function AdminDashboardView() {
   const [categoryStats, setCategoryStats] = useState<CategoryStat[]>([])
   const [uploadStats, setUploadStats] = useState<UploadStatItem[]>([])
 
-  const loadData = useCallback(async () => {
+  const loadData = useCallback(async (retryCount = 0) => {
     setIsLoading(true)
     setError('')
     try {
@@ -52,6 +52,11 @@ export function AdminDashboardView() {
       setCategoryStats(statsRes.byCategory)
       setUploadStats(uploadRes)
     } catch (err) {
+      if (retryCount < 2) {
+        const delay = (retryCount + 1) * 1000
+        await new Promise((resolve) => setTimeout(resolve, delay))
+        return loadData(retryCount + 1)
+      }
       setError(err instanceof Error ? err.message : t('common.error'))
     } finally {
       setIsLoading(false)
@@ -103,9 +108,16 @@ export function AdminDashboardView() {
         <span className="page-number">01 / ADMIN</span>
       </div>
 
-      {error ? (
+      {error && !isLoading ? (
         <div className="content-panel">
           <p className="form-error">{error}</p>
+          <button
+            className="btn btn--outline"
+            style={{ marginTop: '0.5rem' }}
+            onClick={() => void loadData()}
+          >
+            {text('Thử lại', 'Retry')}
+          </button>
         </div>
       ) : null}
 
@@ -218,7 +230,7 @@ export function AdminDashboardView() {
                     const maxCount = Math.max(...subjectStats.map((s) => s.count), 1)
                     const percentage = (item.count / maxCount) * 100
                     return (
-                      <div className="chart-bar-row" key={item.subject}>
+                      <div className="chart-bar-row" key={item.id}>
                         <span className="chart-bar-label" title={item.subject}>
                           {item.subject}
                         </span>
@@ -252,7 +264,7 @@ export function AdminDashboardView() {
                     const maxCount = Math.max(...categoryStats.map((c) => c.count), 1)
                     const percentage = (item.count / maxCount) * 100
                     return (
-                      <div className="chart-bar-row" key={item.category}>
+                      <div className="chart-bar-row" key={item.id}>
                         <span className="chart-bar-label" title={item.category}>
                           {item.category}
                         </span>
