@@ -236,7 +236,7 @@ export function retryExtraction(id: string) {
 }
 
 export function createPreviewUrl(id: string) {
-  return apiRequest<{ url: string; expiresAt?: string }>(`/documents/${id}/preview`)
+  return apiRequest<{ url: string; expiresAt?: string; contentType?: string; fallbackToOfficeViewer?: boolean }>(`/documents/${id}/preview`)
 }
 
 export function createDownloadUrl(id: string) {
