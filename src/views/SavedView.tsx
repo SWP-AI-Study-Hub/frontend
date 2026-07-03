@@ -1,21 +1,83 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Bookmark, FileText, Sparkles } from "lucide-react";
+import {
+  Bot,
+  Bookmark,
+  BookmarkX,
+  Download,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Sparkles,
+  X,
+} from "lucide-react";
 import Link from "next/link";
-import { fetchLibraryDocuments } from "../api/documents.api";
+import { unsaveCommunityDocument } from "../api/community.api";
+import {
+  createDownloadUrl,
+  createPreviewUrl,
+  fetchLibraryDocuments,
+} from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localizeLibraryDocument } from "../i18n/document-display";
 import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
 import type { LibraryDocument } from "../types/document";
 
+function DocumentIcon({ type }: { type: string }) {
+  return type === "XLSX" ? <FileSpreadsheet size={20} /> : <FileText size={20} />;
+}
+
+function shouldUseOfficeViewer(result: {
+  contentType?: string;
+  fallbackToOfficeViewer?: boolean;
+}) {
+  return Boolean(
+    result.fallbackToOfficeViewer ||
+      result.contentType?.includes("officedocument"),
+  );
+}
+
+function getPreviewFrameUrl(result: {
+  url: string;
+  contentType?: string;
+  fallbackToOfficeViewer?: boolean;
+}) {
+  return shouldUseOfficeViewer(result)
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(result.url)}`
+    : result.url;
+}
+
+function getFullPreviewUrl(result: {
+  url: string;
+  contentType?: string;
+  fallbackToOfficeViewer?: boolean;
+}) {
+  return shouldUseOfficeViewer(result)
+    ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(result.url)}`
+    : result.url;
+}
+
 export function SavedView() {
   const { locale } = useLanguage();
-  const text = useCallback((vi: string, en: string) => localize(locale, vi, en), [locale]);
+  const text = useCallback(
+    (vi: string, en: string) => localize(locale, vi, en),
+    [locale],
+  );
   const [savedDocuments, setSavedDocuments] = useState<LibraryDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [downloadingDocumentId, setDownloadingDocumentId] = useState<
+    string | null
+  >(null);
+  const [unsavingDocumentId, setUnsavingDocumentId] = useState<string | null>(
+    null,
+  );
+  const [previewDocument, setPreviewDocument] = useState<LibraryDocument>();
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
 
   useEffect(() => {
     let isMounted = true;
@@ -24,11 +86,19 @@ export function SavedView() {
       setIsLoading(true);
       setErrorMessage("");
       try {
-        const result = await fetchLibraryDocuments({ savedOnly: true, limit: 100 });
+        const result = await fetchLibraryDocuments({
+          savedOnly: true,
+          limit: 100,
+        });
         if (isMounted) setSavedDocuments(result.items);
       } catch {
         if (isMounted) {
-          setErrorMessage(text("Không thể tải tài liệu đã lưu.", "Unable to load saved documents."));
+          setErrorMessage(
+            text(
+              "Không thể tải tài liệu đã lưu.",
+              "Unable to load saved documents.",
+            ),
+          );
         }
       } finally {
         if (isMounted) setIsLoading(false);
@@ -52,6 +122,104 @@ export function SavedView() {
     [locale, savedDocuments],
   );
 
+  useEffect(() => {
+    if (!previewDocument) {
+      setPreviewUrl("");
+      setPreviewError("");
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    let active = true;
+    setPreviewUrl("");
+    setPreviewError("");
+    setIsPreviewLoading(true);
+
+    createPreviewUrl(previewDocument.id)
+      .then((result) => {
+        if (active) setPreviewUrl(getPreviewFrameUrl(result));
+      })
+      .catch((error: unknown) => {
+        if (active) {
+          setPreviewError(
+            error instanceof Error
+              ? error.message
+              : text(
+                  "Không thể tải bản xem trước.",
+                  "Could not load the preview.",
+                ),
+          );
+        }
+      })
+      .finally(() => {
+        if (active) setIsPreviewLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [previewDocument, text]);
+
+  async function openObject(document: LibraryDocument, mode: "preview" | "download") {
+    try {
+      const result =
+        mode === "preview"
+          ? await createPreviewUrl(document.id)
+          : await createDownloadUrl(document.id);
+      const url = mode === "preview" ? getFullPreviewUrl(result) : result.url;
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : text("Không thể mở tài liệu.", "Could not open the document."),
+      );
+    }
+  }
+
+  async function handleDownload(document: LibraryDocument) {
+    setErrorMessage("");
+    setDownloadingDocumentId(document.id);
+
+    try {
+      await openObject(document, "download");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : text(
+              "Không thể tải xuống tài liệu.",
+              "Unable to download the document.",
+            ),
+      );
+    } finally {
+      setDownloadingDocumentId(null);
+    }
+  }
+
+  async function handleUnsave(document: LibraryDocument) {
+    setErrorMessage("");
+    setUnsavingDocumentId(document.id);
+
+    try {
+      await unsaveCommunityDocument(document.id);
+      setSavedDocuments((current) =>
+        current.filter((item) => item.id !== document.id),
+      );
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : text(
+              "Không thể hủy lưu tài liệu.",
+              "Unable to remove the saved document.",
+            ),
+      );
+    } finally {
+      setUnsavingDocumentId(null);
+    }
+  }
+
   return (
     <main id="main-content" className="simple-workspace-page">
       <header>
@@ -65,7 +233,12 @@ export function SavedView() {
               <Sparkles size={20} />
             </span>
             <div>
-              <strong>{text("Đang tải tài liệu đã lưu...", "Loading saved documents...")}</strong>
+              <strong>
+                {text(
+                  "Đang tải tài liệu đã lưu...",
+                  "Loading saved documents...",
+                )}
+              </strong>
             </div>
           </article>
         ) : errorMessage ? (
@@ -85,7 +258,7 @@ export function SavedView() {
           displayedDocuments.map((document) => (
             <article key={document.id}>
               <span>
-                <FileText size={20} />
+                <DocumentIcon type={document.fileType} />
               </span>
               <div>
                 <strong>{document.title}</strong>
@@ -94,10 +267,40 @@ export function SavedView() {
                   {text("Đã lưu từ cộng đồng", "Saved from Community")}
                 </p>
               </div>
-              <Link href={`${ROUTES.aiChat}?scope=document`}>
-                <Sparkles size={15} />
-                {text("Hỏi AI", "Ask AI")}
-              </Link>
+              <div className="saved-source-actions">
+                <button
+                  type="button"
+                  onClick={() => setPreviewDocument(document)}
+                >
+                  <Eye size={15} />
+                  {text("Xem", "View")}
+                </button>
+                <button
+                  type="button"
+                  disabled={downloadingDocumentId === document.id}
+                  onClick={() => void handleDownload(document)}
+                >
+                  <Download size={15} />
+                  {downloadingDocumentId === document.id
+                    ? text("Đang tải...", "Downloading...")
+                    : text("Tải xuống", "Download")}
+                </button>
+                <Link href={`${ROUTES.aiChat}?scope=document&document=${document.id}`}>
+                  <Sparkles size={15} />
+                  {text("Hỏi AI", "Ask AI")}
+                </Link>
+                <button
+                  type="button"
+                  className="saved-source-unsave"
+                  disabled={unsavingDocumentId === document.id}
+                  onClick={() => void handleUnsave(document)}
+                >
+                  <BookmarkX size={15} />
+                  {unsavingDocumentId === document.id
+                    ? text("Đang hủy...", "Removing...")
+                    : text("Hủy lưu", "Unsave")}
+                </button>
+              </div>
             </article>
           ))
         ) : (
@@ -123,6 +326,125 @@ export function SavedView() {
           </article>
         )}
       </section>
+
+      {previewDocument ? (
+        <div
+          className="preview-overlay"
+          role="presentation"
+          onMouseDown={() => setPreviewDocument(undefined)}
+        >
+          <article
+            className="preview-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${text("Xem tài liệu", "View document")} ${previewDocument.title}`}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <header>
+              <div>
+                <span className="document-type-icon">
+                  <DocumentIcon type={previewDocument.fileType} />
+                </span>
+                <span>
+                  <strong>{previewDocument.title}</strong>
+                  <small>{previewDocument.fileName}</small>
+                </span>
+              </div>
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setPreviewDocument(undefined)}
+              >
+                <X size={18} />
+              </button>
+            </header>
+            <div className="preview-document-sheet">
+              {isPreviewLoading ? (
+                <div className="preview-frame-state">
+                  <span className="spinner" />
+                  {text("Đang tải bản xem trước...", "Loading preview...")}
+                </div>
+              ) : previewError ? (
+                <div className="preview-frame-state preview-frame-state--error">
+                  <strong>
+                    {text(
+                      "Không thể hiển thị bản xem trước",
+                      "Preview unavailable",
+                    )}
+                  </strong>
+                  <p>{previewError}</p>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => void openObject(previewDocument, "preview")}
+                  >
+                    <Eye size={16} />
+                    {text("Mở bản gốc", "Open original")}
+                  </button>
+                </div>
+              ) : previewUrl ? (
+                <iframe
+                  className="preview-frame"
+                  src={previewUrl}
+                  title={previewDocument.title}
+                />
+              ) : (
+                <div className="preview-frame-state">
+                  <p>{text("Chưa có bản xem trước.", "No preview available.")}</p>
+                </div>
+              )}
+            </div>
+            <div className="preview-details">
+              <p className="eyebrow">
+                {previewDocument.subject} / {previewDocument.category}
+              </p>
+              <p>
+                {previewDocument.description ||
+                  text("Chưa có mô tả.", "No description yet.")}
+              </p>
+              {previewDocument.tags.length ? (
+                <div className="preview-tag-list">
+                  {previewDocument.tags.map((tag, index) => (
+                    <span key={`${tag}-${index}`}>{tag}</span>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <footer>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void openObject(previewDocument, "preview")}
+              >
+                <Eye size={16} />
+                {text("Mở bản gốc", "Open original")}
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={() => void openObject(previewDocument, "download")}
+              >
+                <Download size={16} />
+                {text("Tải xuống", "Download")}
+              </button>
+              {previewDocument.indexStatus === "READY" ? (
+                <Link
+                  href={`${ROUTES.aiChat}?scope=document&document=${previewDocument.id}`}
+                  className="primary-button"
+                >
+                  <Bot size={16} />
+                  {text("Hỏi AI", "Ask AI")}
+                </Link>
+              ) : (
+                <button type="button" className="primary-button" disabled>
+                  <Bot size={16} />
+                  {text("AI chưa sẵn sàng", "AI not ready")}
+                </button>
+              )}
+            </footer>
+          </article>
+        </div>
+      ) : null}
     </main>
   );
 }
