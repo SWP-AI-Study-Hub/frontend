@@ -97,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firebaseAuth,
         googleAuthProvider,
       );
+      window.dispatchEvent(new Event("ai-study-hub:google-popup-resolved"));
       const idToken = await credential.user.getIdToken();
       setStoredAuthToken(idToken);
       try {
