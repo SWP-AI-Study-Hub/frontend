@@ -304,35 +304,49 @@ export function AiChatbotView() {
 
   // 4. Load sessionStorage on mount (hydration-safe)
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const requestedDocument = params.get("document");
+    const requestedScope = params.get("scope");
+    const requestedQuestion = params.get("q");
+
+    if (requestedScope === "document") {
+      setActiveMode("SELECTED_SOURCES");
+
+      if (requestedDocument) {
+        setSelectedDocumentIds([requestedDocument]);
+        setCurrentDocumentId(requestedDocument);
+        setSelectedSubjectIds([]);
+      }
+    }
+
     const savedMode = sessionStorage.getItem("documind.workspace.activeMode");
-    if (savedMode && ["SELECTED_SOURCES", "MY_LIBRARY"].includes(savedMode)) {
+    if (
+      requestedScope !== "document" &&
+      savedMode &&
+      ["SELECTED_SOURCES", "MY_LIBRARY"].includes(savedMode)
+    ) {
       setActiveMode(savedMode as ActiveMode);
-    } else {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get("scope") === "document") setActiveMode("SELECTED_SOURCES");
     }
 
     const savedSelected = sessionStorage.getItem("documind.workspace.selectedDocumentIds");
-    if (savedSelected) {
+    if (!requestedDocument && savedSelected) {
       try { setSelectedDocumentIds(JSON.parse(savedSelected)); } catch { /* ignore */ }
     }
 
     const savedSubjects = sessionStorage.getItem("documind.workspace.selectedSubjectIds");
-    if (savedSubjects) {
+    if (!requestedDocument && savedSubjects) {
       try { setSelectedSubjectIds(JSON.parse(savedSubjects)); } catch { /* ignore */ }
     }
 
     const savedCurrent = sessionStorage.getItem("documind.workspace.currentDocumentId");
-    if (savedCurrent) {
+    if (requestedDocument) {
+      setCurrentDocumentId(requestedDocument);
+    } else if (savedCurrent) {
       setCurrentDocumentId(savedCurrent);
     } else {
-      const params = new URLSearchParams(window.location.search);
-      const requestedDocument = params.get("document");
-      setCurrentDocumentId(requestedDocument || documents[0]?.id || "");
+      setCurrentDocumentId(documents[0]?.id || "");
     }
 
-    const params = new URLSearchParams(window.location.search);
-    const requestedQuestion = params.get("q");
     if (requestedQuestion) setQuestion(requestedQuestion);
   }, [documents]);
 

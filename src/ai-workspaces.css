@@ -1640,15 +1640,53 @@
 
 .preview-document-sheet {
   margin: 24px;
+  margin-bottom: 0;
   min-height: 420px;
   border: 1px solid var(--border);
-  padding: 42px;
+  padding: 0;
   background: #fcfcfb;
 }
 
-.preview-document-sheet h2 {
-  font-size: 2rem;
-  letter-spacing: 0;
+.preview-frame {
+  display: block;
+  width: 100%;
+  min-height: 420px;
+  border: 0;
+  background: #fff;
+}
+
+.preview-frame-state {
+  display: grid;
+  min-height: 420px;
+  place-items: center;
+  align-content: center;
+  gap: 12px;
+  padding: 28px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.preview-frame-state--error {
+  color: var(--ink);
+}
+
+.preview-frame-state--error p {
+  margin: 0;
+  max-width: 440px;
+  color: var(--muted);
+}
+
+.preview-details {
+  margin: 14px 24px 22px;
+  color: var(--muted);
+}
+
+.preview-details p {
+  margin: 0;
+}
+
+.preview-details .eyebrow {
+  margin-bottom: 8px;
 }
 
 .preview-document-sheet blockquote {
@@ -2059,7 +2097,16 @@
 
   .preview-document-sheet {
     margin: 14px;
-    padding: 26px;
+    margin-bottom: 0;
+  }
+
+  .preview-frame,
+  .preview-frame-state {
+    min-height: 360px;
+  }
+
+  .preview-details {
+    margin: 12px 14px 18px;
   }
 }
 
@@ -2483,13 +2530,30 @@
   color: var(--muted);
   font-size: 0.75rem;
 }
-.saved-source-list a {
+.saved-source-list a,
+.saved-source-list button {
   display: inline-flex;
   align-items: center;
   gap: 0.35rem;
+  border: 0;
+  padding: 0;
   color: var(--amber-dark);
+  background: transparent;
   font-size: 0.75rem;
   font-weight: 750;
+}
+.saved-source-list button:disabled {
+  cursor: wait;
+}
+.saved-source-list .saved-source-unsave {
+  color: var(--danger);
+}
+.saved-source-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.85rem;
+  flex-wrap: wrap;
 }
 .subscription-layout {
   display: grid;
@@ -2986,8 +3050,12 @@
   .saved-source-list article {
     grid-template-columns: auto minmax(0, 1fr);
   }
-  .saved-source-list article > a {
+  .saved-source-list article > a,
+  .saved-source-list article > .saved-source-actions {
     grid-column: 2;
+  }
+  .saved-source-actions {
+    justify-content: flex-start;
   }
 }
 

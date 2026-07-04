@@ -56,6 +56,22 @@ function DocumentIcon({ type }: { type: string }) {
   return type === "XLSX" ? <FileSpreadsheet size={20} /> : <FileText size={20} />;
 }
 
+function shouldUseOfficeViewer(result: { contentType?: string; fallbackToOfficeViewer?: boolean }) {
+  return Boolean(result.fallbackToOfficeViewer || result.contentType?.includes("officedocument"));
+}
+
+function getPreviewFrameUrl(result: { url: string; contentType?: string; fallbackToOfficeViewer?: boolean }) {
+  return shouldUseOfficeViewer(result)
+    ? `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(result.url)}`
+    : result.url;
+}
+
+function getFullPreviewUrl(result: { url: string; contentType?: string; fallbackToOfficeViewer?: boolean }) {
+  return shouldUseOfficeViewer(result)
+    ? `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(result.url)}`
+    : result.url;
+}
+
 export function LibraryView() {
   const { locale } = useLanguage();
   const text = useCallback(
@@ -80,6 +96,9 @@ export function LibraryView() {
   const [subjectCategoriesMap, setSubjectCategoriesMap] = useState<Record<string, CategoryItem[]>>({});
   const [expandedSubjects, setExpandedSubjects] = useState<Set<string>>(new Set());
   const [previewDocument, setPreviewDocument] = useState<LibraryDocument>();
+  const [previewUrl, setPreviewUrl] = useState("");
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState("");
   const [pagination, setPagination] = useState({ page: 1, limit: PAGE_SIZE, total: 0, totalPages: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
@@ -158,6 +177,35 @@ export function LibraryView() {
       active = false;
     };
   }, [categoryId, debouncedQuery, fileType, page, sort, status, subjectId, text, visibility]);
+
+  useEffect(() => {
+    if (!previewDocument) {
+      setPreviewUrl("");
+      setPreviewError("");
+      setIsPreviewLoading(false);
+      return;
+    }
+
+    let active = true;
+    setPreviewUrl("");
+    setPreviewError("");
+    setIsPreviewLoading(true);
+
+    createPreviewUrl(previewDocument.id)
+      .then((result) => {
+        if (active) setPreviewUrl(getPreviewFrameUrl(result));
+      })
+      .catch((error: unknown) => {
+        if (active) setPreviewError(error instanceof Error ? error.message : text("Không thể tải bản xem trước.", "Could not load the preview."));
+      })
+      .finally(() => {
+        if (active) setIsPreviewLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [previewDocument, text]);
 
   useEffect(() => {
     const documentId = searchParams?.get("document");
@@ -391,7 +439,8 @@ export function LibraryView() {
   async function openObject(document: LibraryDocument, mode: "preview" | "download") {
     try {
       const result = mode === "preview" ? await createPreviewUrl(document.id) : await createDownloadUrl(document.id);
-      window.open(result.url, "_blank", "noopener,noreferrer");
+      const url = mode === "preview" ? getFullPreviewUrl(result) : result.url;
+      window.open(url, "_blank", "noopener,noreferrer");
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : text("Không thể mở tài liệu.", "Could not open the document."));
     }
@@ -712,7 +761,7 @@ export function LibraryView() {
         </section>
       </div>
 
-      {previewDocument ? <div className="preview-overlay" role="presentation" onMouseDown={() => setPreviewDocument(undefined)}><article className="preview-dialog" role="dialog" aria-modal="true" aria-label={`${text("Xem tài liệu", "View document")} ${previewDocument.title}`} onMouseDown={(event) => event.stopPropagation()}><header><div><span className="document-type-icon"><DocumentIcon type={previewDocument.fileType} /></span><span><strong>{previewDocument.title}</strong><small>{previewDocument.fileName}</small></span></div><button type="button" className="icon-button" onClick={() => setPreviewDocument(undefined)}><X size={18} /></button></header><div className="preview-document-sheet"><p className="eyebrow">{previewDocument.subject} / {previewDocument.category}</p><h2>{previewDocument.title}</h2><p>{previewDocument.description || text("Chưa có mô tả.", "No description yet.")}</p><div className="preview-tag-list">{previewDocument.tags.map((tag) => <span key={tag}>{tag}</span>)}</div></div><footer><button type="button" className="secondary-button" onClick={() => void openObject(previewDocument, "preview")}><Eye size={16} />{text("Mở bản gốc", "Open original")}</button><button type="button" className="secondary-button" onClick={() => void openObject(previewDocument, "download")}><Download size={16} />{text("Tải xuống", "Download")}</button>{previewDocument.indexStatus === "READY" ? <Link href={`${ROUTES.aiChat}?scope=document&document=${previewDocument.id}`} className="primary-button"><Bot size={16} />{text("Hỏi AI", "Ask AI")}</Link> : <button type="button" className="primary-button" disabled><Bot size={16} />{text("AI chưa sẵn sàng", "AI not ready")}</button>}</footer></article></div> : null}
+      {previewDocument ? <div className="preview-overlay" role="presentation" onMouseDown={() => setPreviewDocument(undefined)}><article className="preview-dialog" role="dialog" aria-modal="true" aria-label={`${text("Xem tài liệu", "View document")} ${previewDocument.title}`} onMouseDown={(event) => event.stopPropagation()}><header><div><span className="document-type-icon"><DocumentIcon type={previewDocument.fileType} /></span><span><strong>{previewDocument.title}</strong><small>{previewDocument.fileName}</small></span></div><button type="button" className="icon-button" onClick={() => setPreviewDocument(undefined)}><X size={18} /></button></header><div className="preview-document-sheet">{isPreviewLoading ? <div className="preview-frame-state"><span className="spinner" />{text("Đang tải bản xem trước...", "Loading preview...")}</div> : previewError ? <div className="preview-frame-state preview-frame-state--error"><strong>{text("Không thể hiển thị bản xem trước", "Preview unavailable")}</strong><p>{previewError}</p><button type="button" className="secondary-button" onClick={() => void openObject(previewDocument, "preview")}><Eye size={16} />{text("Mở bản gốc", "Open original")}</button></div> : previewUrl ? <iframe className="preview-frame" src={previewUrl} title={previewDocument.title} /> : <div className="preview-frame-state"><p>{text("Chưa có bản xem trước.", "No preview available.")}</p></div>}</div><div className="preview-details"><p className="eyebrow">{previewDocument.subject} / {previewDocument.category}</p><p>{previewDocument.description || text("Chưa có mô tả.", "No description yet.")}</p>{previewDocument.tags.length ? <div className="preview-tag-list">{previewDocument.tags.map((tag, index) => <span key={`${tag}-${index}`}>{tag}</span>)}</div> : null}</div><footer><button type="button" className="secondary-button" onClick={() => void openObject(previewDocument, "preview")}><Eye size={16} />{text("Mở bản gốc", "Open original")}</button><button type="button" className="secondary-button" onClick={() => void openObject(previewDocument, "download")}><Download size={16} />{text("Tải xuống", "Download")}</button>{previewDocument.indexStatus === "READY" ? <Link href={`${ROUTES.aiChat}?scope=document&document=${previewDocument.id}`} className="primary-button"><Bot size={16} />{text("Hỏi AI", "Ask AI")}</Link> : <button type="button" className="primary-button" disabled><Bot size={16} />{text("AI chưa sẵn sàng", "AI not ready")}</button>}</footer></article></div> : null}
     </main>
   );
 }

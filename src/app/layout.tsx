@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Playfair_Display, Plus_Jakarta_Sans, Source_Code_Pro } from 'next/font/google'
 import '../index.css'
 import '../ai-workspaces.css'
+import { FlashMessageToast } from '../components/ui/FlashMessageToast'
 import { AuthProvider } from '../features/auth/AuthProvider'
 import { LanguageProvider } from '../i18n/LanguageProvider'
 
@@ -44,6 +45,7 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         </a>
         <LanguageProvider>
           <AuthProvider>{children}</AuthProvider>
+          <FlashMessageToast />
         </LanguageProvider>
       </body>
     </html>
