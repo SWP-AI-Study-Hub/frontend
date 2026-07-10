@@ -31,7 +31,6 @@ import { askLibrary } from "../api/chat.api";
 import { createDownloadUrl, fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
-import { demoLibraryAnswer } from "../lib/chat-demo";
 import type { ChatMessage, Citation } from "../types/chat";
 import { ROUTES } from "../lib/routes";
 import type { LibraryDocument } from "../types/document";
@@ -213,6 +212,14 @@ export function AiChatbotView() {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sources, setSources] = useState<Citation[]>([]);
+  const chatScopeKey = useMemo(() => {
+    if (activeMode === "SELECTED_SOURCES") {
+      return `selected:${[...selectedDocumentIds].sort().join(",")}`;
+    }
+
+    return `library:${[...selectedSubjectIds].sort().join(",")}:${fileTypeFilter}`;
+  }, [activeMode, fileTypeFilter, selectedDocumentIds, selectedSubjectIds]);
+  const previousChatScopeKey = useRef<string>();
   const visibleSources = useMemo(
     () =>
       sources.filter(
@@ -234,6 +241,13 @@ export function AiChatbotView() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
   const subjectDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
+  }, [question]);
 
   const subjects = useMemo(() => {
     const uniqueSubjects = new Map<string, { id: string; name: string }>();
@@ -301,6 +315,19 @@ export function AiChatbotView() {
       "Welcome! You are asking questions across your entire library.",
     );
   }, [activeMode, selectedSubjectIds.length, selectedSubjectNames, text]);
+
+  useEffect(() => {
+    if (previousChatScopeKey.current === undefined) {
+      previousChatScopeKey.current = chatScopeKey;
+      return;
+    }
+    if (previousChatScopeKey.current === chatScopeKey) return;
+
+    previousChatScopeKey.current = chatScopeKey;
+    setSessionId(undefined);
+    setSources([]);
+    setMessages([{ id: "welcome", sender: "AI", content: welcomeMessage, sources: [] }]);
+  }, [chatScopeKey, welcomeMessage]);
 
   // 4. Load sessionStorage on mount (hydration-safe)
   useEffect(() => {
@@ -462,11 +489,11 @@ export function AiChatbotView() {
             sessionId,
             filters: activeMode === "SELECTED_SOURCES"
               ? { documentIds: selectedDocumentIds }
-              : selectedSubjectIds.length > 0
-                ? { subjectIds: selectedSubjectIds }
-                : undefined,
-          })
-            .catch(() => demoLibraryAnswer(trimmed, locale));
+              : {
+                  subjectIds: selectedSubjectIds.length > 0 ? selectedSubjectIds : undefined,
+                  fileType: fileTypeFilter === "ALL" ? undefined : fileTypeFilter,
+                },
+          });
 
       setSessionId(response.sessionId);
       setSources(response.sources);
@@ -483,8 +510,12 @@ export function AiChatbotView() {
       setMessages((prev) => [...prev, {
         id: crypto.randomUUID(),
         sender: "AI",
-        content: text("Đã xảy ra lỗi. Vui lòng thử lại sau.", "An error occurred. Please try again."),
+        content: text(
+          "Không thể nhận phản hồi AI lúc này. Vui lòng thử lại; câu trả lời mẫu sẽ không được dùng thay thế.",
+          "The AI response is unavailable right now. Please retry; no demo answer has been substituted.",
+        ),
         sources: [],
+        errorCode: "REQUEST_FAILED",
         scope: activeMode
       }]);
     } finally {
@@ -544,6 +575,15 @@ export function AiChatbotView() {
   };
 
   const getAnswerIssueCopy = (msg: ChatMessage) => {
+    if (msg.errorCode === "REQUEST_FAILED") {
+      return {
+        title: text("Không nhận được phản hồi AI", "AI response was not received"),
+        description: text(
+          "Hệ thống không thay thế lỗi bằng câu trả lời mẫu. Hãy thử lại sau ít phút.",
+          "The system did not replace the failure with a demo answer. Please retry shortly.",
+        ),
+      };
+    }
     if (msg.answerStatus === "FALLBACK_WITH_SOURCES") {
       const title = text("AI chưa tạo được phần diễn giải", "AI could not generate the narrative answer");
       const descriptionByCode: Record<string, string> = {
@@ -1193,6 +1233,12 @@ export function AiChatbotView() {
                       <span className="ws-drawer-meta-value">{Math.round((previewCitation.relevanceScore ?? 0) * 100)}%</span>
                     </div>
                   )}
+                  {previewCitation.sourceLocator?.length ? (
+                    <div className="ws-drawer-meta-item">
+                      <span className="ws-drawer-meta-label">{text("Vị trí nguồn", "Source location")}</span>
+                      <span className="ws-drawer-meta-value">{previewCitation.sourceLocator.join(" · ")}</span>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div className="ws-drawer-snippet-section">
@@ -1200,10 +1246,10 @@ export function AiChatbotView() {
                   <div className="ws-drawer-snippet-box">{previewCitation.snippet}</div>
                 </div>
 
-                <div className="ws-drawer-notice">
+                {!previewCitation.sourceLocator?.length && <div className="ws-drawer-notice">
                   <Info size={14} style={{ flexShrink: 0, color: "var(--ws-subtle)" }} />
                   <span>{text("Lưu ý: Nhảy trang chính xác hiện tại chưa được hỗ trợ bởi dữ liệu trích xuất.", "Note: Page-level jumping is not yet supported by document extract metadata.")}</span>
-                </div>
+                </div>}
               </>
             )}
           </div>

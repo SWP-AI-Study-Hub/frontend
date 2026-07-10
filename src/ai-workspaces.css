@@ -4642,6 +4642,14 @@
   z-index: 10;
 }
 
+.ws-textarea:focus-visible,
+.ws-send-btn:focus-visible,
+.ws-inline-citation:focus-visible,
+.ws-citation-tag:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, white);
+  outline-offset: 2px;
+}
+
 .ws-references-panel.ws-panel--collapsed {
   overflow: hidden;
   width: 0;

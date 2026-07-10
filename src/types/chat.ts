@@ -4,6 +4,7 @@ export type Citation = {
   title: string
   snippet: string
   relevanceScore: number | null
+  sourceLocator?: string[]
 }
 
 export type AiChatResponse = {
