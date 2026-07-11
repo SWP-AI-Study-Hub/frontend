@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import { fetchLibraryDocuments } from '../api/documents.api'
+import { askLibrary } from '../api/chat.api'
 import { useLanguage } from '../i18n/LanguageProvider'
 import type { LibraryDocument } from '../types/document'
 import { AiChatbotView } from './AiChatbotView'
@@ -95,5 +96,23 @@ describe('AiChatbotView subject filter', () => {
       expect(screen.getByText('Database Design')).toBeInTheDocument()
     })
     expect(screen.getByText('2 subjects')).toBeInTheDocument()
+  })
+
+  it('shows an explicit failure instead of a demo answer when the chat API fails', async () => {
+    vi.mocked(askLibrary).mockRejectedValueOnce(new Error('Gemini unavailable'))
+    render(<AiChatbotView />)
+
+    await screen.findByText('AI Foundations')
+    fireEvent.change(screen.getByPlaceholderText('Ask across your entire library...'), {
+      target: { value: 'Explain embeddings' },
+    })
+    fireEvent.click(screen.getByRole('button', { name: 'Send question' }))
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(/AI response is unavailable right now/i),
+      ).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/Across your library, the strongest answer/i)).not.toBeInTheDocument()
   })
 })
