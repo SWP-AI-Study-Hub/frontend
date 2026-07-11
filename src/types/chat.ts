@@ -1,8 +1,11 @@
 export type Citation = {
+  citationId?: string
+  chunkId?: string
   sourceNumber: number
   documentId: string
   title: string
   snippet: string
+  quote?: string
   relevanceScore: number | null
   sourceLocator?: string[]
 }
