@@ -232,7 +232,10 @@ export function AiChatbotView() {
 
   // UI Panel states
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
-  const [referencesCollapsed, setReferencesCollapsed] = useState(false);
+  // References duplicate selected-source information until an answer exists.
+  // Start collapsed so the conversation remains the visual focus; users can
+  // still open the panel from the existing header toggle.
+  const [referencesCollapsed, setReferencesCollapsed] = useState(true);
   const [sourcesDrawerOpen, setSourcesDrawerOpen] = useState(false);
   const [referencesDrawerOpen, setReferencesDrawerOpen] = useState(false);
 
@@ -980,9 +983,16 @@ export function AiChatbotView() {
                           )}
                         </div>
                       )}
-                      <div className="ws-message-text">
-                        {renderMessageContent(msg.content, msg.sources, openCitationDrawer)}
-                      </div>
+                      {msg.content ? (
+                        <div className="ws-message-text">
+                          {renderMessageContent(msg.content, msg.sources, openCitationDrawer)}
+                        </div>
+                      ) : isLoading ? (
+                        <div className="retrieval-skeleton" role="status" aria-live="polite">
+                          <span /><span /><span />
+                          <p>{text("Đang tìm câu trả lời...", "Finding an answer...")}</p>
+                        </div>
+                      ) : null}
                       {msg.sources.length > 0 && (
                         <div className="ws-message-citations">
                           {msg.sources.map((src) => (
@@ -1002,16 +1012,6 @@ export function AiChatbotView() {
                   </div>
                 );
               })}
-
-              {isLoading && (
-                <div className="ws-message ai">
-                  <div className="ws-message-avatar"><Sparkles size={15} /></div>
-                  <div className="retrieval-skeleton">
-                    <span /><span /><span />
-                    <p>{text("Đang tìm câu trả lời...", "Finding an answer...")}</p>
-                  </div>
-                </div>
-              )}
 
               {/* Empty / welcome state */}
               {messages.length <= 1 && !isLoading && (
