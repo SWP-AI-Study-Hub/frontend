@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { useRouter } from 'next/navigation'
 import { fetchLibraryDocuments } from '../api/documents.api'
-import { askLibrary } from '../api/chat.api'
+import { askLibraryStream, fetchChatMessages, fetchChatSessions } from '../api/chat.api'
 import { useLanguage } from '../i18n/LanguageProvider'
 import type { LibraryDocument } from '../types/document'
 import { AiChatbotView } from './AiChatbotView'
@@ -18,6 +18,9 @@ vi.mock('../api/documents.api', () => ({
 vi.mock('../api/chat.api', () => ({
   askDocument: vi.fn(),
   askLibrary: vi.fn(),
+  askLibraryStream: vi.fn(),
+  fetchChatSessions: vi.fn(),
+  fetchChatMessages: vi.fn(),
 }))
 
 vi.mock('../i18n/LanguageProvider', () => ({
@@ -77,6 +80,17 @@ describe('AiChatbotView subject filter', () => {
       items: documents,
       pagination: { page: 1, limit: 100, total: 2, totalPages: 1 },
     })
+    vi.mocked(fetchChatSessions).mockResolvedValue({
+      items: [],
+      meta: {
+        page: 1,
+        limit: 20,
+        totalItems: 0,
+        totalPages: 0,
+        hasNext: false,
+        hasPrevious: false,
+      },
+    })
   })
 
   it('supports selecting multiple subjects and filters the source list', async () => {
@@ -99,7 +113,7 @@ describe('AiChatbotView subject filter', () => {
   })
 
   it('shows an explicit failure instead of a demo answer when the chat API fails', async () => {
-    vi.mocked(askLibrary).mockRejectedValueOnce(new Error('Gemini unavailable'))
+    vi.mocked(askLibraryStream).mockRejectedValueOnce(new Error('Gemini unavailable'))
     render(<AiChatbotView />)
 
     await screen.findByText('AI Foundations')
@@ -114,5 +128,73 @@ describe('AiChatbotView subject filter', () => {
       ).toBeInTheDocument()
     })
     expect(screen.queryByText(/Across your library, the strongest answer/i)).not.toBeInTheDocument()
+  })
+
+  it('loads a past conversation from the history dropdown', async () => {
+    vi.mocked(fetchChatSessions).mockResolvedValue({
+      items: [
+        {
+          id: 'session-1',
+          mode: 'ASK_MY_LIBRARY',
+          documentId: null,
+          title: 'What is an embedding?',
+          document: null,
+          messageCount: 2,
+          lastMessage: null,
+          createdAt: '2026-07-12T00:00:00.000Z',
+          updatedAt: '2026-07-12T00:00:00.000Z',
+        },
+      ],
+      meta: {
+        page: 1,
+        limit: 20,
+        totalItems: 1,
+        totalPages: 1,
+        hasNext: false,
+        hasPrevious: false,
+      },
+    })
+    vi.mocked(fetchChatMessages).mockResolvedValue({
+      items: [
+        {
+          id: 'm1',
+          sessionId: 'session-1',
+          sender: 'USER',
+          content: 'What is an embedding?',
+          sources: [],
+          createdAt: '2026-07-12T00:00:00.000Z',
+        },
+        {
+          id: 'm2',
+          sessionId: 'session-1',
+          sender: 'AI',
+          content: 'An embedding is a vector representation.',
+          sources: [],
+          createdAt: '2026-07-12T00:00:01.000Z',
+        },
+      ],
+      meta: {
+        page: 1,
+        limit: 100,
+        totalItems: 2,
+        totalPages: 1,
+        hasNext: false,
+        hasPrevious: false,
+      },
+    })
+    render(<AiChatbotView />)
+
+    await screen.findByText('AI Foundations')
+    fireEvent.click(screen.getByRole('button', { name: /Chat history/i }))
+
+    const sessionEntry = await screen.findByText('What is an embedding?')
+    fireEvent.click(sessionEntry)
+
+    await waitFor(() => {
+      expect(
+        screen.getByText('An embedding is a vector representation.'),
+      ).toBeInTheDocument()
+    })
+    expect(fetchChatMessages).toHaveBeenCalledWith('session-1')
   })
 })
