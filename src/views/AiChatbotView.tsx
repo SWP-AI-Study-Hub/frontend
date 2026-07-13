@@ -159,7 +159,19 @@ function renderMessageContent(
         tr: ({ children }) => <tr className="border-b border-slate-100 last:border-0">{children}</tr>,
         th: ({ children }) => <th className="px-4 py-2 text-left font-semibold text-slate-700">{renderChildren(children)}</th>,
         td: ({ children }) => <td className="px-4 py-2 text-slate-600 break-words">{renderChildren(children)}</td>,
-        code: ({ className, children, ...props }: any) => {
+        code: ({
+          className,
+          children,
+          inline,
+          node,
+          ...props
+        }: React.ComponentPropsWithoutRef<"code"> & {
+          inline?: boolean;
+          node?: unknown;
+        }) => {
+          // Avoid unused variable warnings
+          void inline;
+          void node;
           const match = /language-(\w+)/.exec(className || "");
           const isInline = !match;
           if (isInline) {
@@ -646,8 +658,8 @@ export function AiChatbotView() {
         errorCode: response.errorCode,
         status: "completed",
       } : message));
-    } catch (err: any) {
-      const isAborted = err.name === "AbortError" || controller.signal.aborted;
+    } catch (err: unknown) {
+      const isAborted = (err instanceof Error && err.name === "AbortError") || controller.signal.aborted;
 
       if (hasEmittedToken) {
         setMessages((prev) => prev.map((message) => message.id === pendingMessageId ? {
