@@ -4078,6 +4078,86 @@
   color: #fff;
 }
 
+.ws-inline-citation-group {
+  display: inline;
+  white-space: nowrap;
+}
+
+/* Chat history dropdown */
+.ws-history {
+  position: relative;
+}
+
+.ws-history-dropdown {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 300px;
+  overflow: hidden;
+  border: 1px solid var(--ws-border);
+  border-radius: 10px;
+  background: var(--ws-card);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
+}
+
+.ws-history-heading {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--ws-border);
+  font-size: 0.72rem;
+}
+
+.ws-history-empty {
+  padding: 16px 12px;
+  color: var(--ws-subtle);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.ws-history-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ws-history-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--ws-border);
+  padding: 9px 12px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.ws-history-item:last-child {
+  border-bottom: 0;
+}
+
+.ws-history-item:hover,
+.ws-history-item.active {
+  background: var(--ws-accent-soft);
+}
+
+.ws-history-item strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.ws-history-item small {
+  color: var(--ws-subtle);
+  font-size: 0.66rem;
+}
+
 /* Sources footer */
 .ws-sources-footer {
   display: flex;

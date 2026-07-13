@@ -1,5 +1,33 @@
 import { API_BASE_URL, apiRequest, getApiAuthorizationToken } from '../lib/http'
-import type { AiChatResponse, LibraryFilters } from '../types/chat'
+import type {
+  AiChatResponse,
+  ChatMessageListResponse,
+  ChatSessionListResponse,
+  LibraryFilters,
+} from '../types/chat'
+
+export function fetchChatSessions(params: {
+  mode?: 'ASK_THIS_DOCUMENT' | 'ASK_MY_LIBRARY'
+  documentId?: string
+  page?: number
+  limit?: number
+} = {}) {
+  const query = new URLSearchParams()
+  if (params.mode) query.set('mode', params.mode)
+  if (params.documentId) query.set('documentId', params.documentId)
+  query.set('page', String(params.page ?? 1))
+  query.set('limit', String(params.limit ?? 20))
+  return apiRequest<ChatSessionListResponse>(`/chat/sessions?${query.toString()}`)
+}
+
+export function fetchChatMessages(sessionId: string, params: { page?: number; limit?: number } = {}) {
+  const query = new URLSearchParams()
+  query.set('page', String(params.page ?? 1))
+  query.set('limit', String(params.limit ?? 100))
+  return apiRequest<ChatMessageListResponse>(
+    `/chat/messages/${sessionId}?${query.toString()}`,
+  )
+}
 
 export function askDocument(payload: {
   documentId: string
