@@ -26,136 +26,175 @@ import {
   ArrowDownToLine,
   Check,
   ChevronDown,
+  History,
+  MessageSquarePlus,
 } from "lucide-react";
 import { askLibrary, fetchChatMessages } from "../api/chat.api";
 import { createDownloadUrl, fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
-import { demoLibraryAnswer } from "../lib/chat-demo";
-import type { ChatMessage, Citation } from "../types/chat";
+import type { ChatMessage, ChatSessionSummary, Citation } from "../types/chat";
 import { ROUTES } from "../lib/routes";
 import type { LibraryDocument } from "../types/document";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 type ActiveMode = "SELECTED_SOURCES" | "MY_LIBRARY";
+
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      type="button"
+      className="text-slate-400 hover:text-slate-200 transition-colors flex items-center gap-1 border border-slate-700 rounded px-2 py-0.5 text-xs bg-slate-800"
+    >
+      {copied ? "Copied!" : "Copy"}
+    </button>
+  );
+}
+
+function tokenizeText(text: string): { type: "text" | "citation"; content?: string; numbers?: number[] }[] {
+  const regex = /(\[\[cite:\s*\d+(?:\s*,\s*\d+)*\]\]|\[(?:Source\s+)?\d+(?:\s*,\s*\d+)*\](?!\())/gi;
+  const parts = text.split(regex);
+  const tokens: { type: "text" | "citation"; content?: string; numbers?: number[] }[] = [];
+
+  for (const part of parts) {
+    if (!part) continue;
+
+    const canonicalMatch = part.match(/^\[\[cite:\s*(\d+(?:\s*,\s*\d+)*)\]\]$/i);
+    if (canonicalMatch) {
+      const numbers = canonicalMatch[1].split(",").map(num => parseInt(num.trim(), 10)).filter(n => !isNaN(n));
+      tokens.push({ type: "citation", numbers });
+      continue;
+    }
+
+    const legacyMatch = part.match(/^\[(?:Source\s+)?(\d+(?:\s*,\s*\d+)*)\]$/i);
+    if (legacyMatch) {
+      const numbers = legacyMatch[1].split(",").map(num => parseInt(num.trim(), 10)).filter(n => !isNaN(n));
+      tokens.push({ type: "citation", numbers });
+      continue;
+    }
+
+    tokens.push({ type: "text", content: part });
+  }
+
+  return tokens;
+}
+
+function parseTextForCitations(
+  text: string,
+  citations: Citation[] = [],
+  onCitationClick?: (citation: Citation) => void
+): React.ReactNode {
+  const tokens = tokenizeText(text);
+  return tokens.flatMap((token, idx) => {
+    if (token.type === "citation" && token.numbers) {
+      return (
+        <span key={`cite-group-${idx}`} className="ws-inline-citation-group">
+          {token.numbers.map((sourceNumber, numIdx) => {
+            const citation = citations.find((c) => c.sourceNumber === sourceNumber);
+            if (citation && onCitationClick) {
+              return (
+                <button
+                  key={`cite-${idx}-${numIdx}`}
+                  type="button"
+                  className="ws-inline-citation"
+                  onClick={() => onCitationClick(citation)}
+                  title={citation.title}
+                >
+                  [{sourceNumber}]
+                </button>
+              );
+            }
+            return <span key={`cite-text-${idx}-${numIdx}`}>[{sourceNumber}]</span>;
+          })}
+        </span>
+      );
+    }
+    return token.content || "";
+  });
+}
 
 function renderMessageContent(
   content: string,
   citations: Citation[] = [],
   onCitationClick?: (citation: Citation) => void
 ) {
-  const lines = content.split("\n");
-  const elements: React.ReactNode[] = [];
-  let currentList: { type: "ul" | "ol"; items: string[] } | null = null;
-
-  const parseInline = (text: string) => {
-    // Basic bold parsing: **text**
-    const boldParts = text.split(/(\*\*.*?\*\*)/g);
-    return boldParts.flatMap((boldPart, boldIdx) => {
-      if (boldPart.startsWith("**") && boldPart.endsWith("**")) {
-        return <strong key={`b-${boldIdx}`}>{boldPart.slice(2, -2)}</strong>;
+  const renderChildren = (children: React.ReactNode): React.ReactNode => {
+    return React.Children.map(children, (child) => {
+      if (typeof child === "string") {
+        return parseTextForCitations(child, citations, onCitationClick);
       }
-
-      // Parse citations: e.g. [Source 1], [Source 2], [1], [2] inside normal text
-      const citationRegex = /(\[Source\s+\d+\]|\[\d+\])/gi;
-      const citationParts = boldPart.split(citationRegex);
-
-      return citationParts.map((part, citeIdx) => {
-        if (/^(\[Source\s+\d+\]|\[\d+\])$/i.test(part)) {
-          const match = part.match(/\d+/);
-          if (match) {
-            const sourceNumber = parseInt(match[0], 10);
-            const citation = citations.find((c) => c.sourceNumber === sourceNumber);
-            if (citation && onCitationClick) {
-              return (
-                <button
-                  key={`cite-${boldIdx}-${citeIdx}`}
-                  type="button"
-                  className="ws-inline-citation"
-                  onClick={() => onCitationClick(citation)}
-                  title={citation.title}
-                >
-                  {part}
-                </button>
-              );
-            }
-          }
-        }
-        return part;
-      });
+      return child;
     });
   };
 
-  const flushList = (key: string | number) => {
-    if (!currentList) return null;
-    const listItems = currentList.items.map((item, idx) => (
-      <li key={idx}>{parseInline(item)}</li>
-    ));
-    const listNode =
-      currentList.type === "ul" ? (
-        <ul key={key} className="ws-chat-ul">{listItems}</ul>
-      ) : (
-        <ol key={key} className="ws-chat-ol">{listItems}</ol>
-      );
-    currentList = null;
-    return listNode;
-  };
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      if (currentList) {
-        elements.push(flushList(i));
-      }
-      continue;
-    }
-
-    // Unordered list item: starts with * or -
-    const ulMatch = line.match(/^(\s*)[*-]\s+(.*)$/);
-    if (ulMatch) {
-      const itemContent = ulMatch[2];
-      if (currentList && currentList.type !== "ul") {
-        elements.push(flushList(i));
-      }
-      if (!currentList) {
-        currentList = { type: "ul", items: [] };
-      }
-      currentList.items.push(itemContent);
-      continue;
-    }
-
-    // Ordered list item: starts with 1. 2. etc
-    const olMatch = line.match(/^(\s*)\d+\.\s+(.*)$/);
-    if (olMatch) {
-      const itemContent = olMatch[2];
-      if (currentList && currentList.type !== "ol") {
-        elements.push(flushList(i));
-      }
-      if (!currentList) {
-        currentList = { type: "ol", items: [] };
-      }
-      currentList.items.push(itemContent);
-      continue;
-    }
-
-    // Normal line: if we had a list, flush it
-    if (currentList) {
-      elements.push(flushList(i));
-    }
-
-    elements.push(
-      <p key={i} className="ws-chat-p">
-        {parseInline(line)}
-      </p>
-    );
-  }
-
-  if (currentList) {
-    elements.push(flushList("end"));
-  }
-
-  return elements;
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => <p className="ws-chat-p">{renderChildren(children)}</p>,
+        li: ({ children }) => <li>{renderChildren(children)}</li>,
+        h1: ({ children }) => <h1 className="text-2xl font-bold my-3">{renderChildren(children)}</h1>,
+        h2: ({ children }) => <h2 className="text-xl font-bold my-2">{renderChildren(children)}</h2>,
+        h3: ({ children }) => <h3 className="text-lg font-bold my-2">{renderChildren(children)}</h3>,
+        h4: ({ children }) => <h4 className="text-base font-bold my-1">{renderChildren(children)}</h4>,
+        table: ({ children }) => (
+          <div className="overflow-x-auto max-w-full my-4 rounded-lg border border-slate-200">
+            <table className="min-w-max w-full text-sm border-collapse">{children}</table>
+          </div>
+        ),
+        thead: ({ children }) => <thead className="bg-slate-50 border-b border-slate-200">{children}</thead>,
+        tbody: ({ children }) => <tbody>{children}</tbody>,
+        tr: ({ children }) => <tr className="border-b border-slate-100 last:border-0">{children}</tr>,
+        th: ({ children }) => <th className="px-4 py-2 text-left font-semibold text-slate-700">{renderChildren(children)}</th>,
+        td: ({ children }) => <td className="px-4 py-2 text-slate-600 break-words">{renderChildren(children)}</td>,
+        code: ({
+          className,
+          children,
+          inline,
+          node,
+          ...props
+        }: React.ComponentPropsWithoutRef<"code"> & {
+          inline?: boolean;
+          node?: unknown;
+        }) => {
+          // Avoid unused variable warnings
+          void inline;
+          void node;
+          const match = /language-(\w+)/.exec(className || "");
+          const isInline = !match;
+          if (isInline) {
+            return (
+              <code className="bg-slate-100 dark:bg-slate-800 px-1 py-0.5 rounded text-sm font-mono" {...props}>
+                {children}
+              </code>
+            );
+          }
+          const codeString = String(children).replace(/\n$/, "");
+          return (
+            <div className="overflow-hidden rounded-lg border border-slate-700 bg-slate-950 my-4 text-left">
+              <div className="flex items-center justify-between px-4 py-2 bg-slate-900 text-slate-400 text-xs border-b border-slate-800 select-none">
+                <span className="font-mono">{match ? match[1] : "code"}</span>
+                <CopyButton value={codeString} />
+              </div>
+              <pre className="overflow-x-auto p-4 font-mono text-slate-100 text-sm whitespace-pre">
+                <code>{children}</code>
+              </pre>
+            </div>
+          );
+        }
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
 }
 
 export function AiChatbotView() {
@@ -210,7 +249,6 @@ export function AiChatbotView() {
   const [subjectDropdownOpen, setSubjectDropdownOpen] = useState(false);
 
   const [question, setQuestion] = useState("");
-  const [sessionId, setSessionId] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sources, setSources] = useState<Citation[]>([]);
@@ -246,7 +284,10 @@ export function AiChatbotView() {
 
   // UI Panel states
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
-  const [referencesCollapsed, setReferencesCollapsed] = useState(false);
+  // References duplicate selected-source information until an answer exists.
+  // Start collapsed so the conversation remains the visual focus; users can
+  // still open the panel from the existing header toggle.
+  const [referencesCollapsed, setReferencesCollapsed] = useState(true);
   const [sourcesDrawerOpen, setSourcesDrawerOpen] = useState(false);
   const [referencesDrawerOpen, setReferencesDrawerOpen] = useState(false);
 
@@ -257,6 +298,18 @@ export function AiChatbotView() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
   const subjectDropdownRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const handleStopGeneration = useCallback(() => {
+    abortControllerRef.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 180)}px`;
+  }, [question]);
 
   const subjects = useMemo(() => {
     const uniqueSubjects = new Map<string, { id: string; name: string }>();
@@ -303,27 +356,18 @@ export function AiChatbotView() {
     return () => document.removeEventListener("mousedown", closeSubjectDropdown);
   }, []);
 
+  useEffect(() => {
+    function closeHistoryDropdown(event: MouseEvent) {
+      if (historyRef.current && !historyRef.current.contains(event.target as Node)) {
+        setHistoryOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", closeHistoryDropdown);
+    return () => document.removeEventListener("mousedown", closeHistoryDropdown);
+  }, []);
 
 
-  // Welcome message per mode
-  const welcomeMessage = useMemo(() => {
-    if (activeMode === "SELECTED_SOURCES") {
-      return text(
-        "Hãy chọn các tài liệu từ danh sách bên trái để đặt câu hỏi.",
-        "Select documents from the list on the left to ask questions based on them.",
-      );
-    }
-    if (selectedSubjectIds.length > 0) {
-      return text(
-        `Chào mừng! Bạn đang đặt câu hỏi trong các môn: ${selectedSubjectNames.join(", ")}.`,
-        `Welcome! You are asking questions across: ${selectedSubjectNames.join(", ")}.`,
-      );
-    }
-    return text(
-      "Chào mừng! Bạn đang đặt câu hỏi trên toàn bộ thư viện của mình.",
-      "Welcome! You are asking questions across your entire library.",
-    );
-  }, [activeMode, selectedSubjectIds.length, selectedSubjectNames, text]);
 
   // 4. Load sessionStorage on mount (hydration-safe)
   useEffect(() => {
@@ -381,10 +425,13 @@ export function AiChatbotView() {
 
   // 6. Initialize welcome message if empty
   useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([{ id: "welcome", sender: "AI", content: welcomeMessage, sources: [] }]);
+    if (libraryMessages.length === 0) {
+      setLibraryMessages([{ id: "welcome-library", sender: "AI", content: text("Chào mừng! Bạn đang đặt câu hỏi trên toàn bộ thư viện của mình.", "Welcome! You are asking across your entire library."), sources: [] }]);
     }
-  }, [welcomeMessage, messages.length]);
+    if (selectedMessages.length === 0) {
+      setSelectedMessages([{ id: "welcome-selected", sender: "AI", content: text("Đánh dấu chọn file ở danh sách bên trái, rồi đặt câu hỏi — AI sẽ chỉ tìm trong các file đó.", "Check files on the left list, then ask — the AI only searches those files."), sources: [] }]);
+    }
+  }, [libraryMessages.length, selectedMessages.length, text]);
 
   // Auto-scroll
   useEffect(() => { messageEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isLoading]);
@@ -466,15 +513,79 @@ export function AiChatbotView() {
     textareaRef.current?.focus();
   };
 
+  // History helpers
+  const openHistory = async () => {
+    const nextOpen = !historyOpen;
+    setHistoryOpen(nextOpen);
+    if (!nextOpen) return;
+    setHistoryLoading(true);
+    setHistoryError(false);
+    try {
+      const response = await fetchChatSessions({ mode: "ASK_MY_LIBRARY", limit: 20 });
+      setHistorySessions(response.items.filter((session) => session.messageCount > 0));
+    } catch {
+      setHistoryError(true);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  const loadSession = async (session: ChatSessionSummary) => {
+    setHistoryOpen(false);
+    setIsLoading(true);
+    try {
+      const response = await fetchChatMessages(session.id);
+      const loadedMessages: ChatMessage[] = response.items.map((message) => ({
+        id: message.id,
+        sender: message.sender,
+        content: message.content,
+        sources: message.sources ?? [],
+        scope: activeMode,
+      }));
+      setSessionId(session.id);
+      setMessages(loadedMessages);
+      const lastSources = [...response.items].reverse().find((message) => message.sources?.length)?.sources ?? [];
+      setSources(lastSources);
+      // Continuing an old session keeps its own scope semantics; forget the
+      // local fingerprint so the next question does not force a reset.
+      lastScopeKeyRef.current[activeMode] = undefined;
+    } catch {
+      setMessages((prev) => [...prev, {
+        id: crypto.randomUUID(),
+        sender: "AI",
+        content: text(
+          "Không tải được cuộc trò chuyện này. Vui lòng thử lại.",
+          "Could not load this conversation. Please try again.",
+        ),
+        sources: [],
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const startNewChat = () => {
+    setHistoryOpen(false);
+    setSessionId(undefined);
+    setSources([]);
+    setMessages([]);
+    lastScopeKeyRef.current[activeMode] = undefined;
+  };
+
   // 7. Submit question
   const submitQuestion = async () => {
     const trimmed = question.trim();
     if (!trimmed || isLoading) return;
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setMessages((prev) => [...prev, { id: crypto.randomUUID(), sender: "USER", content: trimmed, sources: [], scope: activeMode }]);
     setQuestion("");
     setIsLoading(true);
-    setSources([]);
 
     if (activeMode === "SELECTED_SOURCES" && selectedDocumentIds.length === 0) {
       setTimeout(() => {
@@ -493,39 +604,96 @@ export function AiChatbotView() {
       return;
     }
 
+    // Reset the session whenever the retrieval scope changed since the last
+    // question, so a new scope never inherits the previous conversation.
+    const scopeKey =
+      activeMode === "SELECTED_SOURCES"
+        ? [...selectedDocumentIds].sort().join(",")
+        : `${[...selectedSubjectIds].sort().join(",")}|${fileTypeFilter}`;
+    const lastScopeKey = lastScopeKeyRef.current[activeMode];
+    const requestSessionId =
+      lastScopeKey !== undefined && lastScopeKey !== scopeKey ? undefined : sessionId;
+    if (requestSessionId === undefined && sessionId !== undefined) {
+      setSessionId(undefined);
+    }
+    lastScopeKeyRef.current[activeMode] = scopeKey;
+
+    let hasEmittedToken = false;
+    const pendingMessageId = crypto.randomUUID();
+
     try {
-      const response = await askLibrary({
+      setMessages((prev) => [...prev.filter((message) => message.content), {
+        id: pendingMessageId,
+        sender: "AI",
+        content: "",
+        sources: [],
+        scope: activeMode,
+        status: "pending",
+      }]);
+      const response = await askLibraryStream({
             question: trimmed,
-            sessionId,
+            sessionId: requestSessionId,
             filters: activeMode === "SELECTED_SOURCES"
               ? { documentIds: selectedDocumentIds }
-              : selectedSubjectIds.length > 0
-                ? { subjectIds: selectedSubjectIds }
-                : undefined,
-          })
-            .catch(() => demoLibraryAnswer(trimmed, locale));
+              : {
+                  subjectIds: selectedSubjectIds.length > 0 ? selectedSubjectIds : undefined,
+                  fileType: fileTypeFilter === "ALL" ? undefined : fileTypeFilter,
+                },
+          }, {
+            onSources: (nextSources) => {
+              setMessages((prev) => prev.map((message) => message.id === pendingMessageId ? { ...message, sources: nextSources } : message));
+            },
+            onDelta: (delta) => {
+              hasEmittedToken = true;
+              setMessages((prev) => prev.map((message) => message.id === pendingMessageId ? { ...message, content: message.content + delta, status: "streaming" } : message));
+            },
+          },
+          controller.signal
+      );
 
       setSessionId(response.sessionId);
       setSources(response.sources);
-      setMessages((prev) => [...prev, {
-        id: response.messageId,
-        sender: "AI",
+      setMessages((prev) => prev.map((message) => message.id === pendingMessageId ? {
+        ...message,
         content: response.answer,
         sources: response.sources,
         answerStatus: response.answerStatus,
         errorCode: response.errorCode,
-        scope: activeMode
-      }]);
-    } catch {
-      setMessages((prev) => [...prev, {
-        id: crypto.randomUUID(),
-        sender: "AI",
-        content: text("Đã xảy ra lỗi. Vui lòng thử lại sau.", "An error occurred. Please try again."),
-        sources: [],
-        scope: activeMode
-      }]);
+        status: "completed",
+      } : message));
+    } catch (err: unknown) {
+      const isAborted = (err instanceof Error && err.name === "AbortError") || controller.signal.aborted;
+
+      if (hasEmittedToken) {
+        setMessages((prev) => prev.map((message) => message.id === pendingMessageId ? {
+          ...message,
+          status: "interrupted",
+          interruptionReason: isAborted ? "client_abort" : "stream_error",
+        } : message));
+      } else {
+        setMessages((prev) => [
+          ...prev.filter((message) => message.id !== pendingMessageId),
+          {
+            id: crypto.randomUUID(),
+            sender: "AI",
+            content: isAborted 
+              ? text("Yêu cầu đã bị hủy.", "The request was cancelled.")
+              : text(
+                  "Không thể nhận phản hồi AI lúc này. Vui lòng thử lại.",
+                  "The AI response is unavailable right now. Please retry."
+                ),
+            sources: [],
+            errorCode: "REQUEST_FAILED",
+            scope: activeMode,
+            status: "failed",
+          }
+        ]);
+      }
     } finally {
       setIsLoading(false);
+      if (abortControllerRef.current === controller) {
+        abortControllerRef.current = null;
+      }
     }
   };
 
@@ -537,24 +705,23 @@ export function AiChatbotView() {
         </span>
       );
     }
-    const percentage = Math.round(score * 100);
     if (score >= 0.85) {
       return (
-        <span className="ws-relevance-badge ws-relevance-badge--high" title={`${percentage}% match`}>
-          {text("Độ liên quan cao", "High relevance")} · {percentage}%
+        <span className="ws-relevance-badge ws-relevance-badge--high">
+          {text("Độ liên quan cao", "High relevance")}
         </span>
       );
     }
     if (score >= 0.70) {
       return (
-        <span className="ws-relevance-badge ws-relevance-badge--medium" title={`${percentage}% match`}>
-          {text("Độ liên quan TB", "Medium relevance")} · {percentage}%
+        <span className="ws-relevance-badge ws-relevance-badge--medium">
+          {text("Có liên quan", "Relevant")}
         </span>
       );
     }
     return (
-      <span className="ws-relevance-badge ws-relevance-badge--low" title={`${percentage}% match`}>
-        {text("Độ tin cậy thấp", "Low confidence")} · {percentage}%
+      <span className="ws-relevance-badge ws-relevance-badge--low">
+        {text("Nguồn bổ sung", "Supporting source")}
       </span>
     );
   };
@@ -581,6 +748,15 @@ export function AiChatbotView() {
   };
 
   const getAnswerIssueCopy = (msg: ChatMessage) => {
+    if (msg.errorCode === "REQUEST_FAILED") {
+      return {
+        title: text("Không nhận được phản hồi AI", "AI response was not received"),
+        description: text(
+          "Hệ thống không thay thế lỗi bằng câu trả lời mẫu. Hãy thử lại sau ít phút.",
+          "The system did not replace the failure with a demo answer. Please retry shortly.",
+        ),
+      };
+    }
     if (msg.answerStatus === "FALLBACK_WITH_SOURCES") {
       const title = text("AI chưa tạo được phần diễn giải", "AI could not generate the narrative answer");
       const descriptionByCode: Record<string, string> = {
@@ -883,6 +1059,64 @@ export function AiChatbotView() {
           {/* Right Toggles (Mobile & Desktop) */}
           <div className="ws-header-right-toggles">
             <button
+              className="ws-toggle-btn"
+              onClick={startNewChat}
+              title={text("Cuộc trò chuyện mới", "New chat")}
+              aria-label={text("Cuộc trò chuyện mới", "New chat")}
+            >
+              <MessageSquarePlus size={18} />
+            </button>
+            <div className="ws-history" ref={historyRef}>
+              <button
+                className={`ws-toggle-btn${historyOpen ? " active" : ""}`}
+                onClick={openHistory}
+                title={text("Lịch sử trò chuyện", "Chat history")}
+                aria-label={text("Lịch sử trò chuyện", "Chat history")}
+                aria-expanded={historyOpen}
+              >
+                <History size={18} />
+              </button>
+              {historyOpen ? (
+                <div className="ws-history-dropdown">
+                  <div className="ws-history-heading">
+                    <strong>{text("Lịch sử trò chuyện", "Chat history")}</strong>
+                  </div>
+                  {historyLoading ? (
+                    <div className="ws-history-empty">{text("Đang tải...", "Loading...")}</div>
+                  ) : historyError ? (
+                    <div className="ws-history-empty">
+                      {text("Không tải được lịch sử.", "Could not load history.")}
+                    </div>
+                  ) : historySessions.length === 0 ? (
+                    <div className="ws-history-empty">
+                      {text("Chưa có cuộc trò chuyện nào.", "No conversations yet.")}
+                    </div>
+                  ) : (
+                    <div className="ws-history-list">
+                      {historySessions.map((session) => (
+                        <button
+                          type="button"
+                          key={session.id}
+                          className={`ws-history-item${session.id === sessionId ? " active" : ""}`}
+                          onClick={() => loadSession(session)}
+                        >
+                          <strong>{session.title || text("Cuộc trò chuyện", "Conversation")}</strong>
+                          <small>
+                            {session.messageCount} {text("tin nhắn", "messages")}
+                            {" · "}
+                            {new Date(session.updatedAt).toLocaleString(
+                              locale === "vi" ? "vi-VN" : "en-US",
+                              { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" },
+                            )}
+                          </small>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : null}
+            </div>
+            <button
               className="ws-toggle-btn ws-toggle-mobile"
               onClick={() => setReferencesDrawerOpen(!referencesDrawerOpen)}
               title={text("Nguồn tham chiếu", "References")}
@@ -917,7 +1151,13 @@ export function AiChatbotView() {
               {messages.map((msg) => {
                 const answerIssue = getAnswerIssueCopy(msg);
                 return (
-                  <div key={msg.id} className={`ws-message${msg.sender === "USER" ? " user" : " ai"}`}>
+                  <div
+                    key={msg.id}
+                    className={`ws-message${msg.sender === "USER" ? " user" : " ai"}`}
+                    onClick={() => {
+                      if (msg.sender === "AI" && msg.sources.length > 0) setSources(msg.sources);
+                    }}
+                  >
                     <div className="ws-message-avatar">
                       {msg.sender === "USER" ? "U" : <Sparkles size={15} />}
                     </div>
@@ -952,9 +1192,27 @@ export function AiChatbotView() {
                           )}
                         </div>
                       )}
-                      <div className="ws-message-text">
-                        {renderMessageContent(msg.content, msg.sources, openCitationDrawer)}
-                      </div>
+                      {msg.content ? (
+                        <div className="ws-message-text">
+                          {renderMessageContent(msg.content, msg.sources, openCitationDrawer)}
+                          {msg.status === 'interrupted' && (
+                            <div className="ws-message-interrupted mt-2 pt-2 border-t border-slate-200/30 text-amber-500 dark:text-amber-400 text-xs flex items-center gap-1.5 select-none font-medium">
+                              <AlertTriangle size={14} />
+                              <span>
+                                {text(
+                                  "Câu trả lời đã bị ngắt trước khi hoàn tất.",
+                                  "Generation was interrupted before completion."
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      ) : isLoading ? (
+                        <div className="retrieval-skeleton" role="status" aria-live="polite">
+                          <span /><span /><span />
+                          <p>{text("Đang tìm câu trả lời...", "Finding an answer...")}</p>
+                        </div>
+                      ) : null}
                       {msg.sources.length > 0 && (
                         <div className="ws-message-citations">
                           {msg.sources.map((src, sourceIndex) => (
@@ -974,16 +1232,6 @@ export function AiChatbotView() {
                   </div>
                 );
               })}
-
-              {isLoading && (
-                <div className="ws-message ai">
-                  <div className="ws-message-avatar"><Sparkles size={15} /></div>
-                  <div className="retrieval-skeleton">
-                    <span /><span /><span />
-                    <p>{text("Đang tìm câu trả lời...", "Finding an answer...")}</p>
-                  </div>
-                </div>
-              )}
 
               {/* Empty / welcome state */}
               {messages.length <= 1 && !isLoading && (
@@ -1023,7 +1271,7 @@ export function AiChatbotView() {
         {/* Bottom input */}
         <div className="ws-chat-footer">
           {/* Selected sources chips */}
-          {selectedDocumentIds.length > 0 && (
+          {activeMode === "SELECTED_SOURCES" && selectedDocumentIds.length > 0 && (
             <div className="ws-selected-chips-container">
               <div className="ws-selected-chips-header">
                 <span>
@@ -1064,12 +1312,12 @@ export function AiChatbotView() {
               maxLength={4000}
             />
             <button
-              onClick={submitQuestion}
-              className="ws-send-btn"
-              disabled={!question.trim() || isLoading}
-              aria-label={text("Gửi câu hỏi", "Send question")}
+              onClick={isLoading ? handleStopGeneration : submitQuestion}
+              className={`ws-send-btn ${isLoading ? 'ws-stop-btn' : ''}`}
+              disabled={!isLoading && !question.trim()}
+              aria-label={isLoading ? text("Dừng tạo", "Stop generation") : text("Gửi câu hỏi", "Send question")}
             >
-              <ArrowUp size={18} />
+              {isLoading ? <X size={18} /> : <ArrowUp size={18} />}
             </button>
           </div>
           <div className="ws-grounding-indicator">
@@ -1092,7 +1340,7 @@ export function AiChatbotView() {
       <aside className={`ws-references-panel${referencesCollapsed ? " ws-panel--collapsed" : ""}${referencesDrawerOpen ? " ws-panel--open" : ""}`}>
         <div className="ws-references-header">
           <div className="ws-references-title-group">
-            <h2>{text("Nguồn & file", "Sources & files")}</h2>
+            <h2>{activeMode === "MY_LIBRARY" ? text("Nguồn cho câu trả lời này", "Sources for this answer") : text("File trong phạm vi", "Files in scope")}</h2>
             <span className="ws-references-count">
               {activeMode === "MY_LIBRARY" ? visibleSources.length : selectedDocumentIds.length}
             </span>
@@ -1224,23 +1472,23 @@ export function AiChatbotView() {
                     <span className="ws-drawer-meta-label">{text("Chỉ số nguồn", "Source ID")}</span>
                     <span className="ws-drawer-meta-value">#{previewCitation.sourceNumber}</span>
                   </div>
-                  {previewCitation.relevanceScore !== null && (
+                  {previewCitation.sourceLocator?.length ? (
                     <div className="ws-drawer-meta-item">
-                      <span className="ws-drawer-meta-label">{text("Độ liên quan", "Relevance")}</span>
-                      <span className="ws-drawer-meta-value">{Math.round((previewCitation.relevanceScore ?? 0) * 100)}%</span>
+                      <span className="ws-drawer-meta-label">{text("Vị trí nguồn", "Source location")}</span>
+                      <span className="ws-drawer-meta-value">{previewCitation.sourceLocator.join(" · ")}</span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="ws-drawer-snippet-section">
                   <span className="ws-drawer-snippet-title">{text("Đoạn trích tham khảo", "Reference Passage")}</span>
-                  <div className="ws-drawer-snippet-box">{previewCitation.snippet}</div>
+                  <div className="ws-drawer-snippet-box">{previewCitation.quote || previewCitation.snippet}</div>
                 </div>
 
-                <div className="ws-drawer-notice">
+                {!previewCitation.sourceLocator?.length && <div className="ws-drawer-notice">
                   <Info size={14} style={{ flexShrink: 0, color: "var(--ws-subtle)" }} />
                   <span>{text("Lưu ý: Nhảy trang chính xác hiện tại chưa được hỗ trợ bởi dữ liệu trích xuất.", "Note: Page-level jumping is not yet supported by document extract metadata.")}</span>
-                </div>
+                </div>}
               </>
             )}
           </div>

@@ -5,7 +5,6 @@ import { FileSearch, Filter, Library, Sparkles } from 'lucide-react'
 import { askLibrary } from '../api/chat.api'
 import { ChatComposer } from '../components/chat/ChatComposer'
 import { CitationList } from '../components/chat/CitationList'
-import { demoLibraryAnswer } from '../lib/chat-demo'
 import { useLanguage } from '../i18n/LanguageProvider'
 import { localize } from '../i18n/localize'
 import type { ChatMessage, Citation } from '../types/chat'
@@ -66,7 +65,7 @@ export function AskLibraryView() {
         question: trimmed,
         filters: fileType ? { fileType } : undefined,
         sessionId,
-      }).catch(() => demoLibraryAnswer(trimmed, locale))
+      })
       setSessionId(response.sessionId)
       setSources(response.sources)
       setMessages((current) => [
@@ -76,6 +75,20 @@ export function AskLibraryView() {
           sender: 'AI',
           content: response.answer,
           sources: response.sources,
+        },
+      ])
+    } catch {
+      setMessages((current) => [
+        ...current,
+        {
+          id: crypto.randomUUID(),
+          sender: 'AI',
+          content: text(
+            'Không thể nhận phản hồi AI lúc này. Vui lòng thử lại; hệ thống không dùng câu trả lời mẫu.',
+            'The AI response is unavailable. Please retry; the system does not use a demo answer.',
+          ),
+          sources: [],
+          errorCode: 'REQUEST_FAILED',
         },
       ])
     } finally {
