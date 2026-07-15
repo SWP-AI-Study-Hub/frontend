@@ -51,7 +51,7 @@ export type ChatSession = {
   updatedAt: string
 }
 
-export type PaginationMeta = {
+export type ChatPaginationMeta = {
   page: number
   limit: number
   totalItems: number

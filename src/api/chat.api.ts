@@ -1,5 +1,5 @@
 import { apiRequest } from '../lib/http'
-import type { AiChatResponse, ChatMessage, ChatSession, LibraryFilters, PaginationMeta } from '../types/chat'
+import type { AiChatResponse, ChatMessage, ChatPaginationMeta, ChatSession, LibraryFilters } from '../types/chat'
 
 export function askDocument(payload: {
   documentId: string
@@ -24,13 +24,13 @@ export function askLibrary(payload: {
 }
 
 export function fetchChatSessions(limit = 2) {
-  return apiRequest<{ items: ChatSession[]; meta: PaginationMeta }>(
+  return apiRequest<{ items: ChatSession[]; meta: ChatPaginationMeta }>(
     `/chat/sessions?page=1&limit=${limit}`,
   )
 }
 
 export function fetchChatMessages(sessionId: string, limit = 100) {
-  return apiRequest<{ items: ChatMessage[]; meta: PaginationMeta }>(
+  return apiRequest<{ items: ChatMessage[]; meta: ChatPaginationMeta }>(
     `/chat/messages/${sessionId}?page=1&limit=${limit}`,
   )
 }
