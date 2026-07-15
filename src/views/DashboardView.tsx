@@ -15,26 +15,13 @@ import Link from "next/link";
 import { fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
+import { buildDashboardSuggestions } from "../lib/dashboard-suggestions";
 import { ROUTES } from "../lib/routes";
 import type { LibraryDocument } from "../types/document";
 
 export function DashboardView() {
   const { locale } = useLanguage();
   const text = (vi: string, en: string) => localize(locale, vi, en);
-  const suggestions =
-    locale === "vi"
-      ? [
-          "Tóm tắt ghi chú bài giảng mới nhất",
-          "Tạo bài kiểm tra từ các tệp đã tải lên",
-          "Tìm nguồn về xác thực JWT",
-          "Giải thích chủ đề này thật đơn giản",
-        ]
-      : [
-          "Summarize my latest lecture notes",
-          "Create a quiz from uploaded files",
-          "Find sources about JWT authentication",
-          "Explain this topic simply",
-        ];
   const [question, setQuestion] = useState("");
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   useEffect(() => {
@@ -53,6 +40,7 @@ export function DashboardView() {
   const readyDocuments = documents.filter(
     (document) => document.indexStatus === "READY",
   );
+  const suggestions = buildDashboardSuggestions(documents, locale);
 
   function submitQuestion(event: FormEvent) {
     event.preventDefault();

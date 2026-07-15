@@ -52,6 +52,26 @@ import { ROUTES } from "../lib/routes";
 
 const PAGE_SIZE = 12;
 
+function sortTaxonomyItems<T extends { name: string }>(items: T[]) {
+  return [...items].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function uniqueTaxonomyItems<T extends { id: string; name: string }>(items: T[]) {
+  return sortTaxonomyItems(
+    [...new Map(items.map((item) => [item.id, item])).values()],
+  );
+}
+
+function upsertTaxonomyItem<T extends { id: string; name: string }>(
+  items: T[],
+  item: T,
+) {
+  return uniqueTaxonomyItems([
+    ...items.filter((current) => current.id !== item.id),
+    item,
+  ]);
+}
+
 function DocumentIcon({ type }: { type: string }) {
   return type === "XLSX" ? <FileSpreadsheet size={20} /> : <FileText size={20} />;
 }
@@ -133,8 +153,8 @@ export function LibraryView() {
   useEffect(() => {
     Promise.all([fetchSubjects(), fetchCategories()])
       .then(([subjectItems, categoryItems]) => {
-        setSubjects(subjectItems);
-        setCategories(categoryItems);
+        setSubjects(uniqueTaxonomyItems(subjectItems));
+        setCategories(uniqueTaxonomyItems(categoryItems));
       })
       .catch((error: unknown) => setErrorMessage(error instanceof Error ? error.message : text("Không thể tải cấu trúc Library.", "Could not load the Library structure.")));
   }, [text]);
@@ -240,9 +260,7 @@ export function LibraryView() {
     setErrorMessage("");
     try {
       const updated = await updateSubject(id, name, code.toUpperCase());
-      setSubjects((current) =>
-        current.map((s) => (s.id === id ? updated : s)).sort((a, b) => a.name.localeCompare(b.name))
-      );
+      setSubjects((current) => upsertTaxonomyItem(current, updated));
       setEditingSubjectId(null);
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : text("Không thể cập nhật môn học.", "Could not update subject."));
@@ -284,9 +302,7 @@ export function LibraryView() {
     setErrorMessage("");
     try {
       const updated = await updateCategory(id, name);
-      setCategories((current) =>
-        current.map((c) => (c.id === id ? updated : c)).sort((a, b) => a.name.localeCompare(b.name))
-      );
+      setCategories((current) => upsertTaxonomyItem(current, updated));
       setSubjectCategoriesMap((current) => {
         const next = { ...current };
         Object.keys(next).forEach((subId) => {
@@ -368,7 +384,7 @@ export function LibraryView() {
         if (!subjectCategoriesMap[id]) {
           fetchCategories(id)
             .then((items) => {
-              setSubjectCategoriesMap((prev) => ({ ...prev, [id]: items }));
+              setSubjectCategoriesMap((prev) => ({ ...prev, [id]: uniqueTaxonomyItems(items) }));
             })
             .catch(() => undefined);
         }
@@ -395,7 +411,7 @@ export function LibraryView() {
     setErrorMessage("");
     try {
       const item = await createSubject(name, (newSubjectCode.trim() || name.slice(0, 3)).toUpperCase());
-      setSubjects((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
+      setSubjects((current) => upsertTaxonomyItem(current, item));
       setExpandedSubjects((current) => new Set(current).add(item.id));
       selectFolder(item.id);
       setAddingSubject(false);
@@ -420,10 +436,10 @@ export function LibraryView() {
     setErrorMessage("");
     try {
       const item = await createCategory(name, targetSubject);
-      setCategories((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
+      setCategories((current) => upsertTaxonomyItem(current, item));
       setSubjectCategoriesMap((prev) => ({
         ...prev,
-        [targetSubject]: [...(prev[targetSubject] ?? []), item].sort((a, b) => a.name.localeCompare(b.name)),
+        [targetSubject]: upsertTaxonomyItem(prev[targetSubject] ?? [], item),
       }));
       setExpandedSubjects((current) => new Set(current).add(targetSubject));
       selectFolder(targetSubject, item.id);

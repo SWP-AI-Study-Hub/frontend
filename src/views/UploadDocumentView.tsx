@@ -50,6 +50,26 @@ type UploadPhase = "idle" | "uploading" | "extracting" | "success" | "error";
 const wait = (milliseconds: number) =>
   new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
+function sortTaxonomyItems<T extends { name: string }>(items: T[]) {
+  return [...items].sort((a, b) => a.name.localeCompare(b.name));
+}
+
+function uniqueTaxonomyItems<T extends { id: string; name: string }>(items: T[]) {
+  return sortTaxonomyItems(
+    [...new Map(items.map((item) => [item.id, item])).values()],
+  );
+}
+
+function upsertTaxonomyItem<T extends { id: string; name: string }>(
+  items: T[],
+  item: T,
+) {
+  return uniqueTaxonomyItems([
+    ...items.filter((current) => current.id !== item.id),
+    item,
+  ]);
+}
+
 export function UploadDocumentView() {
   const { locale } = useLanguage();
   const text = useCallback(
@@ -87,8 +107,8 @@ export function UploadDocumentView() {
     Promise.all([fetchSubjects(), fetchCategories()])
       .then(([subjectItems, categoryItems]) => {
         if (!active) return;
-        setSubjects(subjectItems);
-        setCategories(categoryItems);
+        setSubjects(uniqueTaxonomyItems(subjectItems));
+        setCategories(uniqueTaxonomyItems(categoryItems));
       })
       .catch((error: unknown) => {
         if (active) {
@@ -187,7 +207,7 @@ export function UploadDocumentView() {
         name,
         (newSubjectCode.trim() || name.slice(0, 3)).toUpperCase(),
       );
-      setSubjects((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
+      setSubjects((current) => upsertTaxonomyItem(current, item));
       setSubjectId(item.id);
       setNewSubjectName("");
       setNewSubjectCode("");
@@ -210,7 +230,7 @@ export function UploadDocumentView() {
     setTaxonomyError("");
     try {
       const item = await createCategory(name, subjectId);
-      setCategories((current) => [...current, item].sort((a, b) => a.name.localeCompare(b.name)));
+      setCategories((current) => upsertTaxonomyItem(current, item));
       setCategoryId(item.id);
       setNewCategoryName("");
       setIsAddingCategory(false);
