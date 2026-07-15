@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   Bot,
@@ -29,7 +29,7 @@ import {
   History,
   MessageSquarePlus,
 } from "lucide-react";
-import { askLibrary, fetchChatMessages } from "../api/chat.api";
+import { askLibraryStream, fetchChatMessages, fetchChatSessions } from "../api/chat.api";
 import { createDownloadUrl, fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
@@ -249,9 +249,14 @@ export function AiChatbotView() {
   const [subjectDropdownOpen, setSubjectDropdownOpen] = useState(false);
 
   const [question, setQuestion] = useState("");
+  const [sessionId, setSessionId] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sources, setSources] = useState<Citation[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historySessions, setHistorySessions] = useState<ChatSessionSummary[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(false);
   useEffect(() => {
     const requestedSessionId = searchParams?.get("session");
     if (!requestedSessionId) return;
@@ -298,6 +303,11 @@ export function AiChatbotView() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
   const subjectDropdownRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+  const lastScopeKeyRef = useRef<Record<ActiveMode, string | undefined>>({
+    MY_LIBRARY: undefined,
+    SELECTED_SOURCES: undefined,
+  });
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleStopGeneration = useCallback(() => {
@@ -422,16 +432,6 @@ export function AiChatbotView() {
   useEffect(() => { sessionStorage.setItem("documind.workspace.selectedDocumentIds", JSON.stringify(selectedDocumentIds)); }, [selectedDocumentIds]);
   useEffect(() => { sessionStorage.setItem("documind.workspace.selectedSubjectIds", JSON.stringify(selectedSubjectIds)); }, [selectedSubjectIds]);
   useEffect(() => { if (currentDocumentId) sessionStorage.setItem("documind.workspace.currentDocumentId", currentDocumentId); }, [currentDocumentId]);
-
-  // 6. Initialize welcome message if empty
-  useEffect(() => {
-    if (libraryMessages.length === 0) {
-      setLibraryMessages([{ id: "welcome-library", sender: "AI", content: text("Chào mừng! Bạn đang đặt câu hỏi trên toàn bộ thư viện của mình.", "Welcome! You are asking across your entire library."), sources: [] }]);
-    }
-    if (selectedMessages.length === 0) {
-      setSelectedMessages([{ id: "welcome-selected", sender: "AI", content: text("Đánh dấu chọn file ở danh sách bên trái, rồi đặt câu hỏi — AI sẽ chỉ tìm trong các file đó.", "Check files on the left list, then ask — the AI only searches those files."), sources: [] }]);
-    }
-  }, [libraryMessages.length, selectedMessages.length, text]);
 
   // Auto-scroll
   useEffect(() => { messageEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isLoading]);

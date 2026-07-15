@@ -19,14 +19,14 @@ import { localize } from "../i18n/localize";
 import { buildDashboardSuggestions } from "../lib/dashboard-suggestions";
 import { ROUTES } from "../lib/routes";
 import type { LibraryDocument } from "../types/document";
-import type { ChatSession } from "../types/chat";
+import type { ChatSessionSummary } from "../types/chat";
 
 export function DashboardView() {
   const { locale } = useLanguage();
   const text = (vi: string, en: string) => localize(locale, vi, en);
   const [question, setQuestion] = useState("");
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
-  const [recentChats, setRecentChats] = useState<ChatSession[]>([]);
+  const [recentChats, setRecentChats] = useState<ChatSessionSummary[]>([]);
   useEffect(() => {
     let active = true;
     fetchLibraryDocuments({ limit: 100 })
