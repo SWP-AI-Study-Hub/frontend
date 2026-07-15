@@ -3573,7 +3573,7 @@
   --ws-success-soft: #f0fdf4;
 
   display: grid;
-  grid-template-columns: 280px 1fr 300px;
+  grid-template-columns: 260px minmax(0, 1fr) 260px;
   grid-template-rows: 1fr;
   height: calc(100vh - 72px);
   overflow: hidden;
@@ -4078,6 +4078,86 @@
   color: #fff;
 }
 
+.ws-inline-citation-group {
+  display: inline;
+  white-space: nowrap;
+}
+
+/* Chat history dropdown */
+.ws-history {
+  position: relative;
+}
+
+.ws-history-dropdown {
+  position: absolute;
+  z-index: 40;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 300px;
+  overflow: hidden;
+  border: 1px solid var(--ws-border);
+  border-radius: 10px;
+  background: var(--ws-card);
+  box-shadow: 0 14px 36px rgba(15, 23, 42, 0.16);
+}
+
+.ws-history-heading {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--ws-border);
+  font-size: 0.72rem;
+}
+
+.ws-history-empty {
+  padding: 16px 12px;
+  color: var(--ws-subtle);
+  font-size: 0.75rem;
+  text-align: center;
+}
+
+.ws-history-list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.ws-history-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid var(--ws-border);
+  padding: 9px 12px;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.ws-history-item:last-child {
+  border-bottom: 0;
+}
+
+.ws-history-item:hover,
+.ws-history-item.active {
+  background: var(--ws-accent-soft);
+}
+
+.ws-history-item strong {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.ws-history-item small {
+  color: var(--ws-subtle);
+  font-size: 0.66rem;
+}
+
 /* Sources footer */
 .ws-sources-footer {
   display: flex;
@@ -4381,7 +4461,7 @@
 .ws-message-stream {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 28px;
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
@@ -4463,7 +4543,7 @@
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  max-width: 86%;
+  max-width: 94%;
   align-self: flex-start;
 }
 .ws-message.user {
@@ -4708,6 +4788,14 @@
   border-left: 1px solid var(--ws-border);
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   z-index: 10;
+}
+
+.ws-textarea:focus-visible,
+.ws-send-btn:focus-visible,
+.ws-inline-citation:focus-visible,
+.ws-citation-tag:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent) 55%, white);
+  outline-offset: 2px;
 }
 
 .ws-references-panel.ws-panel--collapsed {
@@ -5049,13 +5137,13 @@
 /* Desktop collapsed grid modifications */
 @media (min-width: 1201px) {
   .ai-workspace.left-collapsed {
-    grid-template-columns: 0px 1fr 300px;
+    grid-template-columns: 0 minmax(0, 1fr) 260px;
   }
   .ai-workspace.right-collapsed {
-    grid-template-columns: 280px 1fr 0px;
+    grid-template-columns: 260px minmax(0, 1fr) 0;
   }
   .ai-workspace.left-collapsed.right-collapsed {
-    grid-template-columns: 0px 1fr 0px;
+    grid-template-columns: 0 minmax(0, 1fr) 0;
   }
 }
 
