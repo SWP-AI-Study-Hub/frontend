@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Bot,
   FileSearch,
@@ -27,7 +27,7 @@ import {
   Check,
   ChevronDown,
 } from "lucide-react";
-import { askLibrary } from "../api/chat.api";
+import { askLibrary, fetchChatMessages } from "../api/chat.api";
 import { createDownloadUrl, fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
@@ -160,6 +160,7 @@ function renderMessageContent(
 
 export function AiChatbotView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { locale } = useLanguage();
   const text = useCallback(
     (vi: string, en: string) => localize(locale, vi, en),
@@ -213,6 +214,25 @@ export function AiChatbotView() {
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sources, setSources] = useState<Citation[]>([]);
+  useEffect(() => {
+    const requestedSessionId = searchParams?.get("session");
+    if (!requestedSessionId) return;
+
+    let active = true;
+    fetchChatMessages(requestedSessionId)
+      .then((result) => {
+        if (!active) return;
+        setSessionId(requestedSessionId);
+        setMessages(result.items);
+        setSources(result.items.flatMap((message) => message.sources));
+      })
+      .catch(() => {
+        if (active) setSessionId(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [searchParams]);
   const visibleSources = useMemo(
     () =>
       sources.filter(

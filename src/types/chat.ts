@@ -33,3 +33,27 @@ export type LibraryFilters = {
   fileType?: string
   documentIds?: string[]
 }
+
+export type ChatSession = {
+  id: string
+  mode: 'ASK_MY_LIBRARY' | 'ASK_THIS_DOCUMENT'
+  documentId: string | null
+  title: string | null
+  document?: { id: string; title: string } | null
+  messageCount: number
+  lastMessage: {
+    id: string
+    sender: 'USER' | 'AI'
+    content: string
+    createdAt: string
+  } | null
+  createdAt: string
+  updatedAt: string
+}
+
+export type PaginationMeta = {
+  page: number
+  limit: number
+  totalItems: number
+  totalPages: number
+}

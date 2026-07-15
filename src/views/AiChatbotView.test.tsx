@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { fetchLibraryDocuments } from '../api/documents.api'
 import { useLanguage } from '../i18n/LanguageProvider'
 import type { LibraryDocument } from '../types/document'
@@ -7,6 +7,7 @@ import { AiChatbotView } from './AiChatbotView'
 
 vi.mock('next/navigation', () => ({
   useRouter: vi.fn(),
+  useSearchParams: vi.fn(),
 }))
 
 vi.mock('../api/documents.api', () => ({
@@ -67,6 +68,7 @@ describe('AiChatbotView subject filter', () => {
     vi.mocked(useRouter).mockReturnValue({
       push: vi.fn(),
     } as unknown as ReturnType<typeof useRouter>)
+    vi.mocked(useSearchParams).mockReturnValue(new URLSearchParams() as ReturnType<typeof useSearchParams>)
     vi.mocked(useLanguage).mockReturnValue({
       locale: 'en',
       setLocale: vi.fn(),
