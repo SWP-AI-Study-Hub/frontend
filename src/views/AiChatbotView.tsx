@@ -224,7 +224,10 @@ export function AiChatbotView() {
         if (!active) return;
         setSessionId(requestedSessionId);
         setMessages(result.items);
-        setSources(result.items.flatMap((message) => message.sources));
+        const latestSourcedMessage = [...result.items]
+          .reverse()
+          .find((message) => message.sender === "AI" && message.sources.length > 0);
+        setSources(latestSourcedMessage?.sources ?? []);
       })
       .catch(() => {
         if (active) setSessionId(undefined);
@@ -954,10 +957,10 @@ export function AiChatbotView() {
                       </div>
                       {msg.sources.length > 0 && (
                         <div className="ws-message-citations">
-                          {msg.sources.map((src) => (
+                          {msg.sources.map((src, sourceIndex) => (
                             <button
                               type="button"
-                              key={src.sourceNumber}
+                              key={`${msg.id}-${src.documentId}-${src.sourceNumber}-${sourceIndex}`}
                               className="ws-citation-tag"
                               onClick={() => openCitationDrawer(src)}
                             >
@@ -1105,8 +1108,8 @@ export function AiChatbotView() {
                     {text("Nguồn tìm thấy", "Sources found")}
                   </div>
                   <div className="ws-sidebar-selected-list">
-                    {visibleSources.map((source) => (
-                        <div key={source.sourceNumber} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
+                    {visibleSources.map((source, sourceIndex) => (
+                        <div key={`${source.documentId}-${source.sourceNumber}-${sourceIndex}`} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
                           <div className="ws-reference-title-row">
                             <span className="ws-reference-number">{source.sourceNumber}</span>
                             <span className="ws-reference-title" title={source.title}>{source.title}</span>
