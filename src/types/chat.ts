@@ -84,3 +84,4 @@ export type LibraryFilters = {
   fileType?: string
   documentIds?: string[]
 }
+

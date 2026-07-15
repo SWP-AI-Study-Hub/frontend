@@ -12,31 +12,21 @@ import {
   Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { fetchChatSessions } from "../api/chat.api";
 import { fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
+import { buildDashboardSuggestions } from "../lib/dashboard-suggestions";
 import { ROUTES } from "../lib/routes";
 import type { LibraryDocument } from "../types/document";
+import type { ChatSessionSummary } from "../types/chat";
 
 export function DashboardView() {
   const { locale } = useLanguage();
   const text = (vi: string, en: string) => localize(locale, vi, en);
-  const suggestions =
-    locale === "vi"
-      ? [
-          "Tóm tắt ghi chú bài giảng mới nhất",
-          "Tạo bài kiểm tra từ các tệp đã tải lên",
-          "Tìm nguồn về xác thực JWT",
-          "Giải thích chủ đề này thật đơn giản",
-        ]
-      : [
-          "Summarize my latest lecture notes",
-          "Create a quiz from uploaded files",
-          "Find sources about JWT authentication",
-          "Explain this topic simply",
-        ];
   const [question, setQuestion] = useState("");
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
+  const [recentChats, setRecentChats] = useState<ChatSessionSummary[]>([]);
   useEffect(() => {
     let active = true;
     fetchLibraryDocuments({ limit: 100 })
@@ -50,9 +40,23 @@ export function DashboardView() {
       active = false;
     };
   }, []);
+  useEffect(() => {
+    let active = true;
+    fetchChatSessions(2)
+      .then((result) => {
+        if (active) setRecentChats(result.items);
+      })
+      .catch(() => {
+        if (active) setRecentChats([]);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const readyDocuments = documents.filter(
     (document) => document.indexStatus === "READY",
   );
+  const suggestions = buildDashboardSuggestions(documents, locale);
 
   function submitQuestion(event: FormEvent) {
     event.preventDefault();
@@ -146,22 +150,24 @@ export function DashboardView() {
               </div>
             </header>
             <div className="recent-chat-grid">
-              <Link href={ROUTES.aiChat}>
-                <MessageSquareText size={19} />
-                <div>
-                  <strong>{text("So sánh các mô hình hệ thống phân tán", "Compare distributed system models")}</strong>
-                  <span>{text("Trên 3 nguồn / 12 phút trước", "Across 3 sources / 12 minutes ago")}</span>
-                </div>
-                <ArrowRight size={16} />
-              </Link>
-              <Link href={`${ROUTES.aiChat}?scope=document`}>
-                <BookOpen size={19} />
-                <div>
-                  <strong>{text("Tóm tắt phương pháp nghiên cứu", "Research methodology summary")}</strong>
-                  <span>{text("Research Methods Handbook / Hôm qua", "Research Methods Handbook / Yesterday")}</span>
-                </div>
-                <ArrowRight size={16} />
-              </Link>
+              {recentChats.map((chat) => (
+                <Link href={`${ROUTES.aiChat}?session=${chat.id}`} key={chat.id}>
+                  {chat.document ? <BookOpen size={19} /> : <MessageSquareText size={19} />}
+                  <div>
+                    <strong>{chat.title || chat.lastMessage?.content || text("Cuộc trò chuyện chưa có tiêu đề", "Untitled conversation")}</strong>
+                    <span>
+                      {chat.document
+                        ? chat.document.title
+                        : text(`${chat.messageCount} tin nhắn`, `${chat.messageCount} messages`)}
+                      {` / ${new Intl.DateTimeFormat(locale === "vi" ? "vi-VN" : "en-US", { dateStyle: "medium" }).format(new Date(chat.updatedAt))}`}
+                    </span>
+                  </div>
+                  <ArrowRight size={16} />
+                </Link>
+              ))}
+              {recentChats.length === 0 && (
+                <p>{text("Chưa có cuộc trò chuyện nào.", "No conversations yet.")}</p>
+              )}
             </div>
           </section>
         </div>

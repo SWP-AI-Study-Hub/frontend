@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   Bot,
   FileSearch,
@@ -29,11 +29,7 @@ import {
   History,
   MessageSquarePlus,
 } from "lucide-react";
-import {
-  askLibraryStream,
-  fetchChatMessages,
-  fetchChatSessions,
-} from "../api/chat.api";
+import { askLibraryStream, fetchChatMessages, fetchChatSessions } from "../api/chat.api";
 import { createDownloadUrl, fetchLibraryDocuments } from "../api/documents.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
@@ -203,6 +199,7 @@ function renderMessageContent(
 
 export function AiChatbotView() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { locale } = useLanguage();
   const text = useCallback(
     (vi: string, en: string) => localize(locale, vi, en),
@@ -252,32 +249,43 @@ export function AiChatbotView() {
   const [subjectDropdownOpen, setSubjectDropdownOpen] = useState(false);
 
   const [question, setQuestion] = useState("");
+  const [sessionId, setSessionId] = useState<string>();
   const [isLoading, setIsLoading] = useState(false);
-  const [librarySessionId, setLibrarySessionId] = useState<string>();
-  const [selectedSessionId, setSelectedSessionId] = useState<string>();
-  const [libraryMessages, setLibraryMessages] = useState<ChatMessage[]>([]);
-  const [selectedMessages, setSelectedMessages] = useState<ChatMessage[]>([]);
-  const [librarySources, setLibrarySources] = useState<Citation[]>([]);
-  const [selectedSources, setSelectedSources] = useState<Citation[]>([]);
-  const sessionId = activeMode === "MY_LIBRARY" ? librarySessionId : selectedSessionId;
-  const setSessionId = activeMode === "MY_LIBRARY" ? setLibrarySessionId : setSelectedSessionId;
-  const messages = activeMode === "MY_LIBRARY" ? libraryMessages : selectedMessages;
-  const setMessages = activeMode === "MY_LIBRARY" ? setLibraryMessages : setSelectedMessages;
-  const sources = activeMode === "MY_LIBRARY" ? librarySources : selectedSources;
-  const setSources = activeMode === "MY_LIBRARY" ? setLibrarySources : setSelectedSources;
-  // Show every source the backend cited: it already applies its own relevance
-  // threshold, and hiding entries here breaks [n] citations in the answer.
-  const visibleSources = sources;
-
-  // History of past chat sessions (both UI modes use ASK_MY_LIBRARY sessions).
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sources, setSources] = useState<Citation[]>([]);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historySessions, setHistorySessions] = useState<ChatSessionSummary[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState(false);
-  const historyRef = useRef<HTMLDivElement>(null);
-  // Scope fingerprint used for the last question per mode; when it changes we
-  // start a fresh backend session so answers cannot inherit stale history.
-  const lastScopeKeyRef = useRef<Partial<Record<ActiveMode, string>>>({});
+  useEffect(() => {
+    const requestedSessionId = searchParams?.get("session");
+    if (!requestedSessionId) return;
+
+    let active = true;
+    fetchChatMessages(requestedSessionId)
+      .then((result) => {
+        if (!active) return;
+        setSessionId(requestedSessionId);
+        setMessages(result.items);
+        const latestSourcedMessage = [...result.items]
+          .reverse()
+          .find((message) => message.sender === "AI" && message.sources.length > 0);
+        setSources(latestSourcedMessage?.sources ?? []);
+      })
+      .catch(() => {
+        if (active) setSessionId(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, [searchParams]);
+  const visibleSources = useMemo(
+    () =>
+      sources.filter(
+        (source) => source.relevanceScore === null || source.relevanceScore >= 0.62,
+      ),
+    [sources],
+  );
 
   // UI Panel states
   const [sourcesCollapsed, setSourcesCollapsed] = useState(false);
@@ -295,6 +303,11 @@ export function AiChatbotView() {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messageEndRef = useRef<HTMLDivElement>(null);
   const subjectDropdownRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
+  const lastScopeKeyRef = useRef<Record<ActiveMode, string | undefined>>({
+    MY_LIBRARY: undefined,
+    SELECTED_SOURCES: undefined,
+  });
   const abortControllerRef = useRef<AbortController | null>(null);
 
   const handleStopGeneration = useCallback(() => {
@@ -419,16 +432,6 @@ export function AiChatbotView() {
   useEffect(() => { sessionStorage.setItem("documind.workspace.selectedDocumentIds", JSON.stringify(selectedDocumentIds)); }, [selectedDocumentIds]);
   useEffect(() => { sessionStorage.setItem("documind.workspace.selectedSubjectIds", JSON.stringify(selectedSubjectIds)); }, [selectedSubjectIds]);
   useEffect(() => { if (currentDocumentId) sessionStorage.setItem("documind.workspace.currentDocumentId", currentDocumentId); }, [currentDocumentId]);
-
-  // 6. Initialize welcome message if empty
-  useEffect(() => {
-    if (libraryMessages.length === 0) {
-      setLibraryMessages([{ id: "welcome-library", sender: "AI", content: text("Chào mừng! Bạn đang đặt câu hỏi trên toàn bộ thư viện của mình.", "Welcome! You are asking across your entire library."), sources: [] }]);
-    }
-    if (selectedMessages.length === 0) {
-      setSelectedMessages([{ id: "welcome-selected", sender: "AI", content: text("Đánh dấu chọn file ở danh sách bên trái, rồi đặt câu hỏi — AI sẽ chỉ tìm trong các file đó.", "Check files on the left list, then ask — the AI only searches those files."), sources: [] }]);
-    }
-  }, [libraryMessages.length, selectedMessages.length, text]);
 
   // Auto-scroll
   useEffect(() => { messageEndRef.current?.scrollIntoView({ behavior: "smooth" }); }, [messages, isLoading]);
@@ -1212,10 +1215,10 @@ export function AiChatbotView() {
                       ) : null}
                       {msg.sources.length > 0 && (
                         <div className="ws-message-citations">
-                          {msg.sources.map((src) => (
+                          {msg.sources.map((src, sourceIndex) => (
                             <button
                               type="button"
-                              key={src.sourceNumber}
+                              key={`${msg.id}-${src.documentId}-${src.sourceNumber}-${sourceIndex}`}
                               className="ws-citation-tag"
                               onClick={() => openCitationDrawer(src)}
                             >
@@ -1353,8 +1356,8 @@ export function AiChatbotView() {
                     {text("Nguồn tìm thấy", "Sources found")}
                   </div>
                   <div className="ws-sidebar-selected-list">
-                    {visibleSources.map((source) => (
-                        <div key={source.sourceNumber} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
+                    {visibleSources.map((source, sourceIndex) => (
+                        <div key={`${source.documentId}-${source.sourceNumber}-${sourceIndex}`} className="ws-reference-card" onClick={() => openCitationDrawer(source)}>
                           <div className="ws-reference-title-row">
                             <span className="ws-reference-number">{source.sourceNumber}</span>
                             <span className="ws-reference-title" title={source.title}>{source.title}</span>

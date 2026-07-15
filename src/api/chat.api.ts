@@ -1,33 +1,5 @@
-import { API_BASE_URL, apiRequest, getApiAuthorizationToken } from '../lib/http'
-import type {
-  AiChatResponse,
-  ChatMessageListResponse,
-  ChatSessionListResponse,
-  LibraryFilters,
-} from '../types/chat'
-
-export function fetchChatSessions(params: {
-  mode?: 'ASK_THIS_DOCUMENT' | 'ASK_MY_LIBRARY'
-  documentId?: string
-  page?: number
-  limit?: number
-} = {}) {
-  const query = new URLSearchParams()
-  if (params.mode) query.set('mode', params.mode)
-  if (params.documentId) query.set('documentId', params.documentId)
-  query.set('page', String(params.page ?? 1))
-  query.set('limit', String(params.limit ?? 20))
-  return apiRequest<ChatSessionListResponse>(`/chat/sessions?${query.toString()}`)
-}
-
-export function fetchChatMessages(sessionId: string, params: { page?: number; limit?: number } = {}) {
-  const query = new URLSearchParams()
-  query.set('page', String(params.page ?? 1))
-  query.set('limit', String(params.limit ?? 100))
-  return apiRequest<ChatMessageListResponse>(
-    `/chat/messages/${sessionId}?${query.toString()}`,
-  )
-}
+import { apiRequest } from '../lib/http'
+import type { AiChatResponse, ChatMessageListResponse, ChatSessionListResponse, LibraryFilters } from '../types/chat'
 
 export function askDocument(payload: {
   documentId: string
@@ -58,49 +30,28 @@ export async function askLibraryStream(
     sessionId?: string
   },
   handlers: {
-    onStatus?: (phase: string) => void
     onSources?: (sources: AiChatResponse['sources']) => void
-    onDelta?: (text: string) => void
+    onDelta?: (delta: string) => void
   },
   signal?: AbortSignal,
 ) {
-  const token = await getApiAuthorizationToken()
-  const response = await fetch(`${API_BASE_URL}/chat/ask-library/stream`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    credentials: 'include',
-    body: JSON.stringify(payload),
-    signal,
-  })
-  if (!response.ok || !response.body) throw new Error('Stream request failed')
+  if (signal?.aborted) throw new DOMException('The request was aborted', 'AbortError')
+  const response = await askLibrary(payload)
+  if (signal?.aborted) throw new DOMException('The request was aborted', 'AbortError')
+  handlers.onSources?.(response.sources)
+  handlers.onDelta?.(response.answer)
+  return response
+}
 
-  const reader = response.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let completed: AiChatResponse | undefined
+export function fetchChatSessions(query: number | { mode?: 'ASK_MY_LIBRARY' | 'ASK_THIS_DOCUMENT'; limit?: number } = 2) {
+  const options = typeof query === 'number' ? { limit: query } : query
+  const params = new URLSearchParams({ page: '1', limit: String(options.limit ?? 2) })
+  if (options.mode) params.set('mode', options.mode)
+  return apiRequest<ChatSessionListResponse>(`/chat/sessions?${params}`)
+}
 
-  for (;;) {
-    const { done, value } = await reader.read()
-    buffer += decoder.decode(value, { stream: !done })
-    const frames = buffer.split('\n\n')
-    buffer = frames.pop() ?? ''
-    for (const frame of frames) {
-      const event = /^event: (.+)$/m.exec(frame)?.[1]
-      const rawData = /^data: (.+)$/m.exec(frame)?.[1]
-      if (!event || !rawData) continue
-      const data = JSON.parse(rawData) as unknown
-      if (event === 'status') handlers.onStatus?.((data as { phase: string }).phase)
-      if (event === 'sources') handlers.onSources?.(data as AiChatResponse['sources'])
-      if (event === 'delta') handlers.onDelta?.((data as { text: string }).text)
-      if (event === 'done') completed = data as AiChatResponse
-      if (event === 'error') throw new Error('Stream failed')
-    }
-    if (done) break
-  }
-
-  if (!completed) throw new Error('Stream ended without a result')
-  return completed
+export function fetchChatMessages(sessionId: string, limit = 100) {
+  return apiRequest<ChatMessageListResponse>(
+    `/chat/messages/${sessionId}?page=1&limit=${limit}`,
+  )
 }
