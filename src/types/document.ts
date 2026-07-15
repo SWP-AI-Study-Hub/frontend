@@ -20,6 +20,10 @@ export type LibraryDocument = {
   indexStatus: DocumentIndexStatus
   extractionQuality?: ExtractionQuality
   extractionWarnings?: string[]
+  moderationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'
+  moderationFlag?: 'NORMAL' | 'FLAGGED' | 'SCAN_FAILED'
+  rejectionReason?: string
+  version?: number
 }
 
 export type UploadDocumentInput = {

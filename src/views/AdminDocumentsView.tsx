@@ -5,7 +5,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eye,
-  EyeOff,
+  CheckCircle2,
+  AlertTriangle,
   FileSpreadsheet,
   FileText,
   Search,
@@ -13,8 +14,9 @@ import {
 } from 'lucide-react'
 import {
   getAdminDocuments,
-  hideDocument,
-  unhideDocument,
+  approveDocument,
+  rejectDocument,
+  createAdminDocumentPreviewUrl,
   type DocumentQuery,
   type DocumentListResponse,
 } from '../api/admin.api'
@@ -23,16 +25,18 @@ import { useLanguage } from '../i18n/LanguageProvider'
 import { localize } from '../i18n/localize'
 import { formatFileSize } from '../api/documents.api'
 
-const DEFAULT_QUERY: DocumentQuery = { page: 1, limit: 8, visibility: 'PUBLIC' }
+const DEFAULT_QUERY: DocumentQuery = { page: 1, limit: 8, moderationStatus: 'PENDING' }
 
 export function AdminDocumentsView() {
   const { locale, t } = useLanguage()
   const text = (vi: string, en: string) => localize(locale, vi, en)
 
   const [keyword, setKeyword] = useState('')
-  const [visibility, setVisibility] = useState('PUBLIC')
+  const [visibility, setVisibility] = useState('')
   const [status, setStatus] = useState('')
   const [aiStatus, setAiStatus] = useState('')
+  const [moderationStatus, setModerationStatus] = useState('PENDING')
+  const [moderationFlag, setModerationFlag] = useState('')
   const [page, setPage] = useState(1)
 
   const [data, setData] = useState<DocumentListResponse | null>(null)
@@ -62,14 +66,14 @@ export function AdminDocumentsView() {
   )
 
   useEffect(() => {
-    void loadDocuments({ ...DEFAULT_QUERY, page, keyword, visibility, status, aiStatus })
+    void loadDocuments({ ...DEFAULT_QUERY, page, keyword, visibility, status, aiStatus, moderationStatus, moderationFlag })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadDocuments, page, visibility, status, aiStatus])
+  }, [loadDocuments, page, visibility, status, aiStatus, moderationStatus, moderationFlag])
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault()
     setPage(1)
-    await loadDocuments({ page: 1, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus })
+    await loadDocuments({ page: 1, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus, moderationStatus, moderationFlag })
   }
 
   const handleActionClick = (doc: AdminDocument) => {
@@ -83,11 +87,15 @@ export function AdminDocumentsView() {
     setIsSubmitingAction(true)
     setError('')
     try {
-      await hideDocument(selectedDoc.id, moderationReason)
+      if (!moderationReason.trim()) {
+        setError(text('Lý do từ chối là bắt buộc.', 'A rejection reason is required.'))
+        return
+      }
+      await rejectDocument(selectedDoc.id, moderationReason.trim())
       setSelectedDoc(null)
       setIsModerationModalOpen(false)
       // Reload current page
-      await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus })
+      await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus, moderationStatus, moderationFlag })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.error'))
     } finally {
@@ -95,12 +103,12 @@ export function AdminDocumentsView() {
     }
   }
 
-  const handleUnhideDocument = async (id: string) => {
+  const handleApproveDocument = async (id: string) => {
     setError('')
     setIsLoading(true)
     try {
-      await unhideDocument(id)
-      await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus })
+      await approveDocument(id)
+      await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus, moderationStatus, moderationFlag })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.error'))
     } finally {
@@ -108,24 +116,17 @@ export function AdminDocumentsView() {
     }
   }
 
+  const handlePreviewDocument = async (id: string) => {
+    try {
+      const result = await createAdminDocumentPreviewUrl(id)
+      window.open(result.url, '_blank', 'noopener,noreferrer')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.error'))
+    }
+  }
+
   const handlePageChange = (newPage: number) => {
     setPage(newPage)
-  }
-
-  const getVisibilityBadgeClass = (vis: string) => {
-    return vis === 'PUBLIC' ? 'status-pill success' : 'status-pill'
-  }
-
-  const getStatusBadgeClass = (st: string) => {
-    if (st === 'ACTIVE') return 'status-pill success'
-    if (st === 'HIDDEN') return 'status-pill hidden'
-    return 'status-pill deleted'
-  }
-
-  const getAiStatusBadgeClass = (aiSt: string) => {
-    if (aiSt === 'COMPLETED') return 'status-pill ai-completed'
-    if (aiSt === 'PROCESSING' || aiSt === 'PENDING') return 'status-pill ai-processing'
-    return 'status-pill ai-failed'
   }
 
   const items = data?.items ?? []
@@ -180,6 +181,28 @@ export function AdminDocumentsView() {
           <option value="">{text('Chế độ hiển thị', 'All visibilities')}</option>
           <option value="PUBLIC">{text('Công khai', 'PUBLIC')}</option>
           <option value="PRIVATE">{text('Riêng tư', 'PRIVATE')}</option>
+        </select>
+
+        <select
+          aria-label={text('Trạng thái kiểm duyệt', 'Moderation status')}
+          value={moderationStatus}
+          onChange={(event) => { setModerationStatus(event.target.value); setPage(1) }}
+        >
+          <option value="">{text('Mọi trạng thái duyệt', 'All moderation statuses')}</option>
+          <option value="PENDING">PENDING</option>
+          <option value="APPROVED">APPROVED</option>
+          <option value="REJECTED">REJECTED</option>
+        </select>
+
+        <select
+          aria-label={text('Cờ kiểm duyệt', 'Moderation flag')}
+          value={moderationFlag}
+          onChange={(event) => { setModerationFlag(event.target.value); setPage(1) }}
+        >
+          <option value="">{text('Mọi mức cảnh báo', 'All scan flags')}</option>
+          <option value="FLAGGED">FLAGGED</option>
+          <option value="SCAN_FAILED">SCAN_FAILED</option>
+          <option value="NORMAL">NORMAL</option>
         </select>
 
         <select
@@ -242,9 +265,9 @@ export function AdminDocumentsView() {
                     <th>{text('Tài liệu', 'Document')}</th>
                     <th>{text('Chủ đề / Phân loại', 'Subject / Category')}</th>
                     <th>{text('Người sở hữu', 'Owner')}</th>
-                    <th>{text('Quyền', 'Visibility')}</th>
-                    <th>{text('Trạng thái', 'Status')}</th>
-                    <th>{text('Chỉ mục AI', 'AI Index')}</th>
+                    <th>{text('Quét nội dung', 'Content scan')}</th>
+                    <th>{text('Kiểm duyệt', 'Moderation')}</th>
+                    <th>{text('Từ khóa', 'Keywords')}</th>
                     <th>{text('Hành động', 'Actions')}</th>
                   </tr>
                 </thead>
@@ -285,57 +308,30 @@ export function AdminDocumentsView() {
                         </div>
                       </td>
                       <td>
-                        <span className={getVisibilityBadgeClass(doc.visibility)}>
-                          {doc.visibility}
+                        <span className={doc.moderationFlag === 'FLAGGED' ? 'status-pill hidden' : doc.moderationFlag === 'SCAN_FAILED' ? 'status-pill deleted' : 'status-pill success'}>
+                          {doc.moderationFlag === 'FLAGGED' ? <AlertTriangle size={13} /> : null}
+                          {doc.moderationFlag ?? 'NORMAL'}
                         </span>
                       </td>
                       <td>
-                        <div style={{ display: 'grid', gap: '0.25rem' }}>
-                          <span className={getStatusBadgeClass(doc.status)}>
-                            {doc.status}
-                          </span>
-                          {doc.status === 'HIDDEN' && doc.moderationReason ? (
-                            <small
-                              style={{
-                                color: 'var(--danger)',
-                                fontSize: '0.72rem',
-                                maxWidth: '160px',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                              }}
-                              title={doc.moderationReason}
-                            >
-                              Lý do: {doc.moderationReason}
-                            </small>
-                          ) : null}
-                        </div>
-                      </td>
-                      <td>
-                        <span className={getAiStatusBadgeClass(doc.aiStatus)}>
-                          {doc.aiStatus}
+                        <span className={doc.moderationStatus === 'APPROVED' ? 'status-pill success' : doc.moderationStatus === 'REJECTED' ? 'status-pill deleted' : 'status-pill ai-processing'}>
+                          {doc.moderationStatus ?? 'PENDING'}
                         </span>
                       </td>
+                      <td>{doc.matchedKeywords?.length ? doc.matchedKeywords.join(', ') : '—'}</td>
                       <td>
                         <div className="btn-action-row">
-                          {doc.status === 'ACTIVE' ? (
-                            <button
-                              type="button"
-                              className="btn-icon-action btn-warn"
-                              title={text('Ẩn tài liệu', 'Hide document')}
-                              onClick={() => handleActionClick(doc)}
-                            >
-                              <EyeOff size={15} />
+                          <button type="button" className="btn-icon-action" title={text('Xem file', 'Preview file')} onClick={() => void handlePreviewDocument(doc.id)}>
+                            <Eye size={15} />
+                          </button>
+                          {doc.moderationStatus === 'PENDING' ? (
+                            <button type="button" className="btn-icon-action" title={text('Duyệt', 'Approve')} onClick={() => void handleApproveDocument(doc.id)}>
+                              <CheckCircle2 size={15} />
                             </button>
                           ) : null}
-                          {doc.status === 'HIDDEN' ? (
-                            <button
-                              type="button"
-                              className="btn-icon-action"
-                              title={text('Hiện tài liệu', 'Unhide document')}
-                              onClick={() => void handleUnhideDocument(doc.id)}
-                            >
-                              <Eye size={15} />
+                          {doc.moderationStatus === 'PENDING' ? (
+                            <button type="button" className="btn-icon-action btn-warn" title={text('Từ chối', 'Reject')} onClick={() => handleActionClick(doc)}>
+                              <X size={15} />
                             </button>
                           ) : null}
                         </div>
@@ -392,7 +388,7 @@ export function AdminDocumentsView() {
         <div className="admin-modal-overlay">
           <div className="admin-modal">
             <header className="admin-modal-header">
-              <h3>{text('Xác nhận ẩn tài liệu', 'Confirm Hide Document')}</h3>
+              <h3>{text('Từ chối tài liệu', 'Reject document')}</h3>
               <button
                 type="button"
                 className="admin-modal-close"
@@ -407,10 +403,21 @@ export function AdminDocumentsView() {
             <div className="admin-modal-body">
               <p>
                 {text(
-                  `Bạn có chắc chắn muốn ẩn tài liệu "${selectedDoc.title}"? Tài liệu bị ẩn sẽ không hiển thị trên thư viện công cộng và kết quả tìm kiếm của sinh viên.`,
-                  `Are you sure you want to hide "${selectedDoc.title}"? Hidden documents will not appear in the community library or students' searches.`
+                  `Tài liệu "${selectedDoc.title}" sẽ bị từ chối và người tải lên sẽ thấy lý do bên dưới.`,
+                  `"${selectedDoc.title}" will be rejected and the uploader will see the reason below.`
                 )}
               </p>
+
+              {selectedDoc.matchedContexts?.length ? (
+                <div className="moderation-contexts">
+                  {selectedDoc.matchedContexts.map((match, index) => (
+                    <blockquote key={`${match.keyword}-${index}`}>
+                      <strong>{match.keyword}</strong>
+                      <p>{match.excerpt}</p>
+                    </blockquote>
+                  ))}
+                </div>
+              ) : null}
 
               <div style={{ marginTop: '1rem' }}>
                 <label
@@ -422,14 +429,25 @@ export function AdminDocumentsView() {
                     fontSize: '0.8rem',
                   }}
                 >
-                  {text('Lý do kiểm duyệt (không bắt buộc)', 'Moderation reason (optional)')}
+                  {text('Lý do từ chối (bắt buộc)', 'Rejection reason (required)')}
                 </label>
+                <div className="moderation-reason-presets">
+                  {[
+                    text('Nội dung không phù hợp', 'Inappropriate content'),
+                    text('Sai hoặc thiếu thông tin', 'Incorrect or incomplete information'),
+                    text('File lỗi/không đọc được', 'Unreadable or corrupted file'),
+                    text('Nội dung trùng lặp', 'Duplicate content'),
+                    text('Vi phạm bản quyền', 'Copyright violation'),
+                  ].map((reason) => (
+                    <button type="button" key={reason} onClick={() => setModerationReason(reason)}>{reason}</button>
+                  ))}
+                </div>
                 <textarea
                   value={moderationReason}
                   onChange={(event) => setModerationReason(event.target.value)}
                   placeholder={text(
-                    'Ví dụ: Vi phạm bản quyền, Học liệu không phù hợp...',
-                    'e.g. Copyright infringement, Out of scope study material...'
+                    'Nhập lý do để người tải lên có thể chỉnh sửa...',
+                    'Enter a reason so the uploader can revise the document...'
                   )}
                 />
               </div>
@@ -458,7 +476,7 @@ export function AdminDocumentsView() {
               >
                 {isSubmitingAction
                   ? text('Đang xử lý...', 'Processing...')
-                  : text('Xác nhận', 'Confirm')}
+                  : text('Từ chối tài liệu', 'Reject document')}
               </button>
             </footer>
           </div>

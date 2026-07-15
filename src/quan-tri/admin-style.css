@@ -211,6 +211,37 @@
   box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.13);
 }
 
+.moderation-reason-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 0.65rem;
+}
+
+.moderation-reason-presets button {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0.35rem 0.65rem;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 0.72rem;
+}
+
+.moderation-contexts {
+  display: grid;
+  gap: 0.5rem;
+  max-height: 220px;
+  margin-top: 0.8rem;
+  overflow: auto;
+}
+
+.moderation-contexts blockquote {
+  margin: 0;
+  border-left: 3px solid var(--warning, #d97706);
+  padding: 0.6rem 0.75rem;
+  background: var(--surface-soft, #f8fafc);
+}
+
 .admin-modal-footer {
   display: flex;
   justify-content: flex-end;
