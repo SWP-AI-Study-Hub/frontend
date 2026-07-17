@@ -46,6 +46,10 @@ export type ApiDocument = {
   status: string
   createdAt: string
   updatedAt: string
+  moderationStatus?: LibraryDocument['moderationStatus']
+  moderationFlag?: LibraryDocument['moderationFlag']
+  rejectionReason?: string | null
+  version?: number
 }
 
 export type ExtractionStatusResponse = {
@@ -149,6 +153,10 @@ export function mapApiDocument(document: ApiDocument): LibraryDocument {
     pages: 0,
     uploadedAt: document.createdAt,
     indexStatus: mapIndexStatus(document.aiStatus),
+    moderationStatus: document.moderationStatus,
+    moderationFlag: document.moderationFlag,
+    rejectionReason: document.rejectionReason ?? undefined,
+    version: document.version,
   }
 }
 

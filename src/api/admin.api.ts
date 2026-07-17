@@ -8,6 +8,8 @@ export type DocumentQuery = {
   visibility?: string
   status?: string
   aiStatus?: string
+  moderationStatus?: string
+  moderationFlag?: string
 }
 
 export type DocumentListResponse = {
@@ -36,6 +38,14 @@ type ApiAdminDocument = {
   visibility: mock.AdminDocument['visibility']
   status: mock.AdminDocument['status']
   moderationReason?: string | null
+  moderationStatus?: mock.AdminDocument['moderationStatus']
+  moderationFlag?: mock.AdminDocument['moderationFlag']
+  rejectionReason?: string | null
+  matchedKeywords?: string[]
+  matchedContexts?: Array<{ keyword: string; excerpt: string }>
+  submittedAt?: string
+  reviewedAt?: string | null
+  version?: number
   owner: {
     fullName: string | null
     email: string
@@ -95,6 +105,14 @@ function mapAdminDocument(document: ApiAdminDocument): mock.AdminDocument {
     aiStatus: document.aiStatus,
     status: document.status,
     moderationReason: document.moderationReason ?? undefined,
+    moderationStatus: document.moderationStatus,
+    moderationFlag: document.moderationFlag,
+    rejectionReason: document.rejectionReason ?? undefined,
+    matchedKeywords: document.matchedKeywords ?? [],
+    matchedContexts: document.matchedContexts ?? [],
+    submittedAt: document.submittedAt,
+    reviewedAt: document.reviewedAt,
+    version: document.version,
     owner: {
       fullName: document.owner.fullName ?? document.owner.email,
       email: document.owner.email,
@@ -217,4 +235,24 @@ export function unhideDocument(id: string): Promise<mock.AdminDocument> {
     method: 'PUT',
     body: { hidden: false },
   })
+}
+
+type ModerationActionResponse = Pick<
+  mock.AdminDocument,
+  'id' | 'moderationStatus' | 'moderationFlag' | 'rejectionReason' | 'updatedAt'
+>
+
+export function approveDocument(id: string) {
+  return apiRequest<ModerationActionResponse>(`/admin/documents/${id}/approve`, { method: 'PUT' })
+}
+
+export function rejectDocument(id: string, reason: string) {
+  return apiRequest<ModerationActionResponse>(`/admin/documents/${id}/reject`, {
+    method: 'PUT',
+    body: { reason },
+  })
+}
+
+export function createAdminDocumentPreviewUrl(id: string) {
+  return apiRequest<{ url: string }>(`/admin/documents/${id}/preview`)
 }

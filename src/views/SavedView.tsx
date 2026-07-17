@@ -9,6 +9,7 @@ import {
   Eye,
   FileSpreadsheet,
   FileText,
+  Search,
   Sparkles,
   X,
 } from "lucide-react";
@@ -23,6 +24,7 @@ import { useLanguage } from "../i18n/LanguageProvider";
 import { localizeLibraryDocument } from "../i18n/document-display";
 import { localize } from "../i18n/localize";
 import { ROUTES } from "../lib/routes";
+import { filterAndSortSavedDocuments, type SavedDocumentSort } from "../lib/saved-documents";
 import type { LibraryDocument } from "../types/document";
 
 function DocumentIcon({ type }: { type: string }) {
@@ -66,6 +68,10 @@ export function SavedView() {
     [locale],
   );
   const [savedDocuments, setSavedDocuments] = useState<LibraryDocument[]>([]);
+  const [query, setQuery] = useState("");
+  const [subject, setSubject] = useState("");
+  const [fileType, setFileType] = useState("");
+  const [sort, setSort] = useState<SavedDocumentSort>("newest");
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
   const [downloadingDocumentId, setDownloadingDocumentId] = useState<
@@ -121,6 +127,26 @@ export function SavedView() {
       ),
     [locale, savedDocuments],
   );
+  const subjects = useMemo(
+    () => [...new Set(displayedDocuments.map((document) => document.subject))].sort(),
+    [displayedDocuments],
+  );
+  const fileTypes = useMemo(
+    () => [...new Set(displayedDocuments.map((document) => document.fileType))].sort(),
+    [displayedDocuments],
+  );
+  const filteredDocuments = useMemo(
+    () => filterAndSortSavedDocuments(displayedDocuments, { query, subject, fileType, sort }),
+    [displayedDocuments, fileType, query, sort, subject],
+  );
+  const hasActiveFilters = Boolean(query || subject || fileType || sort !== "newest");
+
+  function clearFilters() {
+    setQuery("");
+    setSubject("");
+    setFileType("");
+    setSort("newest");
+  }
 
   useEffect(() => {
     if (!previewDocument) {
@@ -226,6 +252,36 @@ export function SavedView() {
         <p className="eyebrow">{text("ĐÃ LƯU", "SAVED")}</p>
         <h1>{text("Tài liệu đã lưu.", "Saved documents.")}</h1>
       </header>
+      <section className="saved-controls" aria-label={text("Tìm kiếm và lọc tài liệu đã lưu", "Search and filter saved documents")}>
+        <label className="saved-search">
+          <Search size={18} />
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder={text("Tìm theo tên, môn học, thẻ...", "Search title, subject, tags...")}
+          />
+        </label>
+        <select value={subject} onChange={(event) => setSubject(event.target.value)} aria-label={text("Lọc theo môn học", "Filter by subject")}>
+          <option value="">{text("Tất cả môn học", "All subjects")}</option>
+          {subjects.map((item) => <option value={item} key={item}>{item}</option>)}
+        </select>
+        <select value={fileType} onChange={(event) => setFileType(event.target.value)} aria-label={text("Lọc theo loại tệp", "Filter by file type")}>
+          <option value="">{text("Tất cả loại tệp", "All file types")}</option>
+          {fileTypes.map((item) => <option value={item} key={item}>{item}</option>)}
+        </select>
+        <select value={sort} onChange={(event) => setSort(event.target.value as SavedDocumentSort)} aria-label={text("Sắp xếp tài liệu", "Sort documents")}>
+          <option value="newest">{text("Mới nhất", "Newest")}</option>
+          <option value="oldest">{text("Cũ nhất", "Oldest")}</option>
+          <option value="title-asc">{text("Tên A–Z", "Name A–Z")}</option>
+          <option value="size-desc">{text("Dung lượng lớn nhất", "Largest file")}</option>
+        </select>
+        {hasActiveFilters ? <button type="button" onClick={clearFilters}><X size={15} />{text("Xóa bộ lọc", "Clear filters")}</button> : null}
+      </section>
+      {!isLoading && !errorMessage ? (
+        <p className="saved-results-count">
+          {text(`${filteredDocuments.length} tài liệu`, `${filteredDocuments.length} documents`)}
+        </p>
+      ) : null}
       <section className="saved-source-list">
         {isLoading ? (
           <article>
@@ -254,8 +310,8 @@ export function SavedView() {
               {text("Xem cộng đồng", "Browse Community")}
             </Link>
           </article>
-        ) : displayedDocuments.length > 0 ? (
-          displayedDocuments.map((document) => (
+        ) : filteredDocuments.length > 0 ? (
+          filteredDocuments.map((document) => (
             <article key={document.id}>
               <span>
                 <DocumentIcon type={document.fileType} />
@@ -303,7 +359,7 @@ export function SavedView() {
               </div>
             </article>
           ))
-        ) : (
+        ) : savedDocuments.length === 0 ? (
           <article>
             <span>
               <Bookmark size={20} />
@@ -323,6 +379,15 @@ export function SavedView() {
               <Sparkles size={15} />
               {text("Xem cộng đồng", "Browse Community")}
             </Link>
+          </article>
+        ) : (
+          <article>
+            <span><Search size={20} /></span>
+            <div>
+              <strong>{text("Không tìm thấy tài liệu phù hợp", "No matching documents")}</strong>
+              <p>{text("Thử từ khóa khác hoặc xóa bộ lọc.", "Try another keyword or clear the filters.")}</p>
+            </div>
+            <button type="button" onClick={clearFilters}>{text("Xóa bộ lọc", "Clear filters")}</button>
           </article>
         )}
       </section>

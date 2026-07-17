@@ -31,6 +31,14 @@ export type AdminDocument = Omit<LibraryDocument, 'uploadedAt'> & {
   aiStatus: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'MOCKED'
   status: 'ACTIVE' | 'HIDDEN' | 'DELETED'
   moderationReason?: string
+  moderationStatus?: 'PENDING' | 'APPROVED' | 'REJECTED'
+  moderationFlag?: 'NORMAL' | 'FLAGGED' | 'SCAN_FAILED'
+  rejectionReason?: string
+  matchedKeywords?: string[]
+  matchedContexts?: Array<{ keyword: string; excerpt: string }>
+  submittedAt?: string
+  reviewedAt?: string | null
+  version?: number
   owner: {
     fullName: string
     email: string
