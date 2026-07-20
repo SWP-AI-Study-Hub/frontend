@@ -25,6 +25,11 @@ export type CurrentSubscription = {
   uploadLimit: number;
   aiChatLimit: number | null;
   aiChatsUsed: number;
+  aiChatsRemaining: number | null;
+  uploadsUsed: number;
+  uploadsRemaining: number;
+  storageUsedMb: number;
+  storageRemainingMb: number;
 };
 
 export type CheckoutResponse = {
