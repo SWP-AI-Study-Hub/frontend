@@ -36,30 +36,6 @@ import type {
   SubscriptionPlanCode,
 } from "../types/payment";
 
-const FALLBACK_PLANS: SubscriptionPlan[] = [
-  {
-    code: "FREE",
-    name: "Free",
-    amount: 0,
-    currency: "VND",
-    billingPeriod: "NONE",
-  },
-  {
-    code: "STUDENT",
-    name: "Student",
-    amount: 149000,
-    currency: "VND",
-    billingPeriod: "MONTHLY",
-  },
-  {
-    code: "PRO",
-    name: "Pro",
-    amount: 349000,
-    currency: "VND",
-    billingPeriod: "MONTHLY",
-  },
-];
-
 const PLAN_FEATURES: Record<
   SubscriptionPlanCode,
   {
@@ -115,7 +91,7 @@ export function SubscriptionView() {
     [locale],
   );
   const searchParams = useSearchParams();
-  const [plans, setPlans] = useState(FALLBACK_PLANS);
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [currentSubscription, setCurrentSubscription] =
     useState<CurrentSubscription>();
   const [history, setHistory] = useState<PaymentOrder[]>([]);
@@ -383,11 +359,19 @@ export function SubscriptionView() {
           <small>
             {currentSubscription
               ? text(
-                  `Đã dùng ${currentSubscription.aiChatsUsed} / ${currentSubscription.aiChatLimit ?? "∞"} lượt chat AI · ${currentSubscription.uploadLimit} tài liệu · ${currentSubscription.storageLimitMb} MB`,
-                  `${currentSubscription.aiChatsUsed} / ${currentSubscription.aiChatLimit ?? "∞"} AI chats used · ${currentSubscription.uploadLimit} documents · ${currentSubscription.storageLimitMb} MB`,
+                  `Còn ${currentSubscription.aiChatsRemaining ?? "∞"} lượt chat AI · ${currentSubscription.uploadsRemaining} tài liệu · ${formatStorage(currentSubscription.storageRemainingMb)} dung lượng`,
+                  `${currentSubscription.aiChatsRemaining ?? "∞"} AI chats · ${currentSubscription.uploadsRemaining} documents · ${formatStorage(currentSubscription.storageRemainingMb)} storage remaining`,
                 )
               : text("Đang tải hạn mức...", "Loading limits...")}
           </small>
+          {currentSubscription ? (
+            <small>
+              {text(
+                `Đã dùng ${currentSubscription.aiChatsUsed} lượt chat · ${currentSubscription.uploadsUsed} tài liệu · ${formatStorage(currentSubscription.storageUsedMb)}`,
+                `Used ${currentSubscription.aiChatsUsed} chats · ${currentSubscription.uploadsUsed} documents · ${formatStorage(currentSubscription.storageUsedMb)}`,
+              )}
+            </small>
+          ) : null}
         </article>
 
         <div className="plan-grid">
@@ -811,4 +795,11 @@ function getQuotaUsagePercent(subscription?: CurrentSubscription) {
     100,
     (subscription.aiChatsUsed / subscription.aiChatLimit) * 100,
   );
+}
+
+function formatStorage(megabytes: number) {
+  if (megabytes >= 1024) {
+    return `${(megabytes / 1024).toLocaleString(undefined, { maximumFractionDigits: 2 })} GB`;
+  }
+  return `${megabytes.toLocaleString(undefined, { maximumFractionDigits: 2 })} MB`;
 }

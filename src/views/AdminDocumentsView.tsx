@@ -32,7 +32,6 @@ export function AdminDocumentsView() {
   const text = (vi: string, en: string) => localize(locale, vi, en)
 
   const [keyword, setKeyword] = useState('')
-  const [visibility, setVisibility] = useState('')
   const [status, setStatus] = useState('')
   const [aiStatus, setAiStatus] = useState('')
   const [moderationStatus, setModerationStatus] = useState('PENDING')
@@ -66,14 +65,14 @@ export function AdminDocumentsView() {
   )
 
   useEffect(() => {
-    void loadDocuments({ ...DEFAULT_QUERY, page, keyword, visibility, status, aiStatus, moderationStatus, moderationFlag })
+    void loadDocuments({ ...DEFAULT_QUERY, page, keyword, status, aiStatus, moderationStatus, moderationFlag })
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loadDocuments, page, visibility, status, aiStatus, moderationStatus, moderationFlag])
+  }, [loadDocuments, page, status, aiStatus, moderationStatus, moderationFlag])
 
   async function handleSearch(event: FormEvent) {
     event.preventDefault()
     setPage(1)
-    await loadDocuments({ page: 1, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus, moderationStatus, moderationFlag })
+    await loadDocuments({ page: 1, limit: DEFAULT_QUERY.limit, keyword, status, aiStatus, moderationStatus, moderationFlag })
   }
 
   const handleActionClick = (doc: AdminDocument) => {
@@ -95,7 +94,7 @@ export function AdminDocumentsView() {
       setSelectedDoc(null)
       setIsModerationModalOpen(false)
       // Reload current page
-      await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus, moderationStatus, moderationFlag })
+      await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, status, aiStatus, moderationStatus, moderationFlag })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.error'))
     } finally {
@@ -108,7 +107,7 @@ export function AdminDocumentsView() {
     setIsLoading(true)
     try {
       await approveDocument(id)
-      await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, visibility, status, aiStatus, moderationStatus, moderationFlag })
+      await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, status, aiStatus, moderationStatus, moderationFlag })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.error'))
     } finally {
@@ -168,20 +167,6 @@ export function AdminDocumentsView() {
             placeholder={`${text('Tìm kiếm tiêu đề, tên tệp...', 'Search title, fileName...')}…`}
           />
         </label>
-
-        <select
-          name="visibilityFilter"
-          aria-label={text('Chế độ hiển thị', 'Visibility')}
-          value={visibility}
-          onChange={(event) => {
-            setVisibility(event.target.value)
-            setPage(1)
-          }}
-        >
-          <option value="">{text('Chế độ hiển thị', 'All visibilities')}</option>
-          <option value="PUBLIC">{text('Công khai', 'PUBLIC')}</option>
-          <option value="PRIVATE">{text('Riêng tư', 'PRIVATE')}</option>
-        </select>
 
         <select
           aria-label={text('Trạng thái kiểm duyệt', 'Moderation status')}

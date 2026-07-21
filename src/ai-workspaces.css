@@ -2606,7 +2606,11 @@
   max-width: 620px;
 }
 .current-plan-panel small {
+  display: block;
   color: var(--subtle);
+}
+.current-plan-panel small + small {
+  margin-top: 0.35rem;
 }
 .plan-grid {
   display: grid;
