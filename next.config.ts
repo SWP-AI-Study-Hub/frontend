@@ -1,8 +1,21 @@
 import type { NextConfig } from "next";
 
+function getApiProxyTarget() {
+  const configuredUrl =
+    process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001/api";
+
+  return configuredUrl.replace(/\/+$/, "").replace(/\/api$/, "");
+}
+
 const nextConfig: NextConfig = {
   async rewrites() {
+    const apiProxyTarget = getApiProxyTarget();
+
     return [
+      {
+        source: "/api/:path*",
+        destination: `${apiProxyTarget}/api/:path*`,
+      },
       {
         source: "/__/auth/action",
         destination: "/xu-ly-xac-thuc",

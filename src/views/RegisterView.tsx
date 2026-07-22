@@ -1,16 +1,25 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { CheckCircle2, UserPlus } from "lucide-react";
 import { useAuth } from "../features/auth/useAuth";
 import { useLanguage } from "../i18n/LanguageProvider";
+import { getFirebaseAuth } from "../lib/firebase";
+import {
+  clearPendingGoogleRegistration,
+  readPendingGoogleRegistration,
+} from "../lib/google-registration";
 import { ROUTES, getAuthenticatedHomeRoute } from "../lib/routes";
 
 export function RegisterView() {
-  const { loginWithGoogle, register } = useAuth();
+  const {
+    loginWithGoogle,
+    pendingGoogleRegistration,
+    register,
+  } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const [fullName, setFullName] = useState("");
@@ -23,6 +32,42 @@ export function RegisterView() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
+
+  useEffect(() => {
+    let isActive = true;
+
+    async function restoreGoogleProfile() {
+      const profile =
+        pendingGoogleRegistration ?? readPendingGoogleRegistration();
+      if (!profile) return;
+
+      const firebaseAuth = getFirebaseAuth();
+      await firebaseAuth.authStateReady();
+      const firebaseUser = firebaseAuth.currentUser;
+      const isMatchingGoogleUser =
+        firebaseUser?.email === profile.email &&
+        firebaseUser.providerData.some(
+          (provider) => provider.providerId === "google.com",
+        );
+
+      if (!isMatchingGoogleUser) {
+        clearPendingGoogleRegistration();
+        return;
+      }
+
+      if (isActive) {
+        setFullName(profile.fullName || firebaseUser.displayName || "");
+        setEmail(profile.email);
+        setIsGoogleRegistration(true);
+      }
+    }
+
+    void restoreGoogleProfile();
+
+    return () => {
+      isActive = false;
+    };
+  }, [pendingGoogleRegistration]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -102,24 +147,28 @@ export function RegisterView() {
       <p className="eyebrow">{t("auth.registerEyebrow")}</p>
       <h2>{t("auth.registerTitle")}</h2>
       <p className="auth-copy">{t("auth.registerBody")}</p>
-      <button
-        className="google-button"
-        type="button"
-        disabled={isSubmitting || isGoogleSubmitting}
-        onClick={handleGoogleRegister}
-      >
-        <Image
-          src="/google.svg"
-          alt=""
-          aria-hidden="true"
-          width={18}
-          height={18}
-        />
-        {isGoogleSubmitting ? t("auth.connecting") : t("auth.google")}
-      </button>
-      <div className="auth-divider">
-        <span>{t("auth.or")}</span>
-      </div>
+      {!isGoogleRegistration ? (
+        <>
+          <button
+            className="google-button"
+            type="button"
+            disabled={isSubmitting || isGoogleSubmitting}
+            onClick={handleGoogleRegister}
+          >
+            <Image
+              src="/google.svg"
+              alt=""
+              aria-hidden="true"
+              width={18}
+              height={18}
+            />
+            {isGoogleSubmitting ? t("auth.connecting") : t("auth.google")}
+          </button>
+          <div className="auth-divider">
+            <span>{t("auth.or")}</span>
+          </div>
+        </>
+      ) : null}
       <form onSubmit={handleSubmit} className="form-stack">
         <label>
           {t("auth.fullName")}
@@ -185,15 +234,19 @@ export function RegisterView() {
         <button
           className="primary-button"
           type="submit"
-          disabled={isSubmitting || isGoogleSubmitting || !acceptedTerms}
+          disabled={
+            isSubmitting || isGoogleSubmitting || !acceptedTerms
+          }
         >
           <UserPlus size={18} />
           {isSubmitting ? t("auth.creating") : t("auth.signup")}
         </button>
       </form>
-      <div className="form-links">
-        <Link href={ROUTES.login}>{t("auth.haveAccount")}</Link>
-      </div>
+      {!isGoogleRegistration ? (
+        <div className="form-links">
+          <Link href={ROUTES.login}>{t("auth.haveAccount")}</Link>
+        </div>
+      ) : null}
     </section>
   );
 }

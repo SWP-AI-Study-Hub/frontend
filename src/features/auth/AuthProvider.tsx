@@ -7,9 +7,14 @@ import * as authApi from "../../api/auth.api";
 import * as profileApi from "../../api/profile.api";
 import { clearStoredAuthToken, setStoredAuthToken } from "../../lib/auth-token";
 import { getFirebaseAuth, getGoogleAuthProvider } from "../../lib/firebase";
+import {
+  clearPendingGoogleRegistration,
+  storePendingGoogleRegistration,
+} from "../../lib/google-registration";
 import type {
   CurrentUser,
   GoogleLoginResult,
+  GoogleRegistrationProfile,
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
@@ -18,6 +23,8 @@ import { AuthContext } from "./auth-context";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<CurrentUser | null>(null);
+  const [pendingGoogleRegistration, setPendingGoogleRegistration] =
+    useState<GoogleRegistrationProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const refreshUser = useCallback(async () => {
@@ -84,6 +91,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleRegister = useCallback(async (payload: RegisterPayload) => {
     await authApi.register(payload);
+    clearPendingGoogleRegistration();
+    setPendingGoogleRegistration(null);
     clearStoredAuthToken();
     setUser(null);
     setIsLoading(false);
@@ -97,11 +106,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         firebaseAuth,
         googleAuthProvider,
       );
-      window.dispatchEvent(new Event("ai-study-hub:google-popup-resolved"));
       const idToken = await credential.user.getIdToken();
       setStoredAuthToken(idToken);
       try {
         const currentUser = await authApi.loginWithFirebaseToken({ idToken });
+        clearPendingGoogleRegistration();
+        setPendingGoogleRegistration(null);
         setUser(currentUser);
         setIsLoading(false);
         return { status: "authenticated", user: currentUser };
@@ -113,13 +123,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           clearStoredAuthToken();
           setUser(null);
           setIsLoading(false);
+          const profile = {
+            fullName: credential.user.displayName ?? "",
+            email: credential.user.email ?? "",
+            avatarUrl: credential.user.photoURL,
+          };
+          storePendingGoogleRegistration(profile);
+          setPendingGoogleRegistration(profile);
           return {
             status: "registration-required",
-            profile: {
-              fullName: credential.user.displayName ?? "",
-              email: credential.user.email ?? "",
-              avatarUrl: credential.user.photoURL,
-            },
+            profile,
           };
         }
         await signOut(firebaseAuth);
@@ -129,6 +142,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const handleLogout = useCallback(async () => {
     clearStoredAuthToken();
+    clearPendingGoogleRegistration();
+    setPendingGoogleRegistration(null);
     await signOut(getFirebaseAuth());
     setUser(null);
   }, []);
@@ -154,6 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () => ({
       user,
       isLoading,
+      pendingGoogleRegistration,
       login: handleLogin,
       loginWithGoogle: handleGoogleLogin,
       register: handleRegister,
@@ -168,6 +184,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       handleRegister,
       handleUpdateProfile,
       isLoading,
+      pendingGoogleRegistration,
       refreshUser,
       user,
     ],

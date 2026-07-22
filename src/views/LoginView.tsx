@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,8 +12,6 @@ import { ROUTES, getAuthenticatedHomeRoute } from "../lib/routes";
 
 const GOOGLE_LOGIN_SUCCESS_MESSAGE = "Đã đăng nhập thành công bằng google";
 const FLASH_DURATION_MS = 5000;
-const POPUP_CLOSE_FALLBACK_DELAY_MS = 1500;
-const GOOGLE_POPUP_RESOLVED_EVENT = "ai-study-hub:google-popup-resolved";
 
 function getErrorCode(error: unknown) {
   if (
@@ -48,20 +46,10 @@ export function LoginView() {
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
-  const googleLoginAttemptRef = useRef(0);
 
   function redirectAfterLogin(role: "ADMIN" | "USER") {
     const from = searchParams?.get("from");
     router.replace(from ?? getAuthenticatedHomeRoute(role));
-  }
-
-  function flashGoogleLoginErrorAndReload() {
-    setFlashMessage({
-      type: "error",
-      message: t("auth.googleFailed"),
-      durationMs: FLASH_DURATION_MS,
-    });
-    window.location.reload();
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -83,33 +71,8 @@ export function LoginView() {
     setError("");
     setIsGoogleSubmitting(true);
 
-    const attemptId = googleLoginAttemptRef.current + 1;
-    googleLoginAttemptRef.current = attemptId;
-    let hasSettled = false;
-    let fallbackTimeoutId: number | undefined;
-
-    function handleReturnToLoginWindow() {
-      if (fallbackTimeoutId) window.clearTimeout(fallbackTimeoutId);
-
-      fallbackTimeoutId = window.setTimeout(() => {
-        if (!hasSettled && googleLoginAttemptRef.current === attemptId) {
-          flashGoogleLoginErrorAndReload();
-        }
-      }, POPUP_CLOSE_FALLBACK_DELAY_MS);
-    }
-
-    function handleGooglePopupResolved() {
-      hasSettled = true;
-      if (fallbackTimeoutId) window.clearTimeout(fallbackTimeoutId);
-    }
-
-    window.addEventListener("focus", handleReturnToLoginWindow);
-    document.addEventListener("visibilitychange", handleReturnToLoginWindow);
-    window.addEventListener(GOOGLE_POPUP_RESOLVED_EVENT, handleGooglePopupResolved);
-
     try {
       const result = await loginWithGoogle();
-      hasSettled = true;
 
       if (result.status === "registration-required") {
         router.push(ROUTES.register);
@@ -123,23 +86,13 @@ export function LoginView() {
       });
       redirectAfterLogin(result.user.role);
     } catch (err) {
-      hasSettled = true;
-
       if (isGooglePopupClosedError(err)) {
-        flashGoogleLoginErrorAndReload();
+        setError(t("auth.googleFailed"));
         return;
       }
 
       setError(err instanceof Error ? err.message : t("auth.googleFailed"));
     } finally {
-      hasSettled = true;
-      if (fallbackTimeoutId) window.clearTimeout(fallbackTimeoutId);
-      window.removeEventListener("focus", handleReturnToLoginWindow);
-      document.removeEventListener("visibilitychange", handleReturnToLoginWindow);
-      window.removeEventListener(
-        GOOGLE_POPUP_RESOLVED_EVENT,
-        handleGooglePopupResolved,
-      );
       setIsGoogleSubmitting(false);
     }
   }

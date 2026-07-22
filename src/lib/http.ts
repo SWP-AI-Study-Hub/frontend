@@ -6,9 +6,10 @@ export function normalizeApiBaseUrl(value: string) {
   return baseUrl.endsWith('/api') ? baseUrl : `${baseUrl}/api`
 }
 
-export const API_BASE_URL = normalizeApiBaseUrl(
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:3001/api',
-)
+// Keep browser requests on the frontend origin. Next.js proxies /api to the
+// configured backend, so transient upstream responses cannot be hidden by the
+// browser as CORS failures.
+export const API_BASE_URL = '/api'
 
 export async function getApiAuthorizationToken() {
   const firebaseAuth = getFirebaseAuth()
