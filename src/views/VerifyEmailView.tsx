@@ -17,6 +17,12 @@ export function VerifyEmailView() {
   useEffect(() => {
     const code = searchParams?.get("oobCode");
     const mode = searchParams?.get("mode");
+    const verifiedByFirebase = searchParams?.get("verified") === "true";
+
+    if (verifiedByFirebase) {
+      setState("success");
+      return;
+    }
 
     if (!code || mode !== "verifyEmail") {
       setState("error");

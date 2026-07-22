@@ -69,8 +69,9 @@ export async function register(payload: RegisterPayload) {
   });
 
   await sendEmailVerification(credential.user, {
-    url: `${window.location.origin}${ROUTES.verifyEmail}`,
-    handleCodeInApp: true,
+    // Firebase's hosted handler consumes the code before redirecting here.
+    url: `${window.location.origin}${ROUTES.verifyEmail}?verified=true`,
+    handleCodeInApp: false,
   });
   await signOut(firebaseAuth);
 }
