@@ -41,6 +41,12 @@ export type GoogleLoginPayload = {
   idToken: string;
 };
 
+export type GoogleRegistrationProfile = {
+  fullName: string;
+  email: string;
+  avatarUrl: string | null;
+};
+
 export type RegisterPayload = {
   fullName: string;
   email: string;
@@ -53,7 +59,7 @@ export type GoogleLoginResult =
   | { status: "authenticated"; user: CurrentUser }
   | {
       status: "registration-required";
-      profile: { fullName: string; email: string; avatarUrl: string | null };
+      profile: GoogleRegistrationProfile;
     };
 
 export type UserListResponse = {

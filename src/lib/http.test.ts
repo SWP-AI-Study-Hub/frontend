@@ -5,7 +5,7 @@ import {
   notifyUnauthorized,
   setStoredAuthToken,
 } from './auth-token'
-import { apiRequest, normalizeApiBaseUrl } from './http'
+import { API_BASE_URL, apiRequest, normalizeApiBaseUrl } from './http'
 
 vi.mock('./firebase', () => ({
   getFirebaseAuth: vi.fn(),
@@ -155,6 +155,10 @@ describe('apiRequest', () => {
 })
 
 describe('normalizeApiBaseUrl', () => {
+  it('uses the same-origin Next.js API proxy for browser requests', () => {
+    expect(API_BASE_URL).toBe('/api')
+  })
+
   it('appends the global API prefix to a host-only URL', () => {
     expect(normalizeApiBaseUrl('https://backend.example.com')).toBe(
       'https://backend.example.com/api',

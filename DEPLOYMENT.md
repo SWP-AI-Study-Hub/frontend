@@ -36,6 +36,10 @@ Example API value:
 NEXT_PUBLIC_API_BASE_URL=https://ai-study-hub-backend-5frw.onrender.com/api
 ```
 
+Next.js uses this value as a server-side proxy target. Browser requests stay on
+the frontend origin under `/api`, which avoids cross-origin failures when the
+backend or its hosting proxy returns a transient error response.
+
 Only put `NEXT_PUBLIC_*` browser configuration in Vercel. Never add
 `DATABASE_URL`, Firebase Admin private keys, R2 secret keys, or Gemini keys.
 After adding or changing variables, redeploy the latest deployment because

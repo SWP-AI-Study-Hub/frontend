@@ -2,6 +2,7 @@ import { createContext } from "react";
 import type {
   CurrentUser,
   GoogleLoginResult,
+  GoogleRegistrationProfile,
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
@@ -10,6 +11,7 @@ import type {
 export type AuthContextValue = {
   user: CurrentUser | null;
   isLoading: boolean;
+  pendingGoogleRegistration: GoogleRegistrationProfile | null;
   login: (payload: LoginPayload) => Promise<CurrentUser>;
   loginWithGoogle: () => Promise<GoogleLoginResult>;
   register: (payload: RegisterPayload) => Promise<void>;
