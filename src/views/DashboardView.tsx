@@ -14,12 +14,14 @@ import {
 import Link from "next/link";
 import { fetchChatSessions } from "../api/chat.api";
 import { fetchLibraryDocuments } from "../api/documents.api";
+import { fetchCurrentSubscription } from "../api/payments.api";
 import { useLanguage } from "../i18n/LanguageProvider";
 import { localize } from "../i18n/localize";
 import { buildDashboardSuggestions } from "../lib/dashboard-suggestions";
 import { ROUTES } from "../lib/routes";
 import type { LibraryDocument } from "../types/document";
 import type { ChatSessionSummary } from "../types/chat";
+import type { CurrentSubscription } from "../types/payment";
 
 export function DashboardView() {
   const { locale } = useLanguage();
@@ -27,6 +29,7 @@ export function DashboardView() {
   const [question, setQuestion] = useState("");
   const [documents, setDocuments] = useState<LibraryDocument[]>([]);
   const [recentChats, setRecentChats] = useState<ChatSessionSummary[]>([]);
+  const [subscription, setSubscription] = useState<CurrentSubscription>();
   useEffect(() => {
     let active = true;
     fetchLibraryDocuments({ limit: 100 })
@@ -53,10 +56,25 @@ export function DashboardView() {
       active = false;
     };
   }, []);
+  useEffect(() => {
+    let active = true;
+    fetchCurrentSubscription()
+      .then((result) => {
+        if (active) setSubscription(result);
+      })
+      .catch(() => {
+        if (active) setSubscription(undefined);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   const readyDocuments = documents.filter(
     (document) => document.indexStatus === "READY",
   );
   const suggestions = buildDashboardSuggestions(documents, locale);
+  const aiUsagePercent = getAiUsagePercent(subscription);
+  const hasUnlimitedAiChats = subscription?.aiChatLimit === null;
 
   function submitQuestion(event: FormEvent) {
     event.preventDefault();
@@ -179,12 +197,33 @@ export function DashboardView() {
                 <Sparkles size={17} />
                 {text("Mức sử dụng AI", "AI usage")}
               </span>
-              <strong>68%</strong>
+              <strong>
+                {subscription
+                  ? hasUnlimitedAiChats
+                    ? text("Không giới hạn", "Unlimited")
+                    : `${aiUsagePercent}%`
+                  : "—"}
+              </strong>
             </div>
             <div className="usage-meter">
-              <span style={{ width: "68%" }} />
+              <span style={{ width: `${aiUsagePercent}%` }} />
             </div>
-            <p>{text("Đã dùng 68 trong 100 câu hỏi có dẫn nguồn trong tháng này.", "68 of 100 grounded questions used this month.")}</p>
+            <p>
+              {subscription
+                ? hasUnlimitedAiChats
+                  ? text(
+                      `Đã dùng ${subscription.aiChatsUsed} lượt chat AI trong kỳ hiện tại · Không giới hạn.`,
+                      `${subscription.aiChatsUsed} AI chats used in the current period · Unlimited.`,
+                    )
+                  : text(
+                      `Đã dùng ${subscription.aiChatsUsed} trong ${subscription.aiChatLimit} lượt chat AI trong kỳ hiện tại.`,
+                      `${subscription.aiChatsUsed} of ${subscription.aiChatLimit} AI chats used in the current period.`,
+                    )
+                : text(
+                    "Đang tải mức sử dụng AI...",
+                    "Loading AI usage...",
+                  )}
+            </p>
             <Link href={ROUTES.subscription}>
               {text("Quản lý gói", "Manage plan")} <ArrowRight size={14} />
             </Link>
@@ -219,5 +258,14 @@ export function DashboardView() {
         </aside>
       </section>
     </main>
+  );
+}
+
+function getAiUsagePercent(subscription?: CurrentSubscription) {
+  if (!subscription || subscription.aiChatLimit === null) return 0;
+  if (subscription.aiChatLimit <= 0) return 0;
+  return Math.min(
+    100,
+    Math.round((subscription.aiChatsUsed / subscription.aiChatLimit) * 100),
   );
 }
