@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { CheckCircle2, LoaderCircle, XCircle } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { verifyEmailActionCode } from "../api/auth.api";
@@ -12,15 +12,30 @@ type VerificationState = "loading" | "success" | "error";
 export function VerifyEmailView() {
   const searchParams = useSearchParams();
   const [state, setState] = useState<VerificationState>("loading");
+  const processedCodeRef = useRef<string | null>(null);
 
   useEffect(() => {
     const code = searchParams?.get("oobCode");
     const mode = searchParams?.get("mode");
+    const verifiedByFirebase = searchParams?.get("verified") === "true";
+
+    if (verifiedByFirebase) {
+      setState("success");
+      return;
+    }
 
     if (!code || mode !== "verifyEmail") {
       setState("error");
       return;
     }
+
+    // React Strict Mode may run effects twice in development. Firebase action
+    // codes are single-use, so applying the same code again would turn a
+    // successful verification into an auth/invalid-action-code error.
+    if (processedCodeRef.current === code) {
+      return;
+    }
+    processedCodeRef.current = code;
 
     void verifyEmailActionCode(code)
       .then(() => setState("success"))
