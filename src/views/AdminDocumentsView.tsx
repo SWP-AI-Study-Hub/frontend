@@ -16,6 +16,7 @@ import {
   getAdminDocuments,
   approveDocument,
   rejectDocument,
+  unhideDocument,
   createAdminDocumentPreviewUrl,
   type DocumentQuery,
   type DocumentListResponse,
@@ -102,11 +103,14 @@ export function AdminDocumentsView() {
     }
   }
 
-  const handleApproveDocument = async (id: string) => {
+  const handleApproveDocument = async (doc: AdminDocument) => {
     setError('')
     setIsLoading(true)
     try {
-      await approveDocument(id)
+      await approveDocument(doc.id)
+      if (doc.status === 'HIDDEN') {
+        await unhideDocument(doc.id)
+      }
       await loadDocuments({ page, limit: DEFAULT_QUERY.limit, keyword, status, aiStatus, moderationStatus, moderationFlag })
     } catch (err) {
       setError(err instanceof Error ? err.message : t('common.error'))
@@ -309,13 +313,30 @@ export function AdminDocumentsView() {
                           <button type="button" className="btn-icon-action" title={text('Xem file', 'Preview file')} onClick={() => void handlePreviewDocument(doc.id)}>
                             <Eye size={15} />
                           </button>
-                          {doc.moderationStatus === 'PENDING' ? (
-                            <button type="button" className="btn-icon-action" title={text('Duyệt', 'Approve')} onClick={() => void handleApproveDocument(doc.id)}>
+                          {(doc.moderationStatus === 'PENDING' ||
+                            doc.moderationStatus === 'REJECTED' ||
+                            (doc.moderationStatus === 'APPROVED' && doc.status === 'HIDDEN')) ? (
+                            <button
+                              type="button"
+                              className="btn-icon-action"
+                              title={
+                                doc.moderationStatus === 'REJECTED' || doc.status === 'HIDDEN'
+                                  ? text('Duyệt lại', 'Approve again')
+                                  : text('Duyệt', 'Approve')
+                              }
+                              onClick={() => void handleApproveDocument(doc)}
+                            >
                               <CheckCircle2 size={15} />
                             </button>
                           ) : null}
-                          {doc.moderationStatus === 'PENDING' ? (
-                            <button type="button" className="btn-icon-action btn-warn" title={text('Từ chối', 'Reject')} onClick={() => handleActionClick(doc)}>
+                          {(doc.moderationStatus === 'PENDING' ||
+                            doc.moderationStatus === 'APPROVED') ? (
+                            <button
+                              type="button"
+                              className="btn-icon-action btn-warn"
+                              title={text('Từ chối', 'Reject')}
+                              onClick={() => handleActionClick(doc)}
+                            >
                               <X size={15} />
                             </button>
                           ) : null}
