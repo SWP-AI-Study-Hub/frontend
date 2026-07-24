@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -37,7 +37,7 @@ function isGooglePopupClosedError(error: unknown) {
 }
 
 export function LoginView() {
-  const { login, loginWithGoogle } = useAuth();
+  const { user, isLoading, login, loginWithGoogle } = useAuth();
   const { t } = useLanguage();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,9 +47,27 @@ export function LoginView() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
 
-  function redirectAfterLogin(role: "ADMIN" | "USER") {
-    const from = searchParams?.get("from");
-    router.replace(from ?? getAuthenticatedHomeRoute(role));
+  const redirectAfterLogin = useCallback(
+    (role: "ADMIN" | "USER") => {
+      const from = searchParams?.get("from");
+      router.replace(from ?? getAuthenticatedHomeRoute(role));
+    },
+    [router, searchParams],
+  );
+
+  useEffect(() => {
+    if (!isLoading && user) {
+      redirectAfterLogin(user.role);
+    }
+  }, [isLoading, redirectAfterLogin, user]);
+
+  if (isLoading || user) {
+    return (
+      <div className="screen-message">
+        <span className="loading-line" />
+        <strong>{t("auth.checking")}</strong>
+      </div>
+    );
   }
 
   async function handleSubmit(event: FormEvent) {
